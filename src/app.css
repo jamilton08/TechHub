@@ -1,0 +1,12 @@
+html, body, #root { height: 100%; margin: 0; }
+body.studio { background: #111; overflow: hidden; }
+
+.app { display: flex; flex-direction: column; height: 100%; }
+
+/* The deck fills everything under the navbar. reveal.js (embedded mode)
+   sizes itself from this element, so it must have a real height. */
+.deck-host { flex: 1; min-height: 0; position: relative; }
+.deck-host .reveal { width: 100%; height: 100%; }
+
+/* ?print-pdf mode: reveal owns the page */
+.print-mode { height: auto; }
