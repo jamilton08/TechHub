@@ -231,10 +231,7 @@ button.led:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 
 /* ── team: a list, not a card deck ─────────────────────────────────── */
 .team { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
-.member {
-  display: grid; grid-template-columns: 64px 1fr; gap: 20px; align-items: start;
-  padding: 22px 0; border-top: 1px solid var(--line);
-}
+.member { padding: 22px 0; border-top: 1px solid var(--line); }
 .member:first-child { border-top: 0; padding-top: 0; }
 .member h3 { font-size: 22px; }
 .member-role { margin: 2px 0 8px; font-weight: 600; font-size: 14px; }
@@ -249,7 +246,7 @@ button.led:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .tone-maroon .member-role { color: var(--maroon); }
 
 
-.member-link { display: grid; grid-template-columns: 64px 1fr; gap: 20px; text-decoration: none; color: inherit; border-radius: 10px; }
+.site .member-link { display: grid; grid-template-columns: 64px 1fr; gap: 20px; align-items: start; text-decoration: none; color: var(--ink); border-radius: 10px; }
 .member-link:hover h3 { color: var(--royal); }
 .member-more { display: inline-block; margin-top: 8px; font-size: 14px; font-weight: 600; color: var(--royal); }
 .tone-maroon .member-more, .tone-maroon .member-link:hover h3 { color: var(--maroon); }
