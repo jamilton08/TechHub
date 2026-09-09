@@ -1,41 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import CircuitBg from './CircuitBg.jsx';
 import Widgets from './Widgets.jsx';
+import SiteNav from './SiteNav.jsx';
+import SiteFooter from './SiteFooter.jsx';
+import { TEACHERS } from './teachers.js';
+import { useFonts } from './useFonts.js';
 import './site.css';
-
-const NAV = [
-  ['#widgets', 'Widgets'],
-  ['#team', 'Team'],
-  ['#mission', 'Mission'],
-  ['#projects', 'Projects'],
-];
-
-const TEAM = [
-  {
-    name: 'Herman Cordero',
-    role: 'Team lead',
-    blurb: 'Leads the department. Ten years as an IT industry specialist before bringing that experience into the classroom.',
-    tone: 'maroon',
-  },
-  {
-    name: 'Jonathan Cruz',
-    role: 'Deep technical projects · Data',
-    blurb: 'Manages the department\'s deep technical projects. Works on motion as input — cameras and wearables as controllers — and is the team\'s data expert.',
-    tone: 'blue',
-  },
-  {
-    name: 'Julian Ocansey',
-    role: 'Software developer',
-    blurb: 'Builds the software side of what the department ships and teaches students to do the same.',
-    tone: 'maroon',
-  },
-  {
-    name: 'John Garces',
-    role: 'Technician',
-    blurb: 'Keeps the hardware, networks, and labs running so everything else can.',
-    tone: 'blue',
-  },
-];
 
 const PROJECTS = [
   {
@@ -55,35 +25,6 @@ const PROJECTS = [
   { title: 'Coming soon', owner: 'Julian Ocansey', status: 'In progress', tone: 'blue', summary: 'Project page reserved. Check back soon.' },
   { title: 'Coming soon', owner: 'John Garces', status: 'In progress', tone: 'maroon', summary: 'Project page reserved. Check back soon.' },
 ];
-
-function useFonts() {
-  useEffect(() => {
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap';
-    document.head.appendChild(link);
-    return () => link.remove();
-  }, []);
-}
-
-function Nav() {
-  const [open, setOpen] = useState(false);
-  return (
-    <header className="site-nav">
-      <a className="site-brand" href="/">
-        <img src="/hsct-logo.png" alt="HSCT shield" width="34" height="38" />
-        <span><strong>HSCT</strong> TechHub</span>
-      </a>
-      <button type="button" className="site-burger" aria-expanded={open} aria-label="Menu" onClick={() => setOpen((o) => !o)}>
-        <span /><span /><span />
-      </button>
-      <nav className={`site-links${open ? ' is-open' : ''}`}>
-        {NAV.map(([href, label]) => <a key={href} href={href} onClick={() => setOpen(false)}>{label}</a>)}
-        <a className="site-cta" href="/studio">Open Jonathan's Studio</a>
-      </nav>
-    </header>
-  );
-}
 
 function Hero() {
   return (
@@ -123,9 +64,10 @@ function Section({ id, eyebrow, title, children, lead }) {
 
 export default function Landing() {
   useFonts();
+  useEffect(() => { document.title = 'HSCT TechHub'; }, []);
   return (
     <div className="site">
-      <Nav />
+      <SiteNav />
       <main>
         <Hero />
 
@@ -133,16 +75,19 @@ export default function Landing() {
           <Widgets />
         </Section>
 
-        <Section id="team" title="The team">
+        <Section id="team" title="The team" lead="Click a teacher for their class contract, syllabus, and classes.">
           <ol className="team">
-            {TEAM.map((m) => (
-              <li key={m.name} className={`member tone-${m.tone}`}>
-                <div className="member-mark" aria-hidden="true">{m.name.split(' ').map((w) => w[0]).join('')}</div>
-                <div>
-                  <h3>{m.name}</h3>
-                  <p className="member-role">{m.role}</p>
-                  <p>{m.blurb}</p>
-                </div>
+            {TEACHERS.map((m) => (
+              <li key={m.slug} className={`member tone-${m.tone}`}>
+                <a className="member-link" href={`/teachers/${m.slug}`}>
+                  <div className="member-mark" aria-hidden="true">{m.name.split(' ').map((w) => w[0]).join('')}</div>
+                  <div>
+                    <h3>{m.name}</h3>
+                    <p className="member-role">{m.role}</p>
+                    <p>{m.bio}</p>
+                    <span className="member-more">Class contract, syllabus, classes →</span>
+                  </div>
+                </a>
               </li>
             ))}
           </ol>
@@ -183,11 +128,7 @@ export default function Landing() {
         </Section>
       </main>
 
-      <footer className="site-foot">
-        <img src="/hsct-logo.png" alt="" width="28" height="31" />
-        <span>HSCT TechHub · run by the Technology Department, High School of Computers and Technology, NYC DOE</span>
-        <a href="#top">Back to top</a>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
