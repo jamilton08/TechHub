@@ -138,7 +138,19 @@ export const CATEGORIES = [
     tone: 'blue',
     blurb: 'Breaking a problem down until a computer can do it: algorithms, Python, and how data is organized.',
     topics: [
-      { id: 'thinking-like-a-computer', title: 'Thinking like a computer', lessons: [] },
+      { id: 'thinking-like-a-computer', title: 'Thinking like a computer', 
+        lessons: [
+                  {
+            slug: 'think-it-then-code-it',
+            title: 'Think it, then code it',
+            description: 'Five real situations — a bake sale count, locker labels, messy name badges, letter grades, a password checker. For each one you first write how you would handle it as a person, then write it in Python in the built-in editor and pass the tests. Variables, loops, strings, if/else.',
+            file: 'think-it-then-code-it.html',
+            kind: 'lab',
+            minutes: 60,
+            added: '2026-09-15',
+            tags: ['Python', 'variables', 'loops', 'for', 'while', 'strings', 'if', 'else', 'input', 'print', 'range', 'split', 'logic', 'algorithm', 'editor', 'beginner'],
+          },
+      ] },
       { id: 'python', title: 'Python', lessons: [] },
       { id: 'data-structures', title: 'Data structures', lessons: [] },
     ],

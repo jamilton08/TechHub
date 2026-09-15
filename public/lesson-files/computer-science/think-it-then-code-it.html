@@ -1,0 +1,1504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Think it, then code it — HSCT Computer Science</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f7fc; --paper:#fff; --bench:#eef1f8; --ink:#101a3f; --muted:#5b6485; --line:#d3d9ee;
+  --blue:#1f3fae; --blue-soft:#e9edf8; --green:#1f7a3d; --green-soft:#e1f2e6; --red:#b3261e; --red-soft:#fbe3e1;
+  --amber:#b96f00; --amber-soft:#fff3d6; --code-bg:#0f1533; --code-ink:#e6e9f5;
+  --sans:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --hsct-color: var(--blue);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.5}
+h1,h2,h3,h4{margin:0;line-height:1.2}
+p{margin:0 0 .75rem}
+button{font:inherit;cursor:pointer}
+button:focus-visible,textarea:focus-visible,input:focus-visible{outline:3px solid #a9b7ea;outline-offset:2px}
+code{font-family:var(--mono);font-size:.92em;background:var(--blue-soft);padding:.05em .35em;border-radius:3px}
+pre{font-family:var(--mono);font-size:.9rem;line-height:1.5;background:var(--code-bg);color:var(--code-ink);padding:.75rem .9rem;border-radius:8px;overflow-x:auto;margin:.5rem 0 .9rem;white-space:pre}
+pre .c{color:#8b95c9}pre .s{color:#ffd166}pre .k{color:#8ec5ff}pre .o{color:#c9d1ff}
+.btn{border:2px solid var(--blue);background:var(--blue);color:#fff;border-radius:8px;padding:.6rem 1.1rem;font-weight:600}
+.btn:hover{filter:brightness(.92)}.btn.ghost{background:transparent;color:var(--blue)}.btn.small{padding:.4rem .8rem;font-size:.9rem}
+.btn:disabled{opacity:.5;cursor:not-allowed;filter:none}
+.view{display:none}.view.active{display:block}
+
+/* topbar */
+.topbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:1rem;padding:.6rem 1.2rem;background:var(--paper);border-bottom:1px solid var(--line)}
+.topbar .brand{font-weight:700}.topbar .brand span{color:var(--muted);font-weight:400}
+.progress{display:flex;gap:4px}.progress i{display:block;width:26px;height:8px;border-radius:2px;background:var(--line)}
+.progress i.now{background:var(--blue)}.progress i.done{background:var(--green)}
+.topbar .grow{flex:1}.stat{font-family:var(--mono);font-size:.85rem;color:var(--muted)}.stat b{color:var(--ink)}
+
+/* intro */
+.intro{max-width:760px;margin:0 auto;padding:2.5rem 1.2rem 5rem}
+.intro h1{font-size:2.1rem;letter-spacing:-.01em;margin-bottom:.4rem}
+.lede{font-size:1.12rem;color:var(--muted);margin-bottom:1.4rem}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:1.1rem 1.3rem;margin-bottom:1rem}
+.card h3{font-size:1.05rem;margin-bottom:.5rem}
+.four{list-style:none;margin:.6rem 0 .3rem;padding:0;display:grid;gap:.35rem}
+.four li{display:grid;grid-template-columns:1fr auto 1fr;gap:.6rem;align-items:center}
+.four li span:nth-child(2){color:var(--muted)}.four li b{font-family:var(--mono);font-weight:600;color:var(--blue)}
+.rules{margin:0;padding-left:1.2rem}.rules li{margin:.3rem 0}
+.name-row{display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap}
+.name-row input{flex:1;min-width:220px;padding:.7rem .8rem;border:1.5px solid var(--line);border-radius:8px;font:inherit}
+.err{color:var(--red);margin-top:.5rem;display:none}
+
+/* module layout */
+.mod{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:1.2rem;max-width:1360px;margin:0 auto;padding:1.2rem}
+.left .card{margin-bottom:.9rem}
+.kicker{font-family:var(--mono);font-size:.8rem;color:var(--muted);letter-spacing:.03em;margin-bottom:.35rem}
+.scenario h2{font-size:1.5rem;margin-bottom:.6rem}
+.scenario blockquote{margin:0;padding:.7rem .9rem;background:var(--bench);border-left:3px solid var(--blue);border-radius:0 6px 6px 0;font-style:italic}
+.human textarea{width:100%;min-height:150px;font:inherit;font-size:.98rem;padding:.7rem .8rem;border:1.5px solid var(--line);border-radius:8px;resize:vertical;background:var(--paper)}
+.human .row{display:flex;justify-content:space-between;align-items:center;gap:.8rem;margin-top:.6rem;flex-wrap:wrap}
+.human .count{font-size:.85rem;color:var(--muted);font-family:var(--mono)}
+.human.done textarea{background:var(--bench);color:var(--muted)}
+.bridge ul{margin:.3rem 0 0;padding-left:1.2rem}.bridge li{margin:.35rem 0}
+.bridge b,.concept b{color:var(--blue)}
+.concept p{margin-bottom:.5rem}
+.task .spec{margin-bottom:.5rem}
+.task .rules{margin-bottom:.6rem}
+.io{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.6rem;margin-top:.4rem}
+.io h4{font-size:.78rem;font-family:var(--mono);font-weight:500;color:var(--muted);margin-bottom:.25rem;letter-spacing:.03em}
+.io pre{margin:0;font-size:.85rem}
+.hidden{display:none!important}
+
+/* editor column */
+.right{position:sticky;top:64px;align-self:start}
+.editor-card{background:var(--paper);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.editor-head{display:flex;align-items:center;gap:.6rem;padding:.55rem .9rem;border-bottom:1px solid var(--line);font-size:.9rem;color:var(--muted)}
+.editor-head b{color:var(--ink)}
+.editor-head .grow{flex:1}
+.locked{position:absolute;inset:0;background:rgba(245,247,252,.86);display:grid;place-items:center;text-align:center;padding:1rem;color:var(--muted);font-weight:500;z-index:2;backdrop-filter:blur(2px)}
+.editor{position:relative;display:grid;grid-template-columns:3.2em minmax(0,1fr);background:var(--code-bg);color:var(--code-ink)}
+.gutter{font-family:var(--mono);font-size:.9rem;line-height:1.5;padding:.7rem 0;text-align:right;color:#5f6aa0;user-select:none;overflow:hidden;border-right:1px solid #26306a}
+.gutter div{padding-right:.6em}.gutter div.errline{background:rgba(179,38,30,.35);color:#ffb4ad}
+.editor textarea{width:100%;min-height:320px;height:340px;font-family:var(--mono);font-size:.9rem;line-height:1.5;padding:.7rem .8rem;border:0;background:transparent;color:var(--code-ink);resize:vertical;white-space:pre;overflow:auto;tab-size:4;caret-color:#fff}
+.editor textarea:focus-visible{outline:none;box-shadow:inset 0 0 0 2px #a9b7ea}
+.toolbar{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;padding:.6rem .9rem;border-top:1px solid var(--line);background:var(--bench)}
+.toolbar .grow{flex:1}
+.toolbar .note{font-size:.82rem;color:var(--muted)}
+.output{padding:.7rem .9rem;border-top:1px solid var(--line);font-family:var(--mono);font-size:.88rem;line-height:1.5;white-space:pre-wrap;min-height:5em;max-height:14em;overflow:auto;background:#fff}
+.output .prompt{color:var(--muted)}.output .in{color:var(--blue);font-weight:500}.output .error{color:var(--red);font-weight:600;display:block;margin-top:.3rem}
+.output .empty{color:var(--muted)}
+.tests{border-top:1px solid var(--line);padding:.6rem .9rem .8rem;font-size:.9rem;display:none}
+.tests.show{display:block}
+.tests ul{list-style:none;margin:0;padding:0;display:grid;gap:.3rem}
+.tests li{display:flex;gap:.6rem;align-items:baseline}
+.tests li .m{font-family:var(--mono);font-weight:600;min-width:1.4em}
+.tests li.ok .m{color:var(--green)}.tests li.bad .m{color:var(--red)}
+.tests li .in{font-family:var(--mono);color:var(--muted);font-size:.82rem}
+.diff{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.6rem;margin-top:.6rem}
+.diff h4{font-size:.78rem;font-family:var(--mono);font-weight:500;color:var(--muted);margin-bottom:.25rem}
+.diff pre{margin:0;font-size:.82rem;background:var(--paper);color:var(--ink);border:1px solid var(--line)}
+.diff pre .bad{background:var(--red-soft);color:var(--red);display:block;margin:0 -.9rem;padding:0 .9rem}
+.diff pre .ok{display:block}
+.diff .why{grid-column:1/-1;font-size:.86rem;color:var(--muted);margin:.2rem 0 0}
+.passed{border-top:1px solid var(--line);padding:.8rem .9rem;background:var(--green-soft);display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+.passed b{color:var(--green)}
+.hintbox{border-top:1px solid var(--line);padding:.6rem .9rem;background:var(--amber-soft);font-size:.92rem;display:none}
+.hintbox.show{display:block}
+.hintbox p{margin:.25rem 0}.hintbox b{font-family:var(--mono);color:var(--amber);font-weight:500;margin-right:.4rem}
+.solution{border-top:1px solid var(--line);padding:.6rem .9rem;display:none}
+.solution.show{display:block}
+.solution p{font-size:.9rem;color:var(--muted);margin-bottom:.3rem}
+
+/* finale */
+.finale{max-width:760px;margin:0 auto;padding:2.5rem 1.2rem 5rem}
+.finale h1{font-size:2rem;margin-bottom:.4rem}
+.recap{width:100%;border-collapse:collapse;font-size:.95rem;margin:.4rem 0 1rem}
+.recap th,.recap td{text-align:left;padding:.45rem .5rem;border-bottom:1px solid var(--line);vertical-align:top}
+.recap th{font-size:.78rem;color:var(--muted);font-weight:600}
+.recap td:last-child{font-family:var(--mono);text-align:right;white-space:nowrap}
+.actions{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:1rem}
+.teacher{margin-top:2rem;font-size:.9rem;color:var(--muted)}
+.teacher summary{cursor:pointer}
+
+@media (max-width:980px){
+  .mod{grid-template-columns:minmax(0,1fr)}
+  .right{position:static}
+  .editor textarea{min-height:260px;height:280px}
+}
+@media (max-width:600px){
+  .topbar{gap:.6rem;padding:.5rem .8rem}.topbar .brand{font-size:.9rem;white-space:nowrap}.topbar .brand span{display:none}.stat{font-size:.75rem;white-space:nowrap}#stat-mod{display:none}.progress i{width:14px}
+  .io,.diff{grid-template-columns:minmax(0,1fr)}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media print{.topbar,.actions,.teacher{display:none!important}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">Think it, then code it <span>— HSCT Computer Science</span></div>
+  <div class="progress" id="progress" aria-label="Module progress"></div>
+  <div class="grow"></div>
+  <div class="stat" id="stat-mod"></div>
+  <div class="stat" id="stat-total"></div>
+</header>
+
+<!-- ===== 1. INTRO ===== -->
+<section class="view intro active" id="view-intro">
+  <h1>Think it, then code it.</h1>
+  <p class="lede">Five real situations. For each one you'll say how you'd handle it as a person. Then you'll write it as Python — and find out your own steps were the program all along.</p>
+
+  <div class="card">
+    <h3>Read this first: logic doesn't care who runs it</h3>
+    <p>A recipe, a fire drill, a math proof, and a Python program are the same kind of thing: a list of steps that anyone — or anything — can follow and get the same result. That's the whole trick behind computer science. If you can write the steps precisely enough that a stranger could follow them without asking a question, a computer can follow them too.</p>
+    <p>The difference is what a human fills in for free. Tell a person "add up the cookies" and they'll keep a running total in their head, do it for every person, and stop when the pile is empty, without being told any of that. A computer needs each of those spelled out. It turns out that's only four ideas:</p>
+    <ul class="four">
+      <li><span>Remember something</span><span>→</span><b>a variable</b></li>
+      <li><span>Do something again</span><span>→</span><b>a loop</b></li>
+      <li><span>Work with text</span><span>→</span><b>strings</b></li>
+      <li><span>Decide</span><span>→</span><b>if / else</b></li>
+    </ul>
+    <p>Everything you write today is some mix of those four.</p>
+  </div>
+
+  <div class="card">
+    <h3>How this works</h3>
+    <ul class="rules">
+      <li>Each module has two halves. First you describe how <b>you</b> would handle the situation, in plain English. That unlocks the editor, where you write it in Python.</li>
+      <li><b>Run</b> tries your program with the sample input. <b>Check</b> runs it against every test case. Checks are free; run them as often as you like.</li>
+      <li>Each module is worth <b>20 points</b> (100 total). Hints cost <b>3</b> each, two per module. After three failed checks you can look at the solution; the module is then worth <b>10</b>.</li>
+      <li>Your human answer isn't graded by the computer, but it's required and Mr. Cruz reads it.</li>
+      <li>At the end you download a result file and submit it in Google Classroom.</li>
+    </ul>
+    <div class="name-row">
+      <input id="name" type="text" placeholder="Your full name (goes on your result)" autocomplete="off" maxlength="60">
+      <button class="btn" id="start">Start module 1</button>
+    </div>
+    <div class="err" id="name-err">Enter your name first — it goes on your result file.</div>
+  </div>
+</section>
+
+<!-- ===== 2. MODULE ===== -->
+<section class="view" id="view-work">
+  <div class="mod">
+    <aside class="left">
+      <div class="card scenario">
+        <div class="kicker" id="m-kicker"></div>
+        <h2 id="m-title"></h2>
+        <blockquote id="m-scenario"></blockquote>
+      </div>
+      <div class="card human" id="human">
+        <h3>First, as a human</h3>
+        <p id="m-humanq"></p>
+        <textarea id="human-text" placeholder="Write it like instructions for a friend who has never done it. Be specific about the order." spellcheck="true"></textarea>
+        <div class="row">
+          <span class="count" id="human-count">0 words · at least 20</span>
+          <button class="btn" id="human-submit" disabled>That's how I'd do it</button>
+        </div>
+      </div>
+      <div class="card bridge hidden" id="bridge">
+        <h3>What you just did, in computer words</h3>
+        <ul id="m-bridge"></ul>
+      </div>
+      <div class="card concept hidden" id="concept">
+        <h3 id="m-concept-title"></h3>
+        <div id="m-concept"></div>
+      </div>
+      <div class="card task hidden" id="task">
+        <h3>Now, as a computer</h3>
+        <div id="m-task"></div>
+      </div>
+    </aside>
+
+    <section class="right">
+      <div class="editor-card">
+        <div class="editor-head"><b>main.py</b><span>Python</span><span class="grow"></span><span id="ed-status"></span></div>
+        <div class="editor" id="editor">
+          <div class="locked" id="locked">Answer as a human first.<br>Then the editor unlocks.</div>
+          <div class="gutter" id="gutter"><div>1</div></div>
+          <textarea id="code" spellcheck="false" autocapitalize="off" autocorrect="off" autocomplete="off" aria-label="Python code editor"></textarea>
+        </div>
+        <div class="toolbar">
+          <button class="btn small" id="run" disabled>Run ▶</button>
+          <button class="btn small" id="check" disabled>Check all tests</button>
+          <button class="btn small ghost" id="reset" disabled>Reset</button>
+          <span class="grow"></span>
+          <button class="btn small ghost" id="hint" disabled>Hint (−3)</button>
+          <button class="btn small ghost hidden" id="solution-btn">Show solution (−10)</button>
+        </div>
+        <div class="hintbox" id="hintbox"></div>
+        <div class="solution" id="solution"></div>
+        <div class="output" id="output"><span class="empty">Output shows up here. Ctrl+Enter runs.</span></div>
+        <div class="tests" id="tests"></div>
+        <div class="passed hidden" id="passed"></div>
+      </div>
+    </section>
+  </div>
+</section>
+
+<!-- ===== 3. END ===== -->
+<section class="view finale" id="view-end">
+  <h1>Five programs.</h1>
+  <p class="lede" id="end-lede"></p>
+  <div class="card">
+    <h3>What you used</h3>
+    <table class="recap" id="recap"></table>
+  </div>
+  <div id="hsct-result"></div>
+  <div class="actions"><button class="btn ghost" id="again">Start over</button></div>
+  <details class="teacher">
+    <summary>Teachers</summary>
+    <p>The result file holds each student's plain-English answers, their final code for every module, every check they ran (with which tests failed), hints, and whether they viewed a solution. Open files at <b>hsct.tech/lessons/verify</b>.</p>
+  </details>
+</section>
+
+<!-- HSCT KIT START — do not edit; copy the whole block from lesson-template/hsct-lesson.js -->
+<script>
+/* ============================================================================
+   HSCT LESSON KIT  v1.0
+   Every lesson on HSCT TechHub inlines this block unchanged (between the
+   <!-- HSCT KIT START --> and <!-- HSCT KIT END --> markers). It gives a
+   lesson three things:
+
+     1. A clock.   HSCT.start(name) when the student begins. The kit records
+                   wall-clock time and "active" time (tab visible).
+     2. A log.     HSCT.log(type, data) for anything worth remembering —
+                   answers, hints, retries. Ends up inside the result file.
+     3. A result.  HSCT.endScreen(el, {...scores}) renders the standard result
+                   card: name, score, time taken, badge code, and a button
+                   that downloads the encrypted result file the student
+                   submits in Google Classroom.
+
+   The file is encrypted with the teacher's PUBLIC key below (RSA-OAEP wrapping
+   an AES-256-GCM key). It can only be opened with the matching private key,
+   on the site's /lessons/verify page. Students can't read or edit it.
+
+   API (all on window.HSCT):
+     HSCT.lesson({ id, title, version, course, possible })   once, at load
+     HSCT.start(name)                                        when work begins
+     HSCT.log(type, data)                                    any time
+     HSCT.elapsed()   -> { seconds, activeSeconds }
+     HSCT.finish({ earned, possible, sections, tier, extra }) -> Promise<result>
+     HSCT.endScreen(el, { earned, possible, sections, tier, extra, note })
+                      -> Promise<result>   (calls finish, renders the card)
+     HSCT.download()  / HSCT.copyCode()                      after finish
+   ========================================================================== */
+(function () {
+  'use strict';
+  var KIT = '1.0';
+
+  /* Mr. Cruz's public key. Replace the whole object if the key pair is ever
+     regenerated on /lessons/verify — and keep the private key out of git. */
+  var PUBLIC_KEY = {"kty":"RSA","n":"rZUBRxn7dUikufJq7z2XVn-on4Of0IyQr_YaPSTgIUaGsYKcrZ4FNROL4A_ZM5JShLf6OVp2ZeAI7XN_7iX0tvd79RqAWRM9an6rx-s6bMYSW1wmtRxZyL-BX56vTtikVRLNO7uyzCb8kevJE71Fi6nlPhdXa-iS4vtIEm2Wjh4cLPinAKhMnkO3BpGHUhtFw7Hyus1w04EdLxowk4UcN7d0w4MQRnBV8ehXQVoLVQ0_QtfrtPTQOpScHuwyaw9nwnTA7h7BEOv1ZkbEyq2N4TFixSSCsneUsc3PlbZOndDzMGMmdMr00ulntRZBfyioFzRcsRUGGwAqpB9SuH7XGQ","e":"AQAB","alg":"RSA-OAEP-256","ext":true};
+
+  var VERIFY_URL = 'hsct.tech/lessons/verify';
+
+  var cfg = null;      // lesson config
+  var ses = null;      // current session
+  var ticker = null;   // active-time interval
+  var result = null;   // { badge, filename, text, envelope, payload }
+
+  /* ---------- small helpers ---------- */
+  var enc = new TextEncoder();
+  function b64(buf) {
+    var bytes = new Uint8Array(buf), s = '';
+    for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return btoa(s);
+  }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function fmtDuration(sec) {
+    sec = Math.max(0, Math.round(sec || 0));
+    var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+    if (h) return h + ' h ' + pad(m) + ' min';
+    if (m) return m + ' min ' + pad(s) + ' s';
+    return s + ' s';
+  }
+  function fmtDate(iso) {
+    try { return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+    catch (e) { return iso; }
+  }
+  function slug(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'student'; }
+  function stamp(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes()); }
+
+  /* Badge code: 8 characters from a SHA-256 of the result, shown on screen
+     so a screenshot can be matched to its file. */
+  var ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ23456789';
+  function badgeFrom(hashBuf) {
+    var bytes = new Uint8Array(hashBuf), out = '';
+    for (var i = 0; i < 8; i++) out += ALPHABET[bytes[i] % ALPHABET.length];
+    return out.slice(0, 4) + '-' + out.slice(4);
+  }
+
+  function needSubtle() {
+    if (!(window.crypto && crypto.subtle)) {
+      throw new Error('Result files need a secure page (https). Open this lesson from the TechHub site and finish again.');
+    }
+  }
+
+  /* ---------- public API ---------- */
+  function lesson(c) {
+    if (!c || !c.id || !c.title) throw new Error('HSCT.lesson needs { id, title }');
+    cfg = { version: '1.0', course: '', possible: 100 };
+    for (var k in c) cfg[k] = c[k];
+    return HSCT;
+  }
+
+  function start(name) {
+    if (!cfg) throw new Error('Call HSCT.lesson({...}) before HSCT.start(name)');
+    name = String(name || '').trim().replace(/\s+/g, ' ');
+    if (name.length < 2) throw new Error('HSCT.start needs the student\'s name');
+    ses = { name: name, started: new Date().toISOString(), t0: Date.now(), active: 0, events: [] };
+    result = null;
+    clearInterval(ticker);
+    ticker = setInterval(function () { if (document.visibilityState === 'visible') ses.active += 1; }, 1000);
+    log('start');
+    return HSCT;
+  }
+
+  function log(type, data) {
+    if (!ses) return HSCT;
+    var e = { t: Math.round((Date.now() - ses.t0) / 100) / 10, type: String(type) };
+    if (data && typeof data === 'object') for (var k in data) if (k !== 't' && k !== 'type') e[k] = data[k];
+    if (ses.events.length < 800) ses.events.push(e);
+    return HSCT;
+  }
+
+  function elapsed() {
+    if (!ses) return { seconds: 0, activeSeconds: 0 };
+    return { seconds: Math.round((Date.now() - ses.t0) / 1000), activeSeconds: ses.active };
+  }
+
+  /* Build, seal, and keep the result. Resolves to { badge, filename, text, payload }. */
+  async function finish(opts) {
+    if (!cfg || !ses) throw new Error('HSCT.start(name) was never called');
+    needSubtle();
+    opts = opts || {};
+    clearInterval(ticker);
+    var finished = new Date();
+    var el = elapsed();
+    var earned = Number(opts.earned || 0), possible = Number(opts.possible || cfg.possible || 0);
+    var payload = {
+      kit: KIT,
+      lesson: { id: cfg.id, title: cfg.title, version: cfg.version, course: cfg.course },
+      student: { name: ses.name },
+      started: ses.started,
+      finished: finished.toISOString(),
+      seconds: el.seconds,
+      activeSeconds: el.activeSeconds,
+      score: { earned: earned, possible: possible, percent: possible ? Math.round(1000 * earned / possible) / 10 : null },
+      tier: opts.tier || null,
+      sections: (opts.sections || []).map(function (s) { return { id: s.id, title: s.title, earned: s.earned, possible: s.possible, status: s.status }; }),
+      extra: opts.extra || null,
+      events: ses.events,
+      env: { tz: Intl.DateTimeFormat().resolvedOptions().timeZone, ua: navigator.userAgent, url: location.href.split('?')[0] },
+    };
+    var hash = await crypto.subtle.digest('SHA-256', enc.encode(JSON.stringify(payload)));
+    var badge = badgeFrom(hash);
+    payload.badge = badge;
+
+    /* header travels in the clear but is authenticated (AES-GCM additional data) */
+    var header = { hsct: 1, kit: KIT, lesson: cfg.id, title: cfg.title, student: ses.name, finished: payload.finished, badge: badge };
+    var pub = await crypto.subtle.importKey('jwk', PUBLIC_KEY, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['wrapKey']);
+    var aes = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt']);
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    var data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv, additionalData: enc.encode(JSON.stringify(header)) }, aes, enc.encode(JSON.stringify(payload)));
+    var wrapped = await crypto.subtle.wrapKey('raw', aes, pub, { name: 'RSA-OAEP' });
+    var envelope = {};
+    for (var k in header) envelope[k] = header[k];
+    envelope.key = b64(wrapped); envelope.iv = b64(iv); envelope.data = b64(data);
+
+    result = {
+      badge: badge,
+      filename: 'HSCT_' + cfg.id + '_' + slug(ses.name) + '_' + stamp(finished) + '.hsct',
+      text: JSON.stringify(envelope),
+      payload: payload,
+    };
+    return result;
+  }
+
+  function download() {
+    if (!result) throw new Error('Nothing to download yet — call HSCT.finish first');
+    var blob = new Blob([result.text], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = result.filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+    return result.filename;
+  }
+
+  async function copyCode() {
+    if (!result) throw new Error('Nothing to copy yet — call HSCT.finish first');
+    try { await navigator.clipboard.writeText(result.text); return true; }
+    catch (e) {
+      var ta = document.createElement('textarea'); ta.value = result.text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      var ok = false; try { ok = document.execCommand('copy'); } catch (e2) {}
+      ta.remove(); return ok;
+    }
+  }
+
+  /* ---------- the standard end screen ---------- */
+  var CSS = '.hsct-card{--hsct-ink:#101a3f;--hsct-mute:#5b6485;--hsct-line:#d3d9ee;--hsct-accent:var(--hsct-color,#1f3fae);--hsct-ok:#1f7a3d;--hsct-bad:#b3261e;'
+    + 'font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;color:var(--hsct-ink);background:#fff;border:1px solid var(--hsct-line);border-left:6px solid var(--hsct-accent);border-radius:12px;padding:20px 22px;margin:20px 0;line-height:1.45}'
+    + '.hsct-card *{box-sizing:border-box}.hsct-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--hsct-mute)}.hsct-head b{color:var(--hsct-accent)}'
+    + '.hsct-name{font-size:22px;font-weight:700;margin:6px 0 2px}.hsct-score{font-size:15px;margin:0 0 12px}.hsct-score b{font-size:28px;font-weight:700}.hsct-score .hsct-tier{display:inline-block;margin-left:8px;padding:2px 10px;border-radius:999px;background:var(--hsct-accent);color:#fff;font-size:13px;font-weight:600;vertical-align:middle}'
+    + '.hsct-facts{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0 0 14px;font-size:14px}.hsct-facts dt{color:var(--hsct-mute)}.hsct-facts dd{margin:0}.hsct-facts code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;letter-spacing:.08em;font-weight:600}'
+    + '.hsct-secs{width:100%;border-collapse:collapse;font-size:14px;margin:0 0 14px}.hsct-secs td{padding:5px 0;border-top:1px solid var(--hsct-line)}.hsct-secs td:last-child{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}'
+    + '.hsct-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.hsct-btn{font:600 15px "IBM Plex Sans","Segoe UI",system-ui,sans-serif;padding:11px 18px;border-radius:8px;border:2px solid var(--hsct-accent);background:var(--hsct-accent);color:#fff;cursor:pointer}.hsct-btn:hover{filter:brightness(.92)}.hsct-btn.hsct-alt{background:transparent;color:var(--hsct-accent)}.hsct-btn:focus-visible{outline:3px solid #a9b7ea;outline-offset:2px}.hsct-btn:disabled{opacity:.55;cursor:wait}'
+    + '.hsct-note{margin:12px 0 0;font-size:13.5px;color:var(--hsct-mute)}.hsct-status{margin:8px 0 0;font-size:14px;min-height:1.4em}.hsct-status.ok{color:var(--hsct-ok)}.hsct-status.bad{color:var(--hsct-bad)}'
+    + '@media print{.hsct-actions,.hsct-note,.hsct-status{display:none}}';
+
+  function injectCss() {
+    if (document.getElementById('hsct-kit-css')) return;
+    var s = document.createElement('style'); s.id = 'hsct-kit-css'; s.textContent = CSS; document.head.appendChild(s);
+  }
+
+  /* Renders the card into `el` and seals the result. Resolves with the result. */
+  async function endScreen(el, opts) {
+    if (typeof el === 'string') el = document.querySelector(el);
+    if (!el) throw new Error('HSCT.endScreen needs an element');
+    injectCss();
+    opts = opts || {};
+    var elp = elapsed();
+    var possible = Number(opts.possible || cfg.possible || 0), earned = Number(opts.earned || 0);
+    var pct = possible ? Math.round(100 * earned / possible) : null;
+    var secs = (opts.sections || []).map(function (s) {
+      var right = s.status != null ? esc(s.status) : (s.possible != null ? esc(s.earned) + ' / ' + esc(s.possible) : esc(s.earned));
+      return '<tr><td>' + esc(s.title) + '</td><td>' + right + '</td></tr>';
+    }).join('');
+    el.innerHTML = '<div class="hsct-card">'
+      + '<div class="hsct-head"><span><b>HSCT TechHub</b> result</span><span>' + esc(cfg.title) + '</span></div>'
+      + '<div class="hsct-name">' + esc(ses ? ses.name : '') + '</div>'
+      + '<div class="hsct-score"><b>' + esc(earned) + '</b> / ' + esc(possible) + (pct != null ? ' <span>(' + pct + '%)</span>' : '') + (opts.tier ? '<span class="hsct-tier">' + esc(opts.tier) + '</span>' : '') + '</div>'
+      + '<dl class="hsct-facts"><dt>Finished</dt><dd>' + esc(fmtDate(new Date().toISOString())) + '</dd>'
+      + '<dt>Time taken</dt><dd>' + esc(fmtDuration(elp.seconds)) + (elp.activeSeconds < elp.seconds - 60 ? ' <span style="color:var(--hsct-mute)">(' + esc(fmtDuration(elp.activeSeconds)) + ' with the tab open)</span>' : '') + '</dd>'
+      + '<dt>Code</dt><dd><code class="hsct-badge">........</code></dd></dl>'
+      + (secs ? '<table class="hsct-secs"><tbody>' + secs + '</tbody></table>' : '')
+      + '<div class="hsct-actions"><button type="button" class="hsct-btn hsct-dl" disabled>Download your result file</button><button type="button" class="hsct-btn hsct-alt hsct-copy" disabled>Copy result code</button></div>'
+      + '<p class="hsct-note">' + esc(opts.note || 'Submit the file in Google Classroom. If downloads are blocked, copy the code and paste it instead. The file is encrypted: only your teacher can open it.') + '</p>'
+      + '<p class="hsct-status" aria-live="polite">Preparing your result file…</p>'
+      + '</div>';
+    var status = el.querySelector('.hsct-status'), dl = el.querySelector('.hsct-dl'), cp = el.querySelector('.hsct-copy');
+    try {
+      var r = await finish(opts);
+      el.querySelector('.hsct-badge').textContent = r.badge;
+      status.textContent = 'Ready: ' + r.filename;
+      dl.disabled = false; cp.disabled = false;
+      dl.onclick = function () { try { download(); status.className = 'hsct-status ok'; status.textContent = 'Downloaded ' + r.filename + ' — now submit it.'; } catch (e) { status.className = 'hsct-status bad'; status.textContent = e.message; } };
+      cp.onclick = async function () { var ok = await copyCode(); status.className = 'hsct-status ' + (ok ? 'ok' : 'bad'); status.textContent = ok ? 'Code copied — paste it into your submission.' : 'Copy failed. Use the download instead.'; };
+      return r;
+    } catch (e) {
+      status.className = 'hsct-status bad';
+      status.textContent = e.message || String(e);
+      throw e;
+    }
+  }
+
+  var HSCT = {
+    kit: KIT, verifyUrl: VERIFY_URL,
+    lesson: lesson, start: start, log: log, elapsed: elapsed,
+    finish: finish, download: download, copyCode: copyCode, endScreen: endScreen,
+    get result() { return result; },
+    get session() { return ses ? { name: ses.name, started: ses.started } : null; },
+    fmtDuration: fmtDuration,
+  };
+  window.HSCT = HSCT;
+})();
+</script>
+<!-- HSCT KIT END -->
+
+<!-- MiniPy: the Python interpreter this lesson runs on. Self-contained, no network. -->
+<script>
+/* MiniPy — a small Python interpreter for beginner lessons.
+   Covers what a first CS unit uses: numbers, strings, lists, variables,
+   arithmetic, comparisons, and/or/not, if/elif/else, for/while,
+   break/continue, input()/print(), f-strings, common string methods.
+   No def/class/import on purpose. Runs synchronously with input() fed
+   from a list, so a program can be graded against test cases. */
+(function (root) {
+  'use strict';
+
+  class PyError extends Error { constructor(kind, msg, line) { super(msg); this.kind = kind; this.line = line; } }
+  class PyFloat { constructor(v) { this.v = v; } }
+  class PyRange { constructor(a, b, s) { this.start = a; this.stop = b; this.step = s; } get length() { const n = Math.ceil((this.stop - this.start) / this.step); return n > 0 ? n : 0; } at(i) { return this.start + i * this.step; } }
+
+  const KW = new Set(['if', 'elif', 'else', 'while', 'for', 'in', 'not', 'and', 'or', 'True', 'False', 'None', 'break', 'continue', 'pass', 'def', 'return', 'import', 'from', 'class', 'lambda', 'try', 'except', 'with', 'global']);
+  const OPS = ['**=', '//=', '**', '//', '==', '!=', '<=', '>=', '+=', '-=', '*=', '/=', '%=', '+', '-', '*', '/', '%', '<', '>', '=', '(', ')', '[', ']', '{', '}', ',', ':', '.'];
+
+  /* ---------------- tokenizer ---------------- */
+  function readString(line, i, ln) {
+    const q = line[i]; let j = i + 1, out = '';
+    while (j < line.length) {
+      const c = line[j];
+      if (c === '\\') {
+        const n = line[j + 1]; j += 2;
+        out += n === 'n' ? '\n' : n === 't' ? '\t' : n === '\\' ? '\\' : n === "'" ? "'" : n === '"' ? '"' : ('\\' + (n === undefined ? '' : n));
+        continue;
+      }
+      if (c === q) return { v: out, end: j + 1 };
+      out += c; j++;
+    }
+    throw new PyError('SyntaxError', 'This string never closes — add the missing quote', ln);
+  }
+
+  function tokenize(src) {
+    const lines = src.replace(/\r\n?/g, '\n').split('\n');
+    const toks = [], indents = [0]; let depth = 0;
+    for (let li = 0; li < lines.length; li++) {
+      const line = lines[li], ln = li + 1; let i = 0;
+      if (depth === 0) {
+        if (!line.replace(/#.*$/, '').trim()) continue;
+        let ind = 0;
+        while (i < line.length && (line[i] === ' ' || line[i] === '\t')) { ind += line[i] === '\t' ? 4 : 1; i++; }
+        if (ind > indents[indents.length - 1]) { indents.push(ind); toks.push({ t: 'INDENT', line: ln }); }
+        else {
+          while (ind < indents[indents.length - 1]) { indents.pop(); toks.push({ t: 'DEDENT', line: ln }); }
+          if (ind !== indents[indents.length - 1]) throw new PyError('IndentationError', 'This line is indented by an amount that doesn\'t match any line above it', ln);
+        }
+      }
+      while (i < line.length) {
+        const c = line[i];
+        if (c === ' ' || c === '\t') { i++; continue; }
+        if (c === '#') break;
+        if ((c === 'f' || c === 'F') && (line[i + 1] === '"' || line[i + 1] === "'")) {
+          const s = readString(line, i + 1, ln); toks.push({ t: 'FSTR', v: s.v, line: ln }); i = s.end; continue;
+        }
+        if (c === '"' || c === "'") { const s = readString(line, i, ln); toks.push({ t: 'STR', v: s.v, line: ln }); i = s.end; continue; }
+        if (/[0-9]/.test(c) || (c === '.' && /[0-9]/.test(line[i + 1] || ''))) {
+          const m = line.slice(i).match(/^(\d+\.\d*|\.\d+|\d+)([eE][+-]?\d+)?/);
+          const txt = m[0]; i += txt.length;
+          if (/[A-Za-z_]/.test(line[i] || '')) throw new PyError('SyntaxError', `"${txt}${line[i]}" is not a number — names can't start with a digit`, ln);
+          const isFloat = /[.eE]/.test(txt);
+          toks.push({ t: 'NUM', v: isFloat ? new PyFloat(parseFloat(txt)) : parseInt(txt, 10), line: ln }); continue;
+        }
+        if (/[A-Za-z_]/.test(c)) {
+          const m = line.slice(i).match(/^[A-Za-z_][A-Za-z0-9_]*/)[0]; i += m.length;
+          toks.push(KW.has(m) ? { t: 'KW', v: m, line: ln } : { t: 'NAME', v: m, line: ln }); continue;
+        }
+        let op = null;
+        for (const o of OPS) if (line.startsWith(o, i)) { op = o; break; }
+        if (!op) {
+          const bad = c === '“' || c === '”' || c === '‘' || c === '’' ? 'That is a curly quote — Python needs straight quotes: " or \'' : `Python doesn't know what to do with "${c}"`;
+          throw new PyError('SyntaxError', bad, ln);
+        }
+        if (op === '(' || op === '[' || op === '{') depth++;
+        if (op === ')' || op === ']' || op === '}') depth = Math.max(0, depth - 1);
+        toks.push({ t: 'OP', v: op, line: ln }); i += op.length;
+      }
+      if (depth === 0) toks.push({ t: 'NEWLINE', line: ln });
+    }
+    if (depth > 0) throw new PyError('SyntaxError', 'A parenthesis or bracket was opened but never closed', lines.length);
+    while (indents.length > 1) { indents.pop(); toks.push({ t: 'DEDENT', line: lines.length }); }
+    toks.push({ t: 'EOF', line: lines.length });
+    return toks;
+  }
+
+  /* ---------------- parser ---------------- */
+  function parse(toks) {
+    let p = 0;
+    const peek = () => toks[p], next = () => toks[p++];
+    const at = (t, v) => peek().t === t && (v === undefined || peek().v === v);
+    function expect(t, v, what) {
+      if (!at(t, v)) {
+        const got = peek();
+        const g = got.t === 'NEWLINE' ? 'the end of the line' : got.t === 'EOF' ? 'the end of the program' : got.t === 'INDENT' ? 'an indented line' : got.t === 'DEDENT' ? 'a less-indented line' : `"${got.v}"`;
+        throw new PyError('SyntaxError', `Expected ${what || (v ? `"${v}"` : t)} but found ${g}`, got.line);
+      }
+      return next();
+    }
+    function endSimple() { if (at('NEWLINE')) next(); else if (!at('EOF') && !at('DEDENT')) expect('NEWLINE', undefined, 'the end of the line'); }
+
+    function block(kw) {
+      const colon = peek();
+      if (!at('OP', ':')) throw new PyError('SyntaxError', `Missing ":" at the end of the ${kw} line`, colon.line);
+      next();
+      if (!at('NEWLINE')) return [simpleStmt()];
+      next();
+      if (!at('INDENT')) throw new PyError('IndentationError', `The line after "${kw}" must be indented (4 spaces)`, peek().line);
+      next();
+      const body = [];
+      while (!at('DEDENT') && !at('EOF')) body.push(statement());
+      if (at('DEDENT')) next();
+      return body;
+    }
+
+    function statement() {
+      const tk = peek();
+      if (at('KW', 'if')) {
+        next(); const test = condExpr(); const body = block('if'); const node = { k: 'if', test, body, orelse: null, line: tk.line };
+        let cur = node;
+        while (at('KW', 'elif')) { const e = next(); const t2 = condExpr(); const b2 = block('elif'); const n2 = { k: 'if', test: t2, body: b2, orelse: null, line: e.line }; cur.orelse = [n2]; cur = n2; }
+        if (at('KW', 'else')) { next(); cur.orelse = block('else'); }
+        return node;
+      }
+      if (at('KW', 'while')) { next(); const test = condExpr(); const body = block('while'); return { k: 'while', test, body, line: tk.line }; }
+      if (at('KW', 'for')) {
+        next(); const name = expect('NAME', undefined, 'a variable name after "for"');
+        if (!at('KW', 'in')) throw new PyError('SyntaxError', 'A for loop looks like: for x in something:', peek().line);
+        next(); const iter = expr(); const body = block('for'); return { k: 'for', name: name.v, iter, body, line: tk.line };
+      }
+      if (at('KW', 'elif') || at('KW', 'else')) throw new PyError('SyntaxError', `"${tk.v}" has no "if" above it at the same indentation`, tk.line);
+      if (at('KW') && ['def', 'class', 'import', 'from', 'return', 'lambda', 'try', 'except', 'with', 'global'].includes(tk.v)) {
+        throw new PyError('SyntaxError', `"${tk.v}" isn't part of this lesson's Python. Write the steps directly.`, tk.line);
+      }
+      if (at('INDENT')) throw new PyError('IndentationError', 'This line is indented but nothing above it asked for a block', tk.line);
+      return simpleStmt();
+    }
+
+    function simpleStmt() {
+      const tk = peek();
+      if (at('KW', 'break')) { next(); endSimple(); return { k: 'break', line: tk.line }; }
+      if (at('KW', 'continue')) { next(); endSimple(); return { k: 'continue', line: tk.line }; }
+      if (at('KW', 'pass')) { next(); endSimple(); return { k: 'pass', line: tk.line }; }
+      const e = expr();
+      if (at('OP', '=')) {
+        next();
+        if (e.k !== 'name' && e.k !== 'index') throw new PyError('SyntaxError', 'The left side of "=" must be a variable name', tk.line);
+        const value = expr(); endSimple();
+        return { k: 'assign', target: e, value, line: tk.line };
+      }
+      const aug = ['+=', '-=', '*=', '/=', '%=', '//=', '**='];
+      if (at('OP') && aug.includes(peek().v)) {
+        const op = next().v.slice(0, -1);
+        if (e.k !== 'name' && e.k !== 'index') throw new PyError('SyntaxError', `The left side of "${op}=" must be a variable name`, tk.line);
+        const value = expr(); endSimple();
+        return { k: 'assign', target: e, value: { k: 'bin', op, l: e, r: value, line: tk.line }, line: tk.line };
+      }
+      if (at('OP', '==') && e.k === 'name' && p > 0) { /* fallthrough: comparison as statement is legal */ }
+      endSimple();
+      return { k: 'expr', e, line: tk.line };
+    }
+
+    /* expressions */
+    function expr() { return orExpr(); }
+    function condExpr() {
+      const e = expr();
+      if (at('OP', '=')) throw new PyError('SyntaxError', 'Use == to compare two things. A single = puts a value into a variable.', peek().line);
+      return e;
+    }
+    function orExpr() { let l = andExpr(); while (at('KW', 'or')) { const t = next(); l = { k: 'or', l, r: andExpr(), line: t.line }; } return l; }
+    function andExpr() { let l = notExpr(); while (at('KW', 'and')) { const t = next(); l = { k: 'and', l, r: notExpr(), line: t.line }; } return l; }
+    function notExpr() { if (at('KW', 'not')) { const t = next(); return { k: 'not', e: notExpr(), line: t.line }; } return cmpExpr(); }
+    function cmpExpr() {
+      const first = arith(); const ops = [], rest = [];
+      for (;;) {
+        let op = null;
+        if (at('OP') && ['==', '!=', '<', '>', '<=', '>='].includes(peek().v)) op = next().v;
+        else if (at('KW', 'in')) { next(); op = 'in'; }
+        else if (at('KW', 'not') && toks[p + 1] && toks[p + 1].t === 'KW' && toks[p + 1].v === 'in') { next(); next(); op = 'not in'; }
+        else break;
+        ops.push(op); rest.push(arith());
+      }
+      if (!ops.length) return first;
+      return { k: 'cmp', first, ops, rest, line: first.line };
+    }
+    function arith() { let l = term(); while (at('OP') && (peek().v === '+' || peek().v === '-')) { const t = next(); l = { k: 'bin', op: t.v, l, r: term(), line: t.line }; } return l; }
+    function term() { let l = unary(); while (at('OP') && ['*', '/', '//', '%'].includes(peek().v)) { const t = next(); l = { k: 'bin', op: t.v, l, r: unary(), line: t.line }; } return l; }
+    function unary() { if (at('OP', '-')) { const t = next(); return { k: 'neg', e: unary(), line: t.line }; } if (at('OP', '+')) { next(); return unary(); } return power(); }
+    function power() { const b = postfix(); if (at('OP', '**')) { const t = next(); return { k: 'bin', op: '**', l: b, r: unary(), line: t.line }; } return b; }
+    function postfix() {
+      let e = atom();
+      for (;;) {
+        if (at('OP', '(')) { const t = next(); const { args, kwargs } = argList(); e = { k: 'call', fn: e, args, kwargs, line: t.line }; }
+        else if (at('OP', '[')) {
+          const t = next();
+          let lo = null, hi = null, isSlice = false;
+          if (!at('OP', ':')) lo = expr();
+          if (at('OP', ':')) { isSlice = true; next(); if (!at('OP', ']')) hi = expr(); }
+          expect('OP', ']', '"]"');
+          e = isSlice ? { k: 'slice', e, lo, hi, line: t.line } : { k: 'index', e, i: lo, line: t.line };
+        }
+        else if (at('OP', '.')) { const t = next(); const name = expect('NAME', undefined, 'a method name after "."'); e = { k: 'attr', e, name: name.v, line: t.line }; }
+        else break;
+      }
+      return e;
+    }
+    function argList() {
+      const args = [], kwargs = {};
+      while (!at('OP', ')')) {
+        if (at('NAME') && toks[p + 1].t === 'OP' && toks[p + 1].v === '=') { const n = next().v; next(); kwargs[n] = expr(); }
+        else args.push(expr());
+        if (at('OP', ',')) next(); else break;
+      }
+      expect('OP', ')', '")" to close the call');
+      return { args, kwargs };
+    }
+    function atom() {
+      const t = peek();
+      if (t.t === 'NUM') { next(); return { k: 'const', v: t.v, line: t.line }; }
+      if (t.t === 'STR') { next(); return { k: 'const', v: t.v, line: t.line }; }
+      if (t.t === 'FSTR') { next(); return { k: 'fstr', parts: parseFString(t.v, t.line), line: t.line }; }
+      if (t.t === 'NAME') { next(); return { k: 'name', v: t.v, line: t.line }; }
+      if (t.t === 'KW' && (t.v === 'True' || t.v === 'False')) { next(); return { k: 'const', v: t.v === 'True', line: t.line }; }
+      if (t.t === 'KW' && t.v === 'None') { next(); return { k: 'const', v: null, line: t.line }; }
+      if (at('OP', '(')) { next(); const e = expr(); expect('OP', ')', '")"'); return e; }
+      if (at('OP', '[')) {
+        next(); const items = [];
+        while (!at('OP', ']')) { items.push(expr()); if (at('OP', ',')) next(); else break; }
+        expect('OP', ']', '"]"'); return { k: 'list', items, line: t.line };
+      }
+      if (t.t === 'NEWLINE' || t.t === 'EOF') throw new PyError('SyntaxError', 'Something is missing at the end of this line', t.line);
+      if (t.t === 'KW') throw new PyError('SyntaxError', `"${t.v}" can't be used here`, t.line);
+      throw new PyError('SyntaxError', `Unexpected "${t.v}"`, t.line);
+    }
+    function parseFString(s, line) {
+      const parts = []; let i = 0, lit = '';
+      while (i < s.length) {
+        const c = s[i];
+        if (c === '{') {
+          if (s[i + 1] === '{') { lit += '{'; i += 2; continue; }
+          let j = i + 1, depth = 1; while (j < s.length && depth) { if (s[j] === '{') depth++; else if (s[j] === '}') depth--; if (depth) j++; }
+          if (depth) throw new PyError('SyntaxError', 'An f-string has a "{" without a matching "}"', line);
+          let inner = s.slice(i + 1, j), spec = null;
+          const m = inner.match(/^(.*?):(\.\d+f|,|\d+|\.\d+f,|,\.\d+f)$/);
+          if (m) { inner = m[1]; spec = m[2]; }
+          if (lit) { parts.push({ lit }); lit = ''; }
+          const sub = parse(tokenize(inner).filter((x) => x.t !== 'NEWLINE' && x.t !== 'INDENT' && x.t !== 'DEDENT').concat());
+          if (sub.length !== 1 || sub[0].k !== 'expr') throw new PyError('SyntaxError', 'Only an expression goes inside {} in an f-string', line);
+          parts.push({ e: sub[0].e, spec });
+          i = j + 1; continue;
+        }
+        if (c === '}' && s[i + 1] === '}') { lit += '}'; i += 2; continue; }
+        lit += c; i++;
+      }
+      if (lit) parts.push({ lit });
+      return parts;
+    }
+
+    const prog = [];
+    while (!at('EOF')) { if (at('NEWLINE')) { next(); continue; } prog.push(statement()); }
+    return prog;
+  }
+
+  /* ---------------- runtime ---------------- */
+  const isFloat = (v) => v instanceof PyFloat;
+  const isNum = (v) => typeof v === 'number' || isFloat(v);
+  const isStr = (v) => typeof v === 'string';
+  const isList = (v) => Array.isArray(v);
+  const isBool = (v) => typeof v === 'boolean';
+  const num = (v) => isFloat(v) ? v.v : v;
+  const typeName = (v) => v === null ? 'NoneType' : isBool(v) ? 'bool' : typeof v === 'number' ? 'int' : isFloat(v) ? 'float' : isStr(v) ? 'str' : isList(v) ? 'list' : v instanceof PyRange ? 'range' : typeof v === 'function' ? 'function' : 'object';
+
+  function fmtFloat(x) {
+    if (!isFinite(x)) return isNaN(x) ? 'nan' : x > 0 ? 'inf' : '-inf';
+    if (Number.isInteger(x) && Math.abs(x) < 1e16) return x + '.0';
+    return String(x);
+  }
+  function str(v) {
+    if (v === null) return 'None';
+    if (isBool(v)) return v ? 'True' : 'False';
+    if (typeof v === 'number') return String(v);
+    if (isFloat(v)) return fmtFloat(v.v);
+    if (isStr(v)) return v;
+    if (isList(v)) return '[' + v.map(repr).join(', ') + ']';
+    if (v instanceof PyRange) return `range(${v.start}, ${v.stop}${v.step !== 1 ? ', ' + v.step : ''})`;
+    return String(v);
+  }
+  function repr(v) {
+    if (isStr(v)) {
+      const q = v.includes("'") && !v.includes('"') ? '"' : "'";
+      return q + v.replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/\t/g, '\\t').replace(new RegExp(q, 'g'), '\\' + q) + q;
+    }
+    return str(v);
+  }
+  function truthy(v) { return v === null ? false : isBool(v) ? v : typeof v === 'number' ? v !== 0 : isFloat(v) ? v.v !== 0 : isStr(v) ? v.length > 0 : isList(v) ? v.length > 0 : v instanceof PyRange ? v.length > 0 : true; }
+  function equal(a, b) {
+    if (isNum(a) && isNum(b)) return num(a) === num(b);
+    if (isBool(a) && isNum(b)) return (a ? 1 : 0) === num(b);
+    if (isNum(a) && isBool(b)) return num(a) === (b ? 1 : 0);
+    if (isList(a) && isList(b)) return a.length === b.length && a.every((x, i) => equal(x, b[i]));
+    return a === b;
+  }
+  function makeNum(x, floaty) { return floaty ? new PyFloat(x) : x; }
+
+  function levenshtein(a, b) {
+    const m = a.length, n = b.length, d = [];
+    for (let i = 0; i <= m; i++) { d[i] = [i]; }
+    for (let j = 1; j <= n; j++) d[0][j] = j;
+    for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    return d[m][n];
+  }
+
+  function run(code, inputs, opts) {
+    opts = opts || {};
+    const maxSteps = opts.maxSteps || 200000;
+    const out = [];              // [{kind:'out'|'in'|'prompt', text}]
+    const inQueue = (inputs || []).slice();
+    let steps = 0;
+    const env = new Map();
+    let usedInputs = 0;
+
+    function write(text) { out.push({ kind: 'out', text }); }
+    function err(kind, msg, line) { return new PyError(kind, msg, line); }
+
+    function toInt(v, line) {
+      if (typeof v === 'number') return v;
+      if (isBool(v)) return v ? 1 : 0;
+      if (isFloat(v)) return Math.trunc(v.v);
+      if (isStr(v)) { const t = v.trim(); if (/^[+-]?\d+$/.test(t)) return parseInt(t, 10); throw err('ValueError', `int() can't turn ${repr(v)} into a whole number`, line); }
+      throw err('TypeError', `int() can't take a ${typeName(v)}`, line);
+    }
+    function toFloat(v, line) {
+      if (isNum(v)) return new PyFloat(num(v));
+      if (isBool(v)) return new PyFloat(v ? 1 : 0);
+      if (isStr(v)) { const t = v.trim(); if (/^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(t)) return new PyFloat(parseFloat(t)); throw err('ValueError', `float() can't turn ${repr(v)} into a number`, line); }
+      throw err('TypeError', `float() can't take a ${typeName(v)}`, line);
+    }
+    function needInt(v, what, line) { if (typeof v === 'number') return v; if (isBool(v)) return v ? 1 : 0; throw err('TypeError', `${what} needs a whole number, not a ${typeName(v)}`, line); }
+    function checkIndex(i, len, line, what) { if (typeof i !== 'number' && !isBool(i)) throw err('TypeError', `${what} indexes must be whole numbers, not ${typeName(i)}`, line); i = isBool(i) ? (i ? 1 : 0) : i; if (i < 0) i += len; if (i < 0 || i >= len) throw err('IndexError', `${what} index ${isBool(i) ? i : i} is out of range (length ${len})`, line); return i; }
+
+    const builtins = {
+      print(args, kw, line) {
+        const sep = kw.sep === undefined ? ' ' : kw.sep, end = kw.end === undefined ? '\n' : kw.end;
+        if (!isStr(sep) || !isStr(end)) throw err('TypeError', 'sep and end must be strings', line);
+        write(args.map(str).join(sep) + end); return null;
+      },
+      input(args, kw, line) {
+        const prompt = args.length ? str(args[0]) : '';
+        if (prompt) out.push({ kind: 'prompt', text: prompt });
+        if (!inQueue.length) throw err('EOFError', `input() asked for a ${usedInputs + 1}${['st', 'nd', 'rd'][usedInputs] || 'th'} line, but the test only gives ${usedInputs}. Are you calling input() more times than the task says?`, line);
+        const v = String(inQueue.shift()); usedInputs++;
+        out.push({ kind: 'in', text: v + '\n' }); return v;
+      },
+      len(args, kw, line) { const v = args[0]; if (isStr(v) || isList(v)) return v.length; if (v instanceof PyRange) return v.length; throw err('TypeError', `len() doesn't work on a ${typeName(v)}`, line); },
+      str(args) { return args.length ? str(args[0]) : ''; },
+      int(args, kw, line) { return args.length ? toInt(args[0], line) : 0; },
+      float(args, kw, line) { return args.length ? toFloat(args[0], line) : new PyFloat(0); },
+      bool(args) { return args.length ? truthy(args[0]) : false; },
+      range(args, kw, line) {
+        const a = args.map((v) => needInt(v, 'range()', line));
+        if (a.length === 0 || a.length > 3) throw err('TypeError', 'range() takes 1 to 3 whole numbers', line);
+        if (a.length === 1) return new PyRange(0, a[0], 1);
+        if (a.length === 2) return new PyRange(a[0], a[1], 1);
+        if (a[2] === 0) throw err('ValueError', 'range() step can\'t be 0', line);
+        return new PyRange(a[0], a[1], a[2]);
+      },
+      abs(args, kw, line) { const v = args[0]; if (!isNum(v)) throw err('TypeError', `abs() needs a number`, line); return isFloat(v) ? new PyFloat(Math.abs(v.v)) : Math.abs(v); },
+      round(args, kw, line) {
+        const v = args[0]; if (!isNum(v)) throw err('TypeError', 'round() needs a number', line);
+        if (args.length > 1) { const n = needInt(args[1], 'round()', line); const f = Math.pow(10, n); return new PyFloat(Math.round(num(v) * f) / f); }
+        const x = num(v); const r = Math.round(x); return (Math.abs(x % 1) === 0.5 && r % 2 !== 0) ? r - 1 : r; /* banker's rounding like Python */
+      },
+      min(args, kw, line) { const a = args.length === 1 && (isList(args[0]) || isStr(args[0])) ? Array.from(args[0]) : args; if (!a.length) throw err('ValueError', 'min() of an empty list', line); return a.reduce((m, v) => compare(v, m, '<', line) ? v : m); },
+      max(args, kw, line) { const a = args.length === 1 && (isList(args[0]) || isStr(args[0])) ? Array.from(args[0]) : args; if (!a.length) throw err('ValueError', 'max() of an empty list', line); return a.reduce((m, v) => compare(v, m, '>', line) ? v : m); },
+      sum(args, kw, line) { const a = iterate(args[0], line); let floaty = false, s = 0; for (const v of a) { if (!isNum(v) && !isBool(v)) throw err('TypeError', `sum() can only add numbers, and this list has a ${typeName(v)}`, line); if (isFloat(v)) floaty = true; s += isBool(v) ? (v ? 1 : 0) : num(v); } return makeNum(s, floaty); },
+      list(args, kw, line) { return args.length ? Array.from(iterate(args[0], line)) : []; },
+      sorted(args, kw, line) { const a = Array.from(iterate(args[0], line)); a.sort((x, y) => compare(x, y, '<', line) ? -1 : compare(y, x, '<', line) ? 1 : 0); if (kw.reverse && truthy(kw.reverse)) a.reverse(); return a; },
+      type(args) { return `<class '${typeName(args[0])}'>`; },
+    };
+
+    function iterate(v, line) {
+      if (isStr(v)) return Array.from(v);
+      if (isList(v)) return v;
+      if (v instanceof PyRange) { const a = []; for (let i = 0; i < v.length; i++) a.push(v.at(i)); return a; }
+      throw err('TypeError', `You can't loop over a ${typeName(v)}${typeof v === 'number' ? ' — did you mean range(' + v + ')?' : ''}`, line);
+    }
+
+    function compare(a, b, op, line) {
+      if (op === '==') return equal(a, b);
+      if (op === '!=') return !equal(a, b);
+      if (op === 'in') { if (isStr(b)) { if (!isStr(a)) throw err('TypeError', `"in" on a string needs a string on the left, not a ${typeName(a)}`, line); return b.includes(a); } if (isList(b)) return b.some((x) => equal(x, a)); if (b instanceof PyRange) { const n = num(a); return typeof a === 'number' && n >= b.start && n < b.stop && (n - b.start) % b.step === 0; } throw err('TypeError', `"in" doesn't work on a ${typeName(b)}`, line); }
+      if (op === 'not in') return !compare(a, b, 'in', line);
+      const an = isNum(a) || isBool(a), bn = isNum(b) || isBool(b);
+      let x, y;
+      if (an && bn) { x = isBool(a) ? (a ? 1 : 0) : num(a); y = isBool(b) ? (b ? 1 : 0) : num(b); }
+      else if (isStr(a) && isStr(b)) { x = a; y = b; }
+      else if (isList(a) && isList(b)) { for (let i = 0; i < Math.min(a.length, b.length); i++) { if (!equal(a[i], b[i])) return compare(a[i], b[i], op, line); } x = a.length; y = b.length; }
+      else throw err('TypeError', `Can't compare a ${typeName(a)} with a ${typeName(b)} using ${op}${isStr(a) !== isStr(b) ? ' — convert with int() or str() first' : ''}`, line);
+      return op === '<' ? x < y : op === '>' ? x > y : op === '<=' ? x <= y : x >= y;
+    }
+
+    function binop(op, a, b, line) {
+      if (isBool(a)) a = a ? 1 : 0;
+      if (isBool(b)) b = b ? 1 : 0;
+      if (isNum(a) && isNum(b)) {
+        const x = num(a), y = num(b), fl = isFloat(a) || isFloat(b);
+        switch (op) {
+          case '+': return makeNum(x + y, fl);
+          case '-': return makeNum(x - y, fl);
+          case '*': return makeNum(x * y, fl);
+          case '/': if (y === 0) throw err('ZeroDivisionError', 'You divided by zero', line); return new PyFloat(x / y);
+          case '//': if (y === 0) throw err('ZeroDivisionError', 'You divided by zero', line); return makeNum(Math.floor(x / y), fl);
+          case '%': if (y === 0) throw err('ZeroDivisionError', 'You divided by zero (with %)', line); return makeNum(((x % y) + y) % y, fl);
+          case '**': return makeNum(Math.pow(x, y), fl || y < 0);
+        }
+      }
+      if (op === '+') {
+        if (isStr(a) && isStr(b)) return a + b;
+        if (isList(a) && isList(b)) return a.concat(b);
+        if (isStr(a) !== isStr(b) && (isStr(a) || isStr(b))) throw err('TypeError', `Can't add a ${typeName(a)} and a ${typeName(b)}. Use str() to make them both text, or int() to make them both numbers.`, line);
+      }
+      if (op === '*') {
+        if (isStr(a) && typeof b === 'number') return a.repeat(Math.max(0, b));
+        if (typeof a === 'number' && isStr(b)) return b.repeat(Math.max(0, a));
+        if (isList(a) && typeof b === 'number') { let r = []; for (let i = 0; i < b; i++) r = r.concat(a); return r; }
+      }
+      throw err('TypeError', `"${op}" doesn't work between a ${typeName(a)} and a ${typeName(b)}`, line);
+    }
+
+    function strMethod(s, name, args, line) {
+      const need = (n) => { if (args.length !== n) throw err('TypeError', `.${name}() takes ${n} argument${n === 1 ? '' : 's'}, you gave ${args.length}`, line); };
+      const needStrArgs = () => args.forEach((a) => { if (!isStr(a)) throw err('TypeError', `.${name}() needs text, not a ${typeName(a)}`, line); });
+      switch (name) {
+        case 'upper': need(0); return s.toUpperCase();
+        case 'lower': need(0); return s.toLowerCase();
+        case 'title': need(0); return s.toLowerCase().replace(/(^|[^a-zA-Z])([a-z])/g, (m, a, b) => a + b.toUpperCase());
+        case 'capitalize': need(0); return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+        case 'swapcase': need(0); return Array.from(s).map((c) => c === c.toUpperCase() ? c.toLowerCase() : c.toUpperCase()).join('');
+        case 'strip': return args.length ? s.replace(new RegExp(`^[${args[0].replace(/[\\\]^-]/g, '\\$&')}]+|[${args[0].replace(/[\\\]^-]/g, '\\$&')}]+$`, 'g'), '') : s.trim();
+        case 'lstrip': return args.length ? s.replace(new RegExp(`^[${args[0].replace(/[\\\]^-]/g, '\\$&')}]+`), '') : s.replace(/^\s+/, '');
+        case 'rstrip': return args.length ? s.replace(new RegExp(`[${args[0].replace(/[\\\]^-]/g, '\\$&')}]+$`), '') : s.replace(/\s+$/, '');
+        case 'split': if (!args.length) { const t = s.trim(); return t ? t.split(/\s+/) : []; } needStrArgs(); if (args[0] === '') throw err('ValueError', 'empty separator', line); return s.split(args[0]);
+        case 'join': need(1); { const a = iterate(args[0], line); a.forEach((x) => { if (!isStr(x)) throw err('TypeError', `.join() needs a list of strings, but found a ${typeName(x)}`, line); }); return a.join(s); }
+        case 'replace': need(2); needStrArgs(); return s.split(args[0]).join(args[1]);
+        case 'count': need(1); needStrArgs(); if (args[0] === '') return s.length + 1; return s.split(args[0]).length - 1;
+        case 'find': needStrArgs(); return s.indexOf(args[0]);
+        case 'index': needStrArgs(); { const i = s.indexOf(args[0]); if (i < 0) throw err('ValueError', 'substring not found', line); return i; }
+        case 'startswith': need(1); needStrArgs(); return s.startsWith(args[0]);
+        case 'endswith': need(1); needStrArgs(); return s.endsWith(args[0]);
+        case 'isdigit': need(0); return s.length > 0 && /^[0-9]+$/.test(s);
+        case 'isalpha': need(0); return s.length > 0 && /^[A-Za-z]+$/.test(s);
+        case 'isalnum': need(0); return s.length > 0 && /^[A-Za-z0-9]+$/.test(s);
+        case 'isupper': need(0); return /[A-Z]/.test(s) && !/[a-z]/.test(s);
+        case 'islower': need(0); return /[a-z]/.test(s) && !/[A-Z]/.test(s);
+        case 'isspace': need(0); return s.length > 0 && /^\s+$/.test(s);
+        case 'zfill': need(1); return s.padStart(needInt(args[0], '.zfill()', line), '0');
+        case 'center': { const w = needInt(args[0], '.center()', line); const f = args[1] || ' '; const total = Math.max(0, w - s.length); const left = Math.floor(total / 2); return f.repeat(left) + s + f.repeat(total - left); }
+        default: throw err('AttributeError', `Strings don't have a method called .${name}()${['append', 'push', 'add'].includes(name) ? ' — strings can\'t be changed; build a new one with +' : ''}`, line);
+      }
+    }
+    function listMethod(l, name, args, line) {
+      switch (name) {
+        case 'append': if (args.length !== 1) throw err('TypeError', '.append() takes exactly one thing', line); l.push(args[0]); return null;
+        case 'pop': { if (!l.length) throw err('IndexError', 'pop from an empty list', line); if (args.length) { const i = checkIndex(args[0], l.length, line, 'list'); return l.splice(i, 1)[0]; } return l.pop(); }
+        case 'insert': { const i = needInt(args[0], '.insert()', line); l.splice(Math.max(0, Math.min(l.length, i < 0 ? l.length + i : i)), 0, args[1]); return null; }
+        case 'remove': { const i = l.findIndex((x) => equal(x, args[0])); if (i < 0) throw err('ValueError', `${repr(args[0])} is not in the list`, line); l.splice(i, 1); return null; }
+        case 'index': { const i = l.findIndex((x) => equal(x, args[0])); if (i < 0) throw err('ValueError', `${repr(args[0])} is not in the list`, line); return i; }
+        case 'count': return l.filter((x) => equal(x, args[0])).length;
+        case 'reverse': l.reverse(); return null;
+        case 'sort': l.sort((x, y) => compare(x, y, '<', line) ? -1 : compare(y, x, '<', line) ? 1 : 0); return null;
+        case 'copy': return l.slice();
+        case 'clear': l.length = 0; return null;
+        default: throw err('AttributeError', `Lists don't have a method called .${name}()`, line);
+      }
+    }
+
+    function lookup(name, line) {
+      if (env.has(name)) return env.get(name);
+      if (Object.prototype.hasOwnProperty.call(builtins, name)) return { builtin: name };
+      let best = null, bd = 3;
+      for (const k of env.keys()) { const d = levenshtein(k, name); if (d < bd) { bd = d; best = k; } }
+      if (!best) for (const k of Object.keys(builtins)) { const d = levenshtein(k, name); if (d <= 1 && d < bd) { bd = d; best = k; } }
+      throw err('NameError', `The name "${name}" hasn't been given a value yet${best ? `. Did you mean "${best}"?` : '. Check the spelling, or assign it first.'}`, line);
+    }
+
+    function evaluate(n) {
+      switch (n.k) {
+        case 'const': return n.v;
+        case 'name': return lookup(n.v, n.line);
+        case 'list': return n.items.map(evaluate);
+        case 'fstr': return n.parts.map((p) => {
+          if (p.lit !== undefined) return p.lit;
+          const v = evaluate(p.e);
+          if (!p.spec) return str(v);
+          if (!isNum(v)) throw err('ValueError', `The format {:${p.spec}} needs a number`, n.line);
+          const x = num(v);
+          const m = p.spec.match(/^(,)?(\.(\d+)f)?$|^(\.(\d+)f)?(,)?$|^(\d+)$/);
+          if (/^\d+$/.test(p.spec)) return str(v).padStart(parseInt(p.spec, 10), ' ');
+          const dec = p.spec.match(/\.(\d+)f/); const comma = p.spec.includes(',');
+          let s = dec ? x.toFixed(parseInt(dec[1], 10)) : str(v);
+          if (comma) { const [ip, fp] = s.split('.'); s = ip.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (fp !== undefined ? '.' + fp : ''); }
+          return s;
+        }).join('');
+        case 'neg': { const v = evaluate(n.e); if (isBool(v)) return -(v ? 1 : 0); if (!isNum(v)) throw err('TypeError', `Can't put a minus in front of a ${typeName(v)}`, n.line); return isFloat(v) ? new PyFloat(-v.v) : -v; }
+        case 'not': return !truthy(evaluate(n.e));
+        case 'and': { const l = evaluate(n.l); return truthy(l) ? evaluate(n.r) : l; }
+        case 'or': { const l = evaluate(n.l); return truthy(l) ? l : evaluate(n.r); }
+        case 'bin': return binop(n.op, evaluate(n.l), evaluate(n.r), n.line);
+        case 'cmp': {
+          let left = evaluate(n.first);
+          for (let i = 0; i < n.ops.length; i++) { const right = evaluate(n.rest[i]); if (!compare(left, right, n.ops[i], n.line)) return false; left = right; }
+          return true;
+        }
+        case 'index': {
+          const v = evaluate(n.e), i = evaluate(n.i);
+          if (isStr(v)) return v[checkIndex(i, v.length, n.line, 'string')];
+          if (isList(v)) return v[checkIndex(i, v.length, n.line, 'list')];
+          if (v instanceof PyRange) return v.at(checkIndex(i, v.length, n.line, 'range'));
+          throw err('TypeError', `You can't use [ ] on a ${typeName(v)}`, n.line);
+        }
+        case 'slice': {
+          const v = evaluate(n.e);
+          if (!isStr(v) && !isList(v)) throw err('TypeError', `You can't slice a ${typeName(v)}`, n.line);
+          const len = v.length;
+          let lo = n.lo ? needInt(evaluate(n.lo), 'slice', n.line) : 0, hi = n.hi ? needInt(evaluate(n.hi), 'slice', n.line) : len;
+          if (lo < 0) lo = Math.max(0, lo + len); if (hi < 0) hi = Math.max(0, hi + len);
+          lo = Math.min(lo, len); hi = Math.min(hi, len);
+          return v.slice(lo, Math.max(lo, hi));
+        }
+        case 'attr': {
+          const v = evaluate(n.e);
+          return { method: n.name, self: v };
+        }
+        case 'call': {
+          const fn = n.fn.k === 'attr' ? evaluate(n.fn) : evaluate(n.fn);
+          const args = n.args.map(evaluate); const kwargs = {}; for (const k in n.kwargs) kwargs[k] = evaluate(n.kwargs[k]);
+          if (fn && fn.builtin) return builtins[fn.builtin](args, kwargs, n.line);
+          if (fn && fn.method !== undefined) {
+            if (isStr(fn.self)) return strMethod(fn.self, fn.method, args, n.line);
+            if (isList(fn.self)) return listMethod(fn.self, fn.method, args, n.line);
+            throw err('AttributeError', `A ${typeName(fn.self)} doesn't have a method called .${fn.method}()`, n.line);
+          }
+          const what = n.fn.k === 'name' ? `"${n.fn.v}" is a ${typeName(fn)}, not something you can call` : `That's a ${typeName(fn)}, not something you can call`;
+          throw err('TypeError', what + (isStr(fn) && n.fn.k === 'name' && n.fn.v === 'print' ? '' : (n.fn.k === 'name' && n.fn.v === 'input' ? ' — you replaced input with a value' : '')), n.line);
+        }
+      }
+      throw err('RuntimeError', 'unknown expression', n.line);
+    }
+
+    const BREAK = { br: true }, CONTINUE = { co: true };
+    function assign(target, value, line) {
+      if (target.k === 'name') { env.set(target.v, value); return; }
+      const v = evaluate(target.e), i = evaluate(target.i);
+      if (isList(v)) { v[checkIndex(i, v.length, line, 'list')] = value; return; }
+      if (isStr(v)) throw err('TypeError', 'Strings can\'t be changed one letter at a time. Build a new string instead.', line);
+      throw err('TypeError', `You can't assign into a ${typeName(v)}`, line);
+    }
+    function exec(stmts) {
+      for (const s of stmts) {
+        if (++steps > maxSteps) throw err('TimeoutError', 'Your program ran too long — probably a loop that never ends. Does the while condition ever become False?', s.line);
+        switch (s.k) {
+          case 'expr': evaluate(s.e); break;
+          case 'assign': assign(s.target, evaluate(s.value), s.line); break;
+          case 'pass': break;
+          case 'break': return BREAK;
+          case 'continue': return CONTINUE;
+          case 'if': {
+            if (truthy(evaluate(s.test))) { const r = exec(s.body); if (r) return r; }
+            else if (s.orelse) { const r = exec(s.orelse); if (r) return r; }
+            break;
+          }
+          case 'while': {
+            while (truthy(evaluate(s.test))) {
+              if (++steps > maxSteps) throw err('TimeoutError', 'Your program ran too long — probably a loop that never ends. Does the while condition ever become False?', s.line);
+              const r = exec(s.body); if (r === BREAK) break; if (r === CONTINUE) continue;
+            }
+            break;
+          }
+          case 'for': {
+            const it = evaluate(s.iter);
+            const items = it instanceof PyRange ? it : iterate(it, s.line);
+            const n = it instanceof PyRange ? it.length : items.length;
+            for (let i = 0; i < n; i++) {
+              if (++steps > maxSteps) throw err('TimeoutError', 'Your program ran too long — that\'s a very big loop.', s.line);
+              env.set(s.name, it instanceof PyRange ? it.at(i) : items[i]);
+              const r = exec(s.body); if (r === BREAK) break; if (r === CONTINUE) continue;
+            }
+            break;
+          }
+        }
+      }
+      return null;
+    }
+
+    try {
+      const prog = parse(tokenize(code));
+      exec(prog);
+      return { ok: true, output: out, text: out.filter((o) => o.kind === 'out').map((o) => o.text).join(''), steps, error: null };
+    } catch (e) {
+      if (e instanceof PyError) return { ok: false, output: out, text: out.filter((o) => o.kind === 'out').map((o) => o.text).join(''), steps, error: { kind: e.kind, msg: e.message, line: e.line } };
+      return { ok: false, output: out, text: '', steps, error: { kind: 'InternalError', msg: String(e && e.message || e), line: 0 } };
+    }
+  }
+
+  const MiniPy = { run, tokenize, parse, str, repr, PyError };
+  if (typeof module !== 'undefined' && module.exports) module.exports = MiniPy; else root.MiniPy = MiniPy;
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+
+<script>
+HSCT.lesson({ id: 'think-it-then-code-it', title: 'Think it, then code it', version: '1.0', course: 'computer-science', possible: 100 });
+
+/* ---------- helpers ---------- */
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+/* tiny syntax colouring for the concept cards */
+const py = (src) => '<pre>' + esc(src).replace(/(#.*$)|("[^"\n]*"|'[^'\n]*')|\b(if|elif|else|while|for|in|not|and|or|True|False|None|break|continue)\b/gm,
+  (m, c, str, kw) => c ? '<span class="c">' + c + '</span>' : str ? '<span class="s">' + str + '</span>' : '<span class="k">' + kw + '</span>') + '</pre>';
+
+const MODULE_POINTS = 20, HINT_COST = 3, SOLUTION_MAX = 10, MIN_WORDS = 20, FAILS_FOR_SOLUTION = 3;
+
+/* ---------- the five modules ---------- */
+const MODULES = [
+{
+  id: 'variables', concept: 'Variables', title: 'The bake sale count',
+  scenario: 'The CS club is selling cookies. Three members walk up and tell you how many they baked: Ana 12, Ben 7, Cruz 8. The boxes hold 6 cookies each. The club president wants three things from you: how many cookies there are, how many full boxes you can pack, and how many are left over.',
+  humanQ: 'With a pencil and paper — no computer — what do you do, step by step, to answer all three questions? Write it like instructions for a friend who has never done it.',
+  bridge: [
+    'You wrote each number down so you wouldn\'t forget it. That is a <b>variable</b>: a named place that holds a value.',
+    'You added them and wrote the sum somewhere. Another variable — call it <b>total</b>.',
+    '"How many full boxes" is division that throws away the remainder. "How many left" is the remainder. Python has an operator for each: <b>//</b> and <b>%</b>.',
+  ],
+  conceptTitle: 'Variables, input, arithmetic, print',
+  conceptHtml: '<p>A variable is a label on a value. You make one with <code>=</code>, which means "put this in here", not "equals":</p>'
+    + py('total = 12 + 7 + 8')
+    + '<p>From then on <code>total</code> means 27 until you change it. Values typed by the user arrive through <code>input()</code> — always as text — so wrap it in <code>int()</code> to get a whole number:</p>'
+    + py('ana = int(input())')
+    + '<p>Arithmetic: <code>+ - * /</code> work as expected. Two you may not have met: <code>//</code> keeps only the whole part (<code>27 // 6</code> is <code>4</code>) and <code>%</code> keeps only the remainder (<code>27 % 6</code> is <code>3</code>).</p>'
+    + '<p><code>print()</code> shows things. Give it several things separated by commas and it puts a space between them:</p>'
+    + py('print("Total cookies:", total)   # Total cookies: 27'),
+  taskHtml: '<p class="spec">Read three whole numbers, one per line: Ana\'s, Ben\'s, then Cruz\'s cookies. Print exactly three lines: the total, the number of full boxes of 6, and the leftovers.</p>'
+    + '<div class="io"><div><h4>INPUT</h4><pre>12\n7\n8</pre></div><div><h4>OUTPUT</h4><pre>Total cookies: 27\nFull boxes: 4\nLeft over: 3</pre></div></div>',
+  starter: '# Three people hand you their cookie counts, one per line.\nana = int(input())\nben = int(input())\ncruz = int(input())\n\n# 1. Add them into a variable called total\n# 2. Full boxes of 6: use //\n# 3. Left over: use %\n# 4. Print the three lines exactly as shown in the task\n',
+  tests: [
+    { input: ['12', '7', '8'], expected: 'Total cookies: 27\nFull boxes: 4\nLeft over: 3' },
+    { input: ['6', '6', '6'], expected: 'Total cookies: 18\nFull boxes: 3\nLeft over: 0' },
+    { input: ['0', '5', '0'], expected: 'Total cookies: 5\nFull boxes: 0\nLeft over: 5' },
+    { input: ['30', '25', '1'], expected: 'Total cookies: 56\nFull boxes: 9\nLeft over: 2' },
+  ],
+  hints: [
+    'Make the total first: <code>total = ana + ben + cruz</code>. Then use <code>total</code> in the other two lines.',
+    '<code>boxes = total // 6</code> and <code>left = total % 6</code>. Then <code>print("Full boxes:", boxes)</code> — the comma adds the space for you.',
+  ],
+  solution: 'ana = int(input())\nben = int(input())\ncruz = int(input())\ntotal = ana + ben + cruz\nboxes = total // 6\nleft = total % 6\nprint("Total cookies:", total)\nprint("Full boxes:", boxes)\nprint("Left over:", left)\n',
+},
+{
+  id: 'loops', concept: 'Loops', title: 'Locker labels',
+  scenario: 'The custodian needs a label for every locker on the third floor, from 214 to 260, and would rather not write them by hand. Each label just says the locker number, like "Locker 214". He also wants to know how many labels he\'ll be sticking up.',
+  humanQ: 'How would you produce every label without missing one, doubling one, or making an extra? And how would you know the count at the end? Describe the process — including how you know when to stop.',
+  bridge: [
+    'You did the same small thing over and over — write one label, move to the next number — until you reached the last one. That is a <b>loop</b>.',
+    'You had to decide where to start, where to stop, and whether the last number counts. Computers get this wrong constantly. So do people.',
+    'You either counted as you went or did <i>last − first + 1</i>. Both are fine. Both are variables.',
+  ],
+  conceptTitle: 'for loops and range()',
+  conceptHtml: '<p>A <code>for</code> loop repeats a block once for each value in a sequence. <code>range(a, b)</code> gives the numbers from <code>a</code> up to <b>but not including</b> <code>b</code>:</p>'
+    + py('for n in range(1, 4):\n    print("Locker", n)')
+    + '<p>That prints Locker 1, Locker 2, Locker 3. Not 4. To include 4, write <code>range(1, 5)</code> — or in general <code>range(first, last + 1)</code>.</p>'
+    + '<p>The indented lines are the <b>body</b>: everything indented under the <code>for</code> runs every time. The first line that is not indented runs after the loop is finished.</p>'
+    + '<p>Counting inside a loop: <code>count = 0</code> before it, <code>count += 1</code> inside it. <code>+=</code> means "add to what is already there."</p>',
+  taskHtml: '<p class="spec">Read two whole numbers, one per line: the first locker and the last. Print <code>Locker N</code> for every number from first to last, <b>including both</b>. Then print how many labels that was.</p>'
+    + '<div class="io"><div><h4>INPUT</h4><pre>101\n105</pre></div><div><h4>OUTPUT</h4><pre>Locker 101\nLocker 102\nLocker 103\nLocker 104\nLocker 105\nLabels printed: 5</pre></div></div>',
+  starter: 'first = int(input())\nlast = int(input())\n\n# Print "Locker N" for every number from first to last (including last!)\n# range(a, b) stops BEFORE b — so what do you pass as b?\n\n\n# After the loop, print how many labels you made\n',
+  tests: [
+    { input: ['101', '105'], expected: 'Locker 101\nLocker 102\nLocker 103\nLocker 104\nLocker 105\nLabels printed: 5' },
+    { input: ['7', '7'], expected: 'Locker 7\nLabels printed: 1' },
+    { input: ['214', '220'], expected: 'Locker 214\nLocker 215\nLocker 216\nLocker 217\nLocker 218\nLocker 219\nLocker 220\nLabels printed: 7' },
+    { input: ['1', '3'], expected: 'Locker 1\nLocker 2\nLocker 3\nLabels printed: 3' },
+  ],
+  hints: [
+    '<code>for n in range(first, last + 1):</code> — the <code>+ 1</code> is the whole trick. Inside the loop, <code>print("Locker", n)</code>.',
+    'To count: <code>count = 0</code> before the loop and <code>count += 1</code> inside it, then print it after. Or skip the counting and print <code>last - first + 1</code>.',
+  ],
+  solution: 'first = int(input())\nlast = int(input())\ncount = 0\nfor n in range(first, last + 1):\n    print("Locker", n)\n    count += 1\nprint("Labels printed:", count)\n',
+},
+{
+  id: 'strings', concept: 'Strings', title: 'Name badges from a messy sign-up sheet',
+  scenario: 'The front office prints name badges from the club sign-up form, and people typed their names however they felt like: "  jONATHAN cruz ", "ADA LOVELACE", "grace hopper". Every badge needs the name looking right, the initials, and a username — the first letter of the first name plus the whole last name, all lowercase.',
+  humanQ: 'Take "  jONATHAN cruz ". What exactly do you do to it, in order, to end up with "Jonathan Cruz", "J.C." and "jcruz"? Be precise about the spaces and the capital letters — a computer will do only what you say.',
+  bridge: [
+    'You broke the text into pieces — first name, last name. In Python that is <b>.split()</b>, and it throws away the extra spaces for free.',
+    'You changed capitalization: <b>.title()</b>, <b>.upper()</b>, <b>.lower()</b>.',
+    'You took the first letter of a word. Text is a sequence of characters, and <b>word[0]</b> is the first one.',
+    'You glued pieces back together. That is <b>+</b>.',
+  ],
+  conceptTitle: 'Strings: split, case, indexing, joining',
+  conceptHtml: '<p>A string is text in quotes. Strings have <b>methods</b> — small built-in tools you call with a dot:</p>'
+    + py('name = "  jONATHAN cruz "\nparts = name.split()      # ["jONATHAN", "cruz"] — a list of the words\nparts[0].title()          # "Jonathan"\nparts[1].upper()          # "CRUZ"\nparts[0][0]               # "j" — first character of the first word\n"j" + "cruz"              # "jcruz"')
+    + '<p>Indexing starts at 0: <code>word[0]</code> is the first character, <code>word[1]</code> the second, <code>word[-1]</code> the last.</p>'
+    + '<p>Strings never change in place. <code>.upper()</code> hands you a <i>new</i> string; the old one is untouched. Put the result in a variable.</p>',
+  taskHtml: '<p class="spec">Read one line: a full name — exactly two words, with any spacing and any capitalization. Print the badge:</p>'
+    + '<ul class="rules"><li><b>Name:</b> both words in Title Case, one space between</li><li><b>Initials:</b> first letters, uppercase, each followed by a period</li><li><b>Username:</b> first letter of the first name + the last name, all lowercase</li></ul>'
+    + '<div class="io"><div><h4>INPUT</h4><pre>  jONATHAN cruz </pre></div><div><h4>OUTPUT</h4><pre>Name: Jonathan Cruz\nInitials: J.C.\nUsername: jcruz</pre></div></div>',
+  starter: 'raw = input()\n\n# .split() breaks the text into a list of words (extra spaces disappear)\n# parts[0] is the first word, parts[1] is the second\n# .title() capitalizes a word; .upper() and .lower() change case\n# word[0] is the first letter of a word\n\n',
+  tests: [
+    { input: ['  jONATHAN cruz '], expected: 'Name: Jonathan Cruz\nInitials: J.C.\nUsername: jcruz' },
+    { input: ['ADA LOVELACE'], expected: 'Name: Ada Lovelace\nInitials: A.L.\nUsername: alovelace' },
+    { input: ['grace hopper'], expected: 'Name: Grace Hopper\nInitials: G.H.\nUsername: ghopper' },
+    { input: ['  Linus   torvalds'], expected: 'Name: Linus Torvalds\nInitials: L.T.\nUsername: ltorvalds' },
+  ],
+  hints: [
+    '<code>parts = raw.split()</code> gives you <code>["jONATHAN", "cruz"]</code>. Then <code>first = parts[0]</code> and <code>last = parts[1]</code>.',
+    'Name: <code>first.title() + " " + last.title()</code>. Initials: <code>first[0].upper() + "." + last[0].upper() + "."</code>. Username: <code>(first[0] + last).lower()</code>.',
+  ],
+  solution: 'raw = input()\nparts = raw.split()\nfirst = parts[0]\nlast = parts[1]\nname = first.title() + " " + last.title()\ninitials = first[0].upper() + "." + last[0].upper() + "."\nusername = (first[0] + last).lower()\nprint("Name:", name)\nprint("Initials:", initials)\nprint("Username:", username)\n',
+},
+{
+  id: 'conditions', concept: 'If / else', title: 'Letter grades',
+  scenario: 'You\'re grading a stack of tests for a teacher who left the cutoffs on a sticky note: A is 90 and up, B is 80 to 89, C is 70 to 79, D is 65 to 69, anything lower is an F. Then someone hands you a test marked 104.',
+  humanQ: 'Explain how you decide the letter for each score. What do you do with a 90 exactly? An 89? A 104? A negative number? In what order do you check things, and why does the order matter?',
+  bridge: [
+    'You made a decision based on a condition. That is <b>if / else</b>.',
+    'You checked in a particular order — top cutoff first — because 95 is "at least 70" too. Getting the order right is the entire difficulty of this module.',
+    'You noticed a score can be impossible. Checking for bad input before anything else is what professionals do.',
+  ],
+  conceptTitle: 'if, elif, else — and why order matters',
+  conceptHtml: '<p><code>if</code> checks a condition; the indented block runs only when it is True. <code>elif</code> ("else if") checks another condition, but only if the ones above it failed. <code>else</code> catches everything left:</p>'
+    + py('if score >= 90:\n    print("A")\nelif score >= 80:\n    print("B")\nelse:\n    print("lower")')
+    + '<p>Exactly <b>one</b> branch runs. Because of that, order matters: check the strictest condition first, or a 95 will get caught by <code>>= 70</code>.</p>'
+    + '<p>Comparisons: <code>&gt; &lt; &gt;= &lt;= == !=</code> (two equals signs to compare). Combine them with <code>and</code>, <code>or</code>, <code>not</code>:</p>'
+    + py('if score < 0 or score > 100:\n    print("Invalid score")'),
+  taskHtml: '<p class="spec">Read one whole number: the score. Print <code>Grade: A</code> for 90 and up, <code>Grade: B</code> for 80–89, <code>Grade: C</code> for 70–79, <code>Grade: D</code> for 65–69, <code>Grade: F</code> below 65. If the score is below 0 or above 100, print <code>Invalid score</code> instead.</p>'
+    + '<div class="io"><div><h4>INPUT</h4><pre>89</pre><h4 style="margin-top:.5rem">INPUT</h4><pre>104</pre></div><div><h4>OUTPUT</h4><pre>Grade: B</pre><h4 style="margin-top:.5rem">OUTPUT</h4><pre>Invalid score</pre></div></div>',
+  starter: 'score = int(input())\n\n# Check for an invalid score FIRST (below 0 or above 100)\n# Then check the cutoffs from the top down: 90, 80, 70, 65\n# Each branch prints exactly one line\n\n',
+  tests: [
+    { input: ['90'], expected: 'Grade: A' },
+    { input: ['89'], expected: 'Grade: B' },
+    { input: ['104'], expected: 'Invalid score' },
+    { input: ['65'], expected: 'Grade: D' },
+    { input: ['64'], expected: 'Grade: F' },
+    { input: ['100'], expected: 'Grade: A' },
+    { input: ['-3'], expected: 'Invalid score' },
+    { input: ['70'], expected: 'Grade: C' },
+    { input: ['79'], expected: 'Grade: C' },
+  ],
+  hints: [
+    'Start with the impossible case: <code>if score < 0 or score > 100:</code>. Then <code>elif score >= 90:</code>, <code>elif score >= 80:</code>, and so on, ending with <code>else:</code> for the F.',
+    'Order matters. If you check <code>>= 70</code> before <code>>= 90</code>, a 95 gets a C. Go from the highest cutoff down, and remember the D cutoff is 65, not 60.',
+  ],
+  solution: 'score = int(input())\nif score < 0 or score > 100:\n    print("Invalid score")\nelif score >= 90:\n    print("Grade: A")\nelif score >= 80:\n    print("Grade: B")\nelif score >= 70:\n    print("Grade: C")\nelif score >= 65:\n    print("Grade: D")\nelse:\n    print("Grade: F")\n',
+},
+{
+  id: 'capstone', concept: 'All four', title: 'The password checker',
+  scenario: 'You\'re building the sign-up page for the club website. When someone picks a password, the site keeps asking until it gets a good one: at least 8 characters, at least one digit, at least one capital letter. When it rejects a password it says why — one reason only, the first rule that failed. When one finally passes, it says so and reports how many tries that took.',
+  humanQ: 'Describe this from the website\'s point of view. Someone types "abc", then "abcdefgh", then "abcdefg1", then "Abcdefg1". What does the site check each time, in what order, what does it say back, how does it count the tries, and how does it know when to stop asking?',
+  bridge: [
+    '"Keep asking until…" is a <b>while loop</b>: repeat as long as a condition holds.',
+    '"Look at every character" is a <b>for loop</b> over a string.',
+    '"Is there any digit?" is a variable that starts False and flips to True when you find one. Programmers call that a <b>flag</b>.',
+    '"Say the first reason that fails" is <b>if / elif / else</b> — in order.',
+    '"How many tries" is a counter. Every module you have done is inside this one.',
+  ],
+  conceptTitle: 'while loops, flags, and looping over text',
+  conceptHtml: '<p><code>while</code> repeats as long as its condition is True. Something inside the loop must eventually make it False, or it never stops:</p>'
+    + py('done = False\nwhile not done:\n    answer = input()\n    if answer == "yes":\n        done = True')
+    + '<p>Looping over a string visits one character at a time. <code>.isdigit()</code> and <code>.isupper()</code> are True/False questions you can ask any character; <code>len(password)</code> is how many characters there are:</p>'
+    + py('has_digit = False\nfor ch in password:\n    if ch.isdigit():\n        has_digit = True')
+    + '<p>A <b>flag</b> is a variable you set to False before a loop and switch to True when you find what you were looking for. Check it after the loop.</p>',
+  taskHtml: '<p class="spec">Keep reading passwords, one per line, until one is valid. A valid password has <b>at least 8 characters</b>, <b>at least one digit</b>, and <b>at least one capital letter</b>. For each invalid one print exactly one line — the first rule that fails, checked in this order:</p>'
+    + '<ul class="rules"><li><code>Too short</code></li><li><code>Needs a number</code></li><li><code>Needs a capital letter</code></li></ul>'
+    + '<p class="spec">When one passes, print <code>Password set!</code> and then <code>Attempts: N</code>, counting every password that was tried, including the good one.</p>'
+    + '<div class="io"><div><h4>INPUT</h4><pre>abc\nabcdefgh\nabcdefg1\nAbcdefg1</pre></div><div><h4>OUTPUT</h4><pre>Too short\nNeeds a number\nNeeds a capital letter\nPassword set!\nAttempts: 4</pre></div></div>',
+  starter: 'attempts = 0\ndone = False\n\nwhile not done:\n    password = input()\n    attempts += 1\n\n    # Look at every character: is any one of them a digit? a capital?\n    has_digit = False\n    has_upper = False\n\n\n    # Check the rules in order: length, number, capital letter.\n    # Print one reason — or "Password set!" and set done = True\n\n\nprint("Attempts:", attempts)\n',
+  tests: [
+    { input: ['abc', 'abcdefgh', 'abcdefg1', 'Abcdefg1'], expected: 'Too short\nNeeds a number\nNeeds a capital letter\nPassword set!\nAttempts: 4' },
+    { input: ['Bulldogs2026'], expected: 'Password set!\nAttempts: 1' },
+    { input: ['PASSWORD', 'Password', 'Password1'], expected: 'Needs a number\nNeeds a number\nPassword set!\nAttempts: 3' },
+    { input: ['12345678', '1234567A'], expected: 'Needs a capital letter\nPassword set!\nAttempts: 2' },
+    { input: ['Ab1', 'Ab1Ab1Ab'], expected: 'Too short\nPassword set!\nAttempts: 2' },
+  ],
+  hints: [
+    '<code>for ch in password:</code> looks at one character at a time. Inside it: <code>if ch.isdigit(): has_digit = True</code>, and the same idea for <code>.isupper()</code>.',
+    'After the for loop: <code>if len(password) < 8:</code> … <code>elif not has_digit:</code> … <code>elif not has_upper:</code> … <code>else:</code> print <code>Password set!</code> and set <code>done = True</code> so the while loop stops.',
+  ],
+  solution: 'attempts = 0\ndone = False\nwhile not done:\n    password = input()\n    attempts += 1\n    has_digit = False\n    has_upper = False\n    for ch in password:\n        if ch.isdigit():\n            has_digit = True\n        if ch.isupper():\n            has_upper = True\n    if len(password) < 8:\n        print("Too short")\n    elif not has_digit:\n        print("Needs a number")\n    elif not has_upper:\n        print("Needs a capital letter")\n    else:\n        print("Password set!")\n        done = True\nprint("Attempts:", attempts)\n',
+},
+];
+
+/* ---------- state ---------- */
+const state = { name: '', cur: 0, m: [] };
+function initState() {
+  state.m = MODULES.map((mod) => ({ human: '', code: mod.starter, runs: 0, checks: 0, fails: 0, hints: 0, solution: false, passed: false, score: MODULE_POINTS, humanDone: false }));
+}
+const cur = () => state.m[state.cur];
+const mod = () => MODULES[state.cur];
+const total = () => state.m.reduce((s, m) => s + (m.passed ? m.score : 0), 0);
+
+function show(id) { document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === id)); window.scrollTo(0, 0); }
+function renderTop() {
+  const p = $('progress'); p.innerHTML = '';
+  const inWork = $('view-work').classList.contains('active');
+  MODULES.forEach((_, i) => { const s = document.createElement('i'); if (state.m[i] && state.m[i].passed) s.className = 'done'; else if (i === state.cur && inWork) s.className = 'now'; p.appendChild(s); });
+  $('stat-mod').innerHTML = inWork ? 'Module <b>' + (state.cur + 1) + ' of ' + MODULES.length + '</b> · <b>' + cur().score + '</b> pts possible' : '';
+  $('stat-total').innerHTML = state.name ? 'Total <b>' + total() + '</b> / ' + (MODULES.length * MODULE_POINTS) : '';
+}
+
+/* ---------- intro ---------- */
+$('start').onclick = () => {
+  const n = $('name').value.trim();
+  if (n.length < 2) { $('name-err').style.display = 'block'; $('name').focus(); return; }
+  $('name-err').style.display = 'none';
+  state.name = n; state.cur = 0; initState();
+  HSCT.start(n);
+  show('view-work'); renderModule();
+};
+$('name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('start').click(); });
+
+/* ---------- module ---------- */
+function renderModule() {
+  const m = mod(), s = cur();
+  $('m-kicker').textContent = 'Module ' + (state.cur + 1) + ' of ' + MODULES.length + ' · ' + m.concept;
+  $('m-title').textContent = m.title;
+  $('m-scenario').textContent = m.scenario;
+  $('m-humanq').textContent = m.humanQ;
+  $('human-text').value = s.human; $('human-text').disabled = s.humanDone;
+  $('human').classList.toggle('done', s.humanDone);
+  $('human-submit').textContent = s.humanDone ? 'Saved' : 'That\'s how I\'d do it';
+  updateWordCount();
+  $('m-bridge').innerHTML = m.bridge.map((b) => '<li>' + b + '</li>').join('');
+  $('m-concept-title').textContent = m.conceptTitle;
+  $('m-concept').innerHTML = m.conceptHtml;
+  $('m-task').innerHTML = m.taskHtml;
+  ['bridge', 'concept', 'task'].forEach((id) => $(id).classList.toggle('hidden', !s.humanDone));
+  $('locked').style.display = s.humanDone ? 'none' : 'grid';
+  $('code').value = s.code; $('code').disabled = !s.humanDone;
+  ['run', 'check', 'reset'].forEach((id) => $(id).disabled = !s.humanDone);
+  $('hint').disabled = !s.humanDone || s.hints >= m.hints.length || s.passed;
+  $('hint').textContent = s.hints >= m.hints.length ? 'No hints left' : 'Hint ' + (s.hints + 1) + ' of ' + m.hints.length + ' (−' + HINT_COST + ')';
+  renderHints(); renderSolution();
+  $('output').innerHTML = '<span class="empty">Output shows up here. Ctrl+Enter runs.</span>';
+  $('tests').className = 'tests'; $('tests').innerHTML = '';
+  $('passed').classList.toggle('hidden', !s.passed); if (s.passed) renderPassed();
+  $('ed-status').textContent = '';
+  renderGutter(); renderTop();
+}
+
+/* human half */
+const words = (t) => t.trim().split(/\s+/).filter(Boolean).length;
+function updateWordCount() {
+  const n = words($('human-text').value);
+  $('human-count').textContent = n + ' word' + (n === 1 ? '' : 's') + ' · at least ' + MIN_WORDS;
+  $('human-submit').disabled = cur().humanDone || n < MIN_WORDS;
+}
+$('human-text').addEventListener('input', () => { cur().human = $('human-text').value; updateWordCount(); });
+$('human-submit').onclick = () => {
+  const s = cur(); if (s.humanDone || words(s.human) < MIN_WORDS) return;
+  s.humanDone = true;
+  HSCT.log('human', { module: mod().id, words: words(s.human) });
+  renderModule();
+  $('bridge').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setTimeout(() => $('code').focus(), 400);
+};
+
+/* editor */
+function renderGutter(errLine) {
+  const lines = $('code').value.split('\n').length;
+  let h = ''; for (let i = 1; i <= lines; i++) h += '<div' + (i === errLine ? ' class="errline"' : '') + '>' + i + '</div>';
+  $('gutter').innerHTML = h;
+  $('gutter').scrollTop = $('code').scrollTop;
+}
+$('code').addEventListener('input', () => { cur().code = $('code').value; renderGutter(); });
+$('code').addEventListener('scroll', () => { $('gutter').scrollTop = $('code').scrollTop; });
+$('code').addEventListener('keydown', (e) => {
+  const ta = e.target, v = ta.value, s = ta.selectionStart, en = ta.selectionEnd;
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const ls = v.lastIndexOf('\n', s - 1) + 1;
+    if (e.shiftKey) { const line = v.slice(ls, s); const strip = line.match(/^ {1,4}/); if (strip) { ta.value = v.slice(0, ls) + v.slice(ls + strip[0].length); ta.selectionStart = ta.selectionEnd = s - strip[0].length; } }
+    else { ta.value = v.slice(0, s) + '    ' + v.slice(en); ta.selectionStart = ta.selectionEnd = s + 4; }
+    ta.dispatchEvent(new Event('input'));
+  } else if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
+    e.preventDefault();
+    const ls = v.lastIndexOf('\n', s - 1) + 1; const line = v.slice(ls, s);
+    let ind = (line.match(/^ */) || [''])[0]; if (/:\s*$/.test(line)) ind += '    ';
+    ta.value = v.slice(0, s) + '\n' + ind + v.slice(en); ta.selectionStart = ta.selectionEnd = s + 1 + ind.length;
+    ta.dispatchEvent(new Event('input'));
+  } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); $('run').click(); }
+});
+$('reset').onclick = () => { if (confirm('Put the starter code back? Your current code in this module will be erased.')) { cur().code = mod().starter; $('code').value = mod().starter; renderGutter(); HSCT.log('reset', { module: mod().id }); } };
+
+/* run + check */
+function renderOutput(r) {
+  const o = $('output'); let h = '';
+  for (const seg of r.output) h += '<span class="' + seg.kind + '">' + esc(seg.text) + '</span>';
+  if (r.error) h += '<span class="error">Line ' + r.error.line + ' — ' + esc(r.error.kind) + ': ' + esc(r.error.msg) + '</span>';
+  if (!h) h = '<span class="empty">(no output — did you forget to print?)</span>';
+  o.innerHTML = h; o.scrollTop = 0;
+  renderGutter(r.error ? r.error.line : 0);
+}
+$('run').onclick = () => {
+  const s = cur(), m = mod(); s.runs++;
+  const r = MiniPy.run(s.code, m.tests[0].input);
+  renderOutput(r);
+  $('tests').className = 'tests'; $('tests').innerHTML = '';
+  $('ed-status').textContent = r.ok ? 'ran with the sample input' : 'error';
+  HSCT.log('run', { module: m.id, ok: r.ok, error: r.error ? r.error.kind : null });
+};
+const norm = (t) => t.replace(/\r/g, '').split('\n').map((l) => l.replace(/\s+$/, '')).join('\n').replace(/\n+$/, '');
+$('check').onclick = () => {
+  const s = cur(), m = mod(); if (s.passed) return;
+  s.checks++;
+  const results = m.tests.map((t) => { const r = MiniPy.run(s.code, t.input); return { t, r, ok: r.ok && norm(r.text) === norm(t.expected) }; });
+  const failed = results.filter((x) => !x.ok);
+  const first = results.find((x) => !x.ok);
+  let h = '<ul>' + results.map((x, i) => '<li class="' + (x.ok ? 'ok' : 'bad') + '"><span class="m">' + (x.ok ? '✓' : '✗') + '</span><span>Test ' + (i + 1) + '</span><span class="in">input: ' + esc(x.t.input.join(' ⏎ ')) + '</span></li>').join('') + '</ul>';
+  if (first) {
+    const exp = norm(first.t.expected).split('\n'), got = first.r.ok ? norm(first.r.text).split('\n') : [];
+    const mark = (arr, other) => arr.map((l, i) => '<span class="' + (other[i] === l ? 'ok' : 'bad') + '">' + (esc(l) || ' ') + '</span>').join('');
+    h += '<div class="diff"><div><h4>EXPECTED (test ' + (results.indexOf(first) + 1) + ')</h4><pre>' + mark(exp, got) + '</pre></div><div><h4>YOUR OUTPUT</h4><pre>' + (first.r.ok ? (got.length ? mark(got, exp) : '<span class="bad">(nothing printed)</span>') : '<span class="bad">' + esc('Line ' + first.r.error.line + ' — ' + first.r.error.kind + ': ' + first.r.error.msg) + '</span>') + '</pre></div>';
+    h += '<p class="why">' + (first.r.ok ? 'Output has to match exactly — same words, same spacing, same capitalization. Highlighted lines differ.' : 'Fix the error first, then check again.') + '</p></div>';
+    renderOutput(first.r);
+  } else {
+    $('output').innerHTML = '<span class="ok" style="color:var(--green);font-weight:600">All ' + results.length + ' tests passed.</span>';
+    renderGutter();
+  }
+  $('tests').className = 'tests show'; $('tests').innerHTML = h;
+  $('ed-status').textContent = failed.length ? failed.length + ' of ' + results.length + ' failed' : 'all passed';
+  HSCT.log('check', { module: m.id, passed: results.length - failed.length, failed: failed.length, failedTests: failed.map((x) => results.indexOf(x) + 1), error: first && first.r.error ? first.r.error.kind : null });
+  if (failed.length) {
+    s.fails++;
+    if (s.fails >= FAILS_FOR_SOLUTION && !s.solution) $('solution-btn').classList.remove('hidden');
+    return;
+  }
+  s.passed = true;
+  HSCT.log('pass', { module: m.id, score: s.score, checks: s.checks, hints: s.hints, solution: s.solution });
+  $('hint').disabled = true;
+  renderPassed(); renderTop();
+  $('passed').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+};
+function renderPassed() {
+  const s = cur(), last = state.cur === MODULES.length - 1;
+  $('passed').classList.remove('hidden');
+  $('passed').innerHTML = '<span><b>Module ' + (state.cur + 1) + ' passed</b> — ' + s.score + ' / ' + MODULE_POINTS + ' pts' + (s.solution ? ' (solution viewed)' : '') + '</span><span class="grow"></span><button class="btn small" id="next">' + (last ? 'Finish' : 'Next module') + '</button>';
+  $('next').onclick = () => { if (last) renderEnd(); else { state.cur++; renderModule(); } };
+}
+
+/* hints + solution */
+function renderHints() {
+  const s = cur(), m = mod();
+  const box = $('hintbox');
+  box.className = 'hintbox' + (s.hints ? ' show' : '');
+  box.innerHTML = m.hints.slice(0, s.hints).map((h, i) => '<p><b>hint ' + (i + 1) + '</b>' + h + '</p>').join('');
+}
+$('hint').onclick = () => {
+  const s = cur(), m = mod(); if (s.hints >= m.hints.length || s.passed) return;
+  s.hints++; s.score = Math.max(0, s.score - HINT_COST);
+  HSCT.log('hint', { module: m.id, n: s.hints, score: s.score });
+  $('hint').disabled = s.hints >= m.hints.length;
+  $('hint').textContent = s.hints >= m.hints.length ? 'No hints left' : 'Hint ' + (s.hints + 1) + ' of ' + m.hints.length + ' (−' + HINT_COST + ')';
+  renderHints(); renderTop();
+};
+function renderSolution() {
+  const s = cur(), m = mod();
+  $('solution-btn').classList.toggle('hidden', s.passed || s.solution || s.fails < FAILS_FOR_SOLUTION);
+  $('solution').className = 'solution' + (s.solution ? ' show' : '');
+  $('solution').innerHTML = s.solution ? '<p>One way to do it. Read it, understand it, then type it — the check still has to pass.</p>' + py(m.solution) : '';
+}
+$('solution-btn').onclick = () => {
+  const s = cur(), m = mod(); if (s.solution || s.passed) return;
+  if (!confirm('Look at the solution? This module will be worth at most ' + SOLUTION_MAX + ' points.')) return;
+  s.solution = true; s.score = Math.min(s.score, SOLUTION_MAX);
+  HSCT.log('solution', { module: m.id, fails: s.fails });
+  renderSolution(); renderTop();
+};
+
+/* ---------- end ---------- */
+function renderEnd() {
+  show('view-end'); renderTop();
+  const tot = total();
+  $('end-lede').textContent = tot === 100 ? 'Every module, full marks. Download your result and submit it.' : 'You scored ' + tot + ' out of 100. Download your result and submit it in Google Classroom.';
+  $('recap').innerHTML = '<tr><th>Module</th><th>Idea</th><th>Points</th></tr>' + MODULES.map((m, i) => { const s = state.m[i]; return '<tr><td>' + esc(m.title) + '</td><td>' + esc(m.concept) + (s.hints ? ' · ' + s.hints + ' hint' + (s.hints > 1 ? 's' : '') : '') + (s.solution ? ' · solution viewed' : '') + '</td><td>' + (s.passed ? s.score : 0) + ' / ' + MODULE_POINTS + '</td></tr>'; }).join('');
+  HSCT.endScreen('#hsct-result', {
+    earned: tot, possible: MODULES.length * MODULE_POINTS,
+    tier: tot >= 90 ? 'Programmer' : tot >= 70 ? 'Getting there' : 'Keep going',
+    sections: MODULES.map((m, i) => ({ id: m.id, title: (i + 1) + '. ' + m.title, earned: state.m[i].passed ? state.m[i].score : 0, possible: MODULE_POINTS })),
+    extra: { modules: MODULES.map((m, i) => { const s = state.m[i]; return { id: m.id, human: s.human, code: s.code, runs: s.runs, checks: s.checks, fails: s.fails, hints: s.hints, solution: s.solution, passed: s.passed }; }) },
+  });
+}
+$('again').onclick = () => { show('view-intro'); $('name').focus(); renderTop(); };
+
+renderTop();
+</script>
+</body>
+</html>
