@@ -56,6 +56,12 @@ export default function SiteNav() {
               {entry.groups.map((g) => (
                 <div key={g.label} className="nav-group">
                   {g.href ? <a className="nav-group-title" href={g.href} onClick={() => setOpen(null)}>{g.label}</a> : <div className="nav-group-title">{g.label}</div>}
+                  {g.search && (
+                    <form className="nav-search" action={g.search.action} method="get" role="search">
+                      <input type="search" name="q" placeholder={g.search.placeholder} aria-label={g.search.placeholder} autoComplete="off" />
+                      <button type="submit">Go</button>
+                    </form>
+                  )}
                   <ul>
                     {g.items.map((it) => (
                       <li key={it.label}>

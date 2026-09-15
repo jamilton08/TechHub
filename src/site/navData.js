@@ -1,12 +1,14 @@
 /**
  * The site navbar. Three levels:
  *   entry  → a top-level link OR a dropdown
- *   group  → a column inside the dropdown (can itself link somewhere)
+ *   group  → a column inside the dropdown (can itself link somewhere;
+ *            `search` adds a small search form under its title)
  *   item   → a link inside the group
  * Add a group or item here and it appears in the menu; nothing else to wire.
  */
 import { TEACHERS } from './teachers.js';
 import { PAGES } from './pages.js';
+import { CATEGORIES, countLessons, newestLessons, lessonHref } from './lessons.js';
 
 const pageGroup = (slug) => ({
   label: PAGES[slug].title,
@@ -16,7 +18,30 @@ const pageGroup = (slug) => ({
   ),
 });
 
+const lessonsEntry = () => {
+  const newest = newestLessons(4);
+  return {
+    label: 'Lessons',
+    groups: [
+      {
+        label: 'Courses',
+        href: '/lessons',
+        search: { action: '/lessons', placeholder: 'Search lessons' },
+        items: CATEGORIES.map((c) => {
+          const n = countLessons(c);
+          return { label: c.title, sub: n ? `${n} lesson${n === 1 ? '' : 's'}` : undefined, href: `/lessons/${c.slug}`, soon: n === 0 };
+        }).concat([{ label: 'Verify result files', sub: 'teachers', href: '/lessons/verify' }]),
+      },
+      ...(newest.length ? [{
+        label: 'Newest lessons',
+        items: newest.map(({ category, lesson }) => ({ label: lesson.title, sub: category.title, href: lessonHref(category, lesson) })),
+      }] : []),
+    ],
+  };
+};
+
 export const NAV = [
+  lessonsEntry(),
   { label: 'Widgets', href: '/#widgets' },
   {
     label: 'Teachers',

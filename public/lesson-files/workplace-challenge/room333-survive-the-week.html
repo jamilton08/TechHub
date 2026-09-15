@@ -1,0 +1,782 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Room 333: Survive the week</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E9EDF2; --card:#FFFFFF; --ink:#16213A; --muted:#586277; --line:#CFD6E0;
+  --blue:#2451CC; --blue-soft:#E3E9FA;
+  --green:#1F7A52; --green-soft:#DDF2E6;
+  --red:#C9392A; --red-soft:#FAE3DF;
+  --amber:#9A6A0A; --amber-soft:#FBEFD0;
+  --stamp:#B3261E;
+  --hsct-color:#2451CC;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;font-size:17px;line-height:1.55}
+.app{max-width:760px;margin:0 auto;padding:0 20px 80px}
+.hud{position:sticky;top:0;background:var(--bg);padding:16px 0 12px;z-index:5;border-bottom:1px solid var(--line)}
+.hud-row{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.brand{font-weight:700;font-size:18px;letter-spacing:-0.01em}
+.days{display:flex;gap:4px}
+.day{padding:4px 10px;border-radius:999px;font-size:13px;color:var(--muted);border:1px solid transparent}
+.day.on{background:var(--ink);color:#fff}
+.day.done{color:var(--ink);border-color:var(--line)}
+.meters{display:grid;grid-template-columns:1fr 1fr auto;gap:16px;margin-top:12px;align-items:center}
+.meter label{display:flex;justify-content:space-between;font-size:13px;color:var(--muted)}
+.meter label b{font-weight:500;color:var(--ink)}
+.bar{height:8px;background:#fff;border:1px solid var(--line);border-radius:999px;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--blue);transition:width .4s}
+.bar i.warn{background:var(--amber)}
+.bar i.bad{background:var(--red)}
+.record{display:flex;gap:6px;flex-wrap:wrap;min-height:28px;align-items:center}
+.stamp{display:inline-block;font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--stamp);border:2px solid var(--stamp);border-radius:4px;padding:2px 7px;transform:rotate(-4deg)}
+.stamp.new{animation:slam .4s cubic-bezier(.2,1.4,.5,1) both}
+@keyframes slam{0%{transform:scale(2.4) rotate(-14deg);opacity:0}60%{transform:scale(.94) rotate(-4deg);opacity:1}100%{transform:scale(1) rotate(-4deg);opacity:1}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:28px 28px 24px;margin-top:24px}
+.when{font-size:14px;color:var(--muted);margin:0 0 6px}
+h1{font-size:34px;line-height:1.1;margin:0 0 16px;font-weight:700;letter-spacing:-0.02em}
+h2{font-size:26px;line-height:1.15;margin:0 0 12px;font-weight:700;letter-spacing:-0.015em}
+p{margin:0 0 14px}
+.choices{display:grid;gap:10px;margin-top:20px}
+.choice{display:flex;gap:14px;align-items:flex-start;width:100%;text-align:left;background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:14px 16px;font:inherit;color:inherit;cursor:pointer;transition:border-color .15s,background .15s}
+.choice:hover:not([disabled]),.choice:focus-visible{border-color:var(--ink);outline:none}
+.choice:focus-visible{box-shadow:0 0 0 3px var(--blue-soft)}
+.choice .k{flex:none;width:26px;height:26px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;font-size:13px;font-weight:500;color:var(--muted)}
+.choice.dim{opacity:.45;cursor:default}
+.choice.picked{cursor:default}
+.choice.picked.best{border-color:var(--green);background:var(--green-soft)}
+.choice.picked.ok{border-color:var(--amber);background:var(--amber-soft)}
+.choice.picked.bad{border-color:var(--red);background:var(--red-soft)}
+.verdict{display:inline-flex;align-items:center;gap:12px;font-weight:500;font-size:14px;padding:5px 12px;border-radius:999px;margin:22px 0 10px}
+.verdict.best{background:var(--green-soft);color:var(--green)}
+.verdict.ok{background:var(--amber-soft);color:var(--amber)}
+.verdict.bad{background:var(--red-soft);color:var(--red)}
+.delta{font-size:13px;color:var(--muted);font-weight:400}
+.rule{border-left:4px solid var(--blue);background:var(--blue-soft);padding:12px 16px;margin:16px 0;border-radius:0 8px 8px 0}
+.rule small{display:block;font-size:13px;color:var(--blue);font-weight:500;margin-bottom:4px}
+.discuss{border:1.5px dashed var(--line);border-radius:10px;padding:12px 16px;margin:14px 0;font-size:15px}
+.discuss small{display:block;color:var(--muted);font-size:13px;margin-bottom:2px}
+.btn{font:inherit;font-weight:500;background:var(--ink);color:#fff;border:0;border-radius:10px;padding:12px 20px;cursor:pointer;font-size:16px}
+.btn:hover{background:#0E1730}
+.btn:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.btn.ghost:hover{background:var(--bg)}
+.name-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:14px 0 4px}
+.name-row input{flex:1;min-width:220px;font:inherit;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px}
+.name-row input:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.name-row .err{display:none;color:var(--red);font-size:15px}
+.actions{display:flex;justify-content:space-between;align-items:center;margin-top:20px;gap:12px;flex-wrap:wrap}
+.toggle{display:flex;gap:10px;align-items:center;font-size:15px;color:var(--muted);cursor:pointer;margin:8px 0 4px}
+.toggle input{width:18px;height:18px;accent-color:var(--ink);margin:0}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0}
+.metric{background:var(--bg);border-radius:10px;padding:14px 16px}
+.metric small{display:block;font-size:13px;color:var(--muted)}
+.metric b{font-size:28px;font-weight:700;letter-spacing:-0.02em}
+.secs{display:grid;gap:8px;margin:8px 0 20px}
+.sec{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;font-size:15px}
+.tag{font-size:13px;font-weight:500;padding:3px 10px;border-radius:999px;white-space:nowrap}
+.tag.best{background:var(--green-soft);color:var(--green)}
+.tag.ok{background:var(--amber-soft);color:var(--amber)}
+.tag.bad{background:var(--red-soft);color:var(--red)}
+.sign{margin-top:20px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:15px}
+.hint{font-size:13px;color:var(--muted)}
+@media (max-width:560px){
+  .card{padding:20px 18px} h1{font-size:28px} h2{font-size:22px}
+  .grid{grid-template-columns:1fr 1fr} .meters{grid-template-columns:1fr 1fr} .record{grid-column:1/-1}
+}
+@media (prefers-reduced-motion:reduce){.stamp.new{animation:none}.bar i{transition:none}}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+
+<!-- HSCT KIT START — do not edit; copy the whole block from lesson-template/hsct-lesson.js -->
+<script>
+/* ============================================================================
+   HSCT LESSON KIT  v1.0
+   Every lesson on HSCT TechHub inlines this block unchanged (between the
+   <!-- HSCT KIT START --> and <!-- HSCT KIT END --> markers). It gives a
+   lesson three things:
+
+     1. A clock.   HSCT.start(name) when the student begins. The kit records
+                   wall-clock time and "active" time (tab visible).
+     2. A log.     HSCT.log(type, data) for anything worth remembering —
+                   answers, hints, retries. Ends up inside the result file.
+     3. A result.  HSCT.endScreen(el, {...scores}) renders the standard result
+                   card: name, score, time taken, badge code, and a button
+                   that downloads the encrypted result file the student
+                   submits in Google Classroom.
+
+   The file is encrypted with the teacher's PUBLIC key below (RSA-OAEP wrapping
+   an AES-256-GCM key). It can only be opened with the matching private key,
+   on the site's /lessons/verify page. Students can't read or edit it.
+
+   API (all on window.HSCT):
+     HSCT.lesson({ id, title, version, course, possible })   once, at load
+     HSCT.start(name)                                        when work begins
+     HSCT.log(type, data)                                    any time
+     HSCT.elapsed()   -> { seconds, activeSeconds }
+     HSCT.finish({ earned, possible, sections, tier, extra }) -> Promise<result>
+     HSCT.endScreen(el, { earned, possible, sections, tier, extra, note })
+                      -> Promise<result>   (calls finish, renders the card)
+     HSCT.download()  / HSCT.copyCode()                      after finish
+   ========================================================================== */
+(function () {
+  'use strict';
+  var KIT = '1.0';
+
+  /* Mr. Cruz's public key. Replace the whole object if the key pair is ever
+     regenerated on /lessons/verify — and keep the private key out of git. */
+  var PUBLIC_KEY = {"kty":"RSA","n":"rZUBRxn7dUikufJq7z2XVn-on4Of0IyQr_YaPSTgIUaGsYKcrZ4FNROL4A_ZM5JShLf6OVp2ZeAI7XN_7iX0tvd79RqAWRM9an6rx-s6bMYSW1wmtRxZyL-BX56vTtikVRLNO7uyzCb8kevJE71Fi6nlPhdXa-iS4vtIEm2Wjh4cLPinAKhMnkO3BpGHUhtFw7Hyus1w04EdLxowk4UcN7d0w4MQRnBV8ehXQVoLVQ0_QtfrtPTQOpScHuwyaw9nwnTA7h7BEOv1ZkbEyq2N4TFixSSCsneUsc3PlbZOndDzMGMmdMr00ulntRZBfyioFzRcsRUGGwAqpB9SuH7XGQ","e":"AQAB","alg":"RSA-OAEP-256","ext":true};
+
+  var VERIFY_URL = 'hsct.tech/lessons/verify';
+
+  var cfg = null;      // lesson config
+  var ses = null;      // current session
+  var ticker = null;   // active-time interval
+  var result = null;   // { badge, filename, text, envelope, payload }
+
+  /* ---------- small helpers ---------- */
+  var enc = new TextEncoder();
+  function b64(buf) {
+    var bytes = new Uint8Array(buf), s = '';
+    for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return btoa(s);
+  }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function fmtDuration(sec) {
+    sec = Math.max(0, Math.round(sec || 0));
+    var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+    if (h) return h + ' h ' + pad(m) + ' min';
+    if (m) return m + ' min ' + pad(s) + ' s';
+    return s + ' s';
+  }
+  function fmtDate(iso) {
+    try { return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+    catch (e) { return iso; }
+  }
+  function slug(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'student'; }
+  function stamp(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes()); }
+
+  /* Badge code: 8 characters from a SHA-256 of the result, shown on screen
+     so a screenshot can be matched to its file. */
+  var ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ23456789';
+  function badgeFrom(hashBuf) {
+    var bytes = new Uint8Array(hashBuf), out = '';
+    for (var i = 0; i < 8; i++) out += ALPHABET[bytes[i] % ALPHABET.length];
+    return out.slice(0, 4) + '-' + out.slice(4);
+  }
+
+  function needSubtle() {
+    if (!(window.crypto && crypto.subtle)) {
+      throw new Error('Result files need a secure page (https). Open this lesson from the TechHub site and finish again.');
+    }
+  }
+
+  /* ---------- public API ---------- */
+  function lesson(c) {
+    if (!c || !c.id || !c.title) throw new Error('HSCT.lesson needs { id, title }');
+    cfg = { version: '1.0', course: '', possible: 100 };
+    for (var k in c) cfg[k] = c[k];
+    return HSCT;
+  }
+
+  function start(name) {
+    if (!cfg) throw new Error('Call HSCT.lesson({...}) before HSCT.start(name)');
+    name = String(name || '').trim().replace(/\s+/g, ' ');
+    if (name.length < 2) throw new Error('HSCT.start needs the student\'s name');
+    ses = { name: name, started: new Date().toISOString(), t0: Date.now(), active: 0, events: [] };
+    result = null;
+    clearInterval(ticker);
+    ticker = setInterval(function () { if (document.visibilityState === 'visible') ses.active += 1; }, 1000);
+    log('start');
+    return HSCT;
+  }
+
+  function log(type, data) {
+    if (!ses) return HSCT;
+    var e = { t: Math.round((Date.now() - ses.t0) / 100) / 10, type: String(type) };
+    if (data && typeof data === 'object') for (var k in data) if (k !== 't' && k !== 'type') e[k] = data[k];
+    if (ses.events.length < 800) ses.events.push(e);
+    return HSCT;
+  }
+
+  function elapsed() {
+    if (!ses) return { seconds: 0, activeSeconds: 0 };
+    return { seconds: Math.round((Date.now() - ses.t0) / 1000), activeSeconds: ses.active };
+  }
+
+  /* Build, seal, and keep the result. Resolves to { badge, filename, text, payload }. */
+  async function finish(opts) {
+    if (!cfg || !ses) throw new Error('HSCT.start(name) was never called');
+    needSubtle();
+    opts = opts || {};
+    clearInterval(ticker);
+    var finished = new Date();
+    var el = elapsed();
+    var earned = Number(opts.earned || 0), possible = Number(opts.possible || cfg.possible || 0);
+    var payload = {
+      kit: KIT,
+      lesson: { id: cfg.id, title: cfg.title, version: cfg.version, course: cfg.course },
+      student: { name: ses.name },
+      started: ses.started,
+      finished: finished.toISOString(),
+      seconds: el.seconds,
+      activeSeconds: el.activeSeconds,
+      score: { earned: earned, possible: possible, percent: possible ? Math.round(1000 * earned / possible) / 10 : null },
+      tier: opts.tier || null,
+      sections: (opts.sections || []).map(function (s) { return { id: s.id, title: s.title, earned: s.earned, possible: s.possible, status: s.status }; }),
+      extra: opts.extra || null,
+      events: ses.events,
+      env: { tz: Intl.DateTimeFormat().resolvedOptions().timeZone, ua: navigator.userAgent, url: location.href.split('?')[0] },
+    };
+    var hash = await crypto.subtle.digest('SHA-256', enc.encode(JSON.stringify(payload)));
+    var badge = badgeFrom(hash);
+    payload.badge = badge;
+
+    /* header travels in the clear but is authenticated (AES-GCM additional data) */
+    var header = { hsct: 1, kit: KIT, lesson: cfg.id, title: cfg.title, student: ses.name, finished: payload.finished, badge: badge };
+    var pub = await crypto.subtle.importKey('jwk', PUBLIC_KEY, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['wrapKey']);
+    var aes = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt']);
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    var data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv, additionalData: enc.encode(JSON.stringify(header)) }, aes, enc.encode(JSON.stringify(payload)));
+    var wrapped = await crypto.subtle.wrapKey('raw', aes, pub, { name: 'RSA-OAEP' });
+    var envelope = {};
+    for (var k in header) envelope[k] = header[k];
+    envelope.key = b64(wrapped); envelope.iv = b64(iv); envelope.data = b64(data);
+
+    result = {
+      badge: badge,
+      filename: 'HSCT_' + cfg.id + '_' + slug(ses.name) + '_' + stamp(finished) + '.hsct',
+      text: JSON.stringify(envelope),
+      payload: payload,
+    };
+    return result;
+  }
+
+  function download() {
+    if (!result) throw new Error('Nothing to download yet — call HSCT.finish first');
+    var blob = new Blob([result.text], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = result.filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+    return result.filename;
+  }
+
+  async function copyCode() {
+    if (!result) throw new Error('Nothing to copy yet — call HSCT.finish first');
+    try { await navigator.clipboard.writeText(result.text); return true; }
+    catch (e) {
+      var ta = document.createElement('textarea'); ta.value = result.text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      var ok = false; try { ok = document.execCommand('copy'); } catch (e2) {}
+      ta.remove(); return ok;
+    }
+  }
+
+  /* ---------- the standard end screen ---------- */
+  var CSS = '.hsct-card{--hsct-ink:#101a3f;--hsct-mute:#5b6485;--hsct-line:#d3d9ee;--hsct-accent:var(--hsct-color,#1f3fae);--hsct-ok:#1f7a3d;--hsct-bad:#b3261e;'
+    + 'font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;color:var(--hsct-ink);background:#fff;border:1px solid var(--hsct-line);border-left:6px solid var(--hsct-accent);border-radius:12px;padding:20px 22px;margin:20px 0;line-height:1.45}'
+    + '.hsct-card *{box-sizing:border-box}.hsct-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--hsct-mute)}.hsct-head b{color:var(--hsct-accent)}'
+    + '.hsct-name{font-size:22px;font-weight:700;margin:6px 0 2px}.hsct-score{font-size:15px;margin:0 0 12px}.hsct-score b{font-size:28px;font-weight:700}.hsct-score .hsct-tier{display:inline-block;margin-left:8px;padding:2px 10px;border-radius:999px;background:var(--hsct-accent);color:#fff;font-size:13px;font-weight:600;vertical-align:middle}'
+    + '.hsct-facts{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0 0 14px;font-size:14px}.hsct-facts dt{color:var(--hsct-mute)}.hsct-facts dd{margin:0}.hsct-facts code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;letter-spacing:.08em;font-weight:600}'
+    + '.hsct-secs{width:100%;border-collapse:collapse;font-size:14px;margin:0 0 14px}.hsct-secs td{padding:5px 0;border-top:1px solid var(--hsct-line)}.hsct-secs td:last-child{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}'
+    + '.hsct-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.hsct-btn{font:600 15px "IBM Plex Sans","Segoe UI",system-ui,sans-serif;padding:11px 18px;border-radius:8px;border:2px solid var(--hsct-accent);background:var(--hsct-accent);color:#fff;cursor:pointer}.hsct-btn:hover{filter:brightness(.92)}.hsct-btn.hsct-alt{background:transparent;color:var(--hsct-accent)}.hsct-btn:focus-visible{outline:3px solid #a9b7ea;outline-offset:2px}.hsct-btn:disabled{opacity:.55;cursor:wait}'
+    + '.hsct-note{margin:12px 0 0;font-size:13.5px;color:var(--hsct-mute)}.hsct-status{margin:8px 0 0;font-size:14px;min-height:1.4em}.hsct-status.ok{color:var(--hsct-ok)}.hsct-status.bad{color:var(--hsct-bad)}'
+    + '@media print{.hsct-actions,.hsct-note,.hsct-status{display:none}}';
+
+  function injectCss() {
+    if (document.getElementById('hsct-kit-css')) return;
+    var s = document.createElement('style'); s.id = 'hsct-kit-css'; s.textContent = CSS; document.head.appendChild(s);
+  }
+
+  /* Renders the card into `el` and seals the result. Resolves with the result. */
+  async function endScreen(el, opts) {
+    if (typeof el === 'string') el = document.querySelector(el);
+    if (!el) throw new Error('HSCT.endScreen needs an element');
+    injectCss();
+    opts = opts || {};
+    var elp = elapsed();
+    var possible = Number(opts.possible || cfg.possible || 0), earned = Number(opts.earned || 0);
+    var pct = possible ? Math.round(100 * earned / possible) : null;
+    var secs = (opts.sections || []).map(function (s) {
+      var right = s.status != null ? esc(s.status) : (s.possible != null ? esc(s.earned) + ' / ' + esc(s.possible) : esc(s.earned));
+      return '<tr><td>' + esc(s.title) + '</td><td>' + right + '</td></tr>';
+    }).join('');
+    el.innerHTML = '<div class="hsct-card">'
+      + '<div class="hsct-head"><span><b>HSCT TechHub</b> result</span><span>' + esc(cfg.title) + '</span></div>'
+      + '<div class="hsct-name">' + esc(ses ? ses.name : '') + '</div>'
+      + '<div class="hsct-score"><b>' + esc(earned) + '</b> / ' + esc(possible) + (pct != null ? ' <span>(' + pct + '%)</span>' : '') + (opts.tier ? '<span class="hsct-tier">' + esc(opts.tier) + '</span>' : '') + '</div>'
+      + '<dl class="hsct-facts"><dt>Finished</dt><dd>' + esc(fmtDate(new Date().toISOString())) + '</dd>'
+      + '<dt>Time taken</dt><dd>' + esc(fmtDuration(elp.seconds)) + (elp.activeSeconds < elp.seconds - 60 ? ' <span style="color:var(--hsct-mute)">(' + esc(fmtDuration(elp.activeSeconds)) + ' with the tab open)</span>' : '') + '</dd>'
+      + '<dt>Code</dt><dd><code class="hsct-badge">........</code></dd></dl>'
+      + (secs ? '<table class="hsct-secs"><tbody>' + secs + '</tbody></table>' : '')
+      + '<div class="hsct-actions"><button type="button" class="hsct-btn hsct-dl" disabled>Download your result file</button><button type="button" class="hsct-btn hsct-alt hsct-copy" disabled>Copy result code</button></div>'
+      + '<p class="hsct-note">' + esc(opts.note || 'Submit the file in Google Classroom. If downloads are blocked, copy the code and paste it instead. The file is encrypted: only your teacher can open it.') + '</p>'
+      + '<p class="hsct-status" aria-live="polite">Preparing your result file…</p>'
+      + '</div>';
+    var status = el.querySelector('.hsct-status'), dl = el.querySelector('.hsct-dl'), cp = el.querySelector('.hsct-copy');
+    try {
+      var r = await finish(opts);
+      el.querySelector('.hsct-badge').textContent = r.badge;
+      status.textContent = 'Ready: ' + r.filename;
+      dl.disabled = false; cp.disabled = false;
+      dl.onclick = function () { try { download(); status.className = 'hsct-status ok'; status.textContent = 'Downloaded ' + r.filename + ' — now submit it.'; } catch (e) { status.className = 'hsct-status bad'; status.textContent = e.message; } };
+      cp.onclick = async function () { var ok = await copyCode(); status.className = 'hsct-status ' + (ok ? 'ok' : 'bad'); status.textContent = ok ? 'Code copied — paste it into your submission.' : 'Copy failed. Use the download instead.'; };
+      return r;
+    } catch (e) {
+      status.className = 'hsct-status bad';
+      status.textContent = e.message || String(e);
+      throw e;
+    }
+  }
+
+  var HSCT = {
+    kit: KIT, verifyUrl: VERIFY_URL,
+    lesson: lesson, start: start, log: log, elapsed: elapsed,
+    finish: finish, download: download, copyCode: copyCode, endScreen: endScreen,
+    get result() { return result; },
+    get session() { return ses ? { name: ses.name, started: ses.started } : null; },
+    fmtDuration: fmtDuration,
+  };
+  window.HSCT = HSCT;
+})();
+</script>
+<!-- HSCT KIT END -->
+
+<script>
+HSCT.lesson({ id: 'room333-survive-the-week', title: 'Room 333: survive the week', version: '1.1', course: 'workplace-challenge', possible: 100 });
+const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday"];
+const SECTIONS = {
+  1:"Classroom rules", 2:"Phones, devices and hall passes", 3:"Lateness", 4:"Absences",
+  5:"Projects and presentations", 6:"Academic integrity", 7:"AI usage policy", 8:"How you are graded"
+};
+const FLAGS = { late:"Late", phone:"Phone out", disq:"Work disqualified", call:"Call home", missing:"Missing work", referral:"Referral" };
+
+const SCENES = [
+/* MONDAY */
+{ day:0, time:"8:14 AM", title:"The bell",
+  text:"The bell rings in one minute. You're in the hall talking about a game that just dropped. Your seat in Room 333 is thirty seconds away.",
+  choices:[
+    { t:"Wrap it up, get to your seat, notebook out and logged in before the bell.", v:"best", rep:3,
+      fb:"That's the standard: in your seat, materials out, when the bell rings. Not after." },
+    { t:"Finish the conversation. It's a minute or two. Slide in right after the bell.", v:"bad", rep:-10, flags:["late"],
+      fb:"You're late. Enter quietly, sign in, get to work. And you're not leaving this room for the rest of the period unless it's an emergency. Keep that in mind." },
+    { t:"Walk in on time but leave your bag packed. You'll pull stuff out when class actually starts.", v:"ok", rep:0,
+      fb:"On time isn't the whole rule. Ready means materials out when the bell rings, not when you feel like it." }
+  ],
+  rule:{ n:1, q:"Be on time and be ready. Be in your seat with your materials out when the bell rings." },
+  discuss:"What counts as ready in a computer lab? Is being logged in enough?" },
+
+{ day:0, time:"8:26 AM", title:"The buzz",
+  text:"Ten minutes in. Your pocket buzzes twice. It's probably the group chat about tonight.",
+  choices:[
+    { t:"Leave it. The phone stays off and away until you're out of the building.", v:"best", rep:3,
+      fb:"Correct. Phones are a school-wide no, and Room 333 has no exceptions: not out, not used, not charged." },
+    { t:"Check it under the desk. Two seconds, nobody sees.", v:"bad", rep:-12, flags:["phone"],
+      fb:"Somebody always sees. Not out is the entire rule. There's no quick-check exception, and you just handed Mr. Cruz a reason to hold your phone for the day." },
+    { t:"Tell Mr. Cruz you need it to look up a font for the project.", v:"bad", rep:-6,
+      fb:"Doesn't fly. If a project needs something a phone would do, Mr. Cruz provides the alternative: school camera, tablet, emulator, class device. The phone never comes out." }
+  ],
+  rule:{ n:2, q:"Cell phones are not allowed in school. This is a school-wide rule and it applies in Room 333 with no exceptions. Phones may not be out, used, or charged in class." },
+  discuss:"Name three project tasks a phone would normally do, and the Room 333 alternative for each." },
+
+{ day:0, time:"8:40 AM", title:"Stop and listen",
+  text:"You're one keystroke from fixing a CSS bug that's been eating your morning. Mr. Cruz: 'Everybody, stop and listen.'",
+  choices:[
+    { t:"Hands off the keyboard. Eyes up.", v:"best", rep:4,
+      fb:"First time, every time. The line will still be there in ninety seconds." },
+    { t:"Finish the line first. Five seconds, tops.", v:"bad", rep:-6,
+      fb:"Five seconds becomes thirty, and the whole room waits on you. Stop means hands off, immediately." },
+    { t:"Keep typing quietly. You can listen and type.", v:"bad", rep:-10,
+      fb:"You can't, and Mr. Cruz knows it. That's follow-instructions-the-first-time and stay-on-task broken in one move." }
+  ],
+  rule:{ n:1, q:"Follow instructions the first time. If I ask the room to stop and listen, hands off keyboards." },
+  discuss:"Why does a stop-and-listen rule matter more in a lab than in a lecture room?" },
+
+{ day:0, time:"8:52 AM", title:"The pass",
+  text:"Halfway through the period. Mr. Cruz is walking the room through the project rubric. You need the bathroom, and nobody else is out.",
+  choices:[
+    { t:"Wait until he's done explaining, then sign out.", v:"best", rep:4,
+      fb:"No passes during instruction. Once it's work time, you sign out, go, and sign back in. One student at a time." },
+    { t:"Raise your hand now and ask. It's urgent-ish.", v:"ok", rep:-3,
+      fb:"Not during instruction. Hold it for the few minutes it takes to finish the rubric unless it's a real emergency." },
+    { t:"Slip out. You'll be back before anyone notices.", v:"bad", rep:-12,
+      fb:"There's a sign-out sheet for a reason. Leaving without signing out is how you lose pass privileges entirely." }
+  ],
+  rule:{ n:2, q:"Hall passes: one student out at a time, sign out and sign in, and not during the first or last 10 minutes of class or during instruction." },
+  discuss:"Is the no-pass-after-lateness rule fair? What is it trying to prevent?",
+  alts:[{ when:"late",
+    text:"Halfway through the period. You need the bathroom. But you walked in late today. Remember what that means.",
+    choices:[
+      { t:"Hold it. You were late, so you're not leaving unless it's an emergency.", v:"best", rep:4,
+        fb:"You remembered. Lateness costs you the pass for the rest of the period. Next time, be here before the bell." },
+      { t:"Ask for a pass anyway. Maybe he forgot you were late.", v:"bad", rep:-8,
+        fb:"He didn't. Late means no hall passes, bathroom, or water for the rest of the period unless it's an emergency." },
+      { t:"Slip out. You'll be back before anyone notices.", v:"bad", rep:-15,
+        fb:"Late, and now out of the room without a pass. That's a parent-contact conversation." }
+    ],
+    rule:{ n:3, q:"If you arrive late, you will not be allowed to leave the room for the rest of the period (no hall passes, bathroom, water, etc.) unless it is an emergency." }
+  }] },
+
+{ day:0, time:"9:04 AM", title:"Two minutes left",
+  text:"Half the room is already packed up and drifting toward the door. Your station is still logged in.",
+  choices:[
+    { t:"Log out, push in the chair, stay seated until Mr. Cruz releases the class.", v:"best", rep:3,
+      fb:"That's the exit routine: station clean, logged out, seated. Dismissal is by Mr. Cruz, not the bell." },
+    { t:"Pack up and stand by the door. The bell is the bell.", v:"bad", rep:-8,
+      fb:"The bell is not the bell in Room 333. And the next student at your logged-in station now has your account." },
+    { t:"Stay seated but leave the station logged in. Someone else uses it next period anyway.", v:"ok", rep:-3,
+      fb:"Half right. Logging out is part of leaving the room the way you found it, and it protects your own account." }
+  ],
+  rule:{ n:1, q:"Clean up your station. Log out, push in your chair, and leave the room the way you found it. Dismissal is by me, not the bell." },
+  discuss:"What's the actual risk of leaving a school computer logged in?" },
+
+/* TUESDAY */
+{ day:1, time:"8:15 AM", title:"Dead key",
+  text:"You log in and the E key on your keyboard is dead. Whoever sat here last period is long gone.",
+  choices:[
+    { t:"Tell Mr. Cruz right away.", v:"best", rep:3,
+      fb:"You will not be blamed for reporting it. Reported equipment gets fixed. Unreported equipment gets blamed on the next person." },
+    { t:"Say nothing. You don't want it pinned on you.", v:"bad", rep:-6,
+      fb:"Now it's your problem for the whole period, and when it does get noticed, you're the last one who used it." },
+    { t:"Quietly swap it with the keyboard from the empty station next door.", v:"bad", rep:-10,
+      fb:"Now two stations are wrong and nobody knows why. Report it." }
+  ],
+  rule:{ n:2, q:"Report broken equipment immediately. You will not be blamed for reporting it." },
+  discuss:"Why would a teacher promise you won't be blamed? What happens if students don't believe it?" },
+
+{ day:1, time:"8:20 AM", title:"The can",
+  text:"You brought a can of something caffeinated. The only free spot to set it is right next to your keyboard.",
+  choices:[
+    { t:"It stays in your bag until class is over.", v:"best", rep:3,
+      fb:"Water in a closed bottle is the only drink that gets near the equipment. Everything else waits." },
+    { t:"Set it by the keyboard. You'll be careful.", v:"bad", rep:-8,
+      fb:"One bump, one dead station, one very unhappy tech department. Food and drinks stay away from the equipment." }
+  ],
+  rule:{ n:1, q:"Food and drinks stay away from the equipment. Water in a closed bottle is fine." },
+  discuss:"What's in this room that's expensive or hard to replace?" },
+
+{ day:1, time:"8:30 AM", title:"Headphones",
+  text:"Mr. Cruz gives the room 25 minutes of heads-down work time and says headphones are fine.",
+  choices:[
+    { t:"One ear in, one ear out.", v:"best", rep:3,
+      fb:"That's the rule. Focus music is fine, but when instructions start you need to hear them without anyone tapping your shoulder." },
+    { t:"Both ears in, volume up. Real focus.", v:"bad", rep:-5,
+      fb:"Headphones-when-allowed comes with a condition: one ear out. Instructions can start at any moment." },
+    { t:"Both ears in. You'll pull them out when you notice Mr. Cruz talking.", v:"ok", rep:-2,
+      fb:"You'll miss the first sentence every time. One ear out." }
+  ],
+  rule:{ n:2, q:"Headphones only when I allow them for focused work; one ear out when instructions are being given." },
+  discuss:"When has 'I didn't hear the instructions' cost you something?" },
+
+{ day:1, time:"8:45 AM", title:"Falling through the floor",
+  text:"Your player keeps falling through the floor. You paste the collision code into an AI tool and it hands back a fixed version. It works.",
+  choices:[
+    { t:"Use it, add a comment saying which tool and what it did, and make sure you can explain every line.", v:"best", rep:5, flags:["aiCited"],
+      fb:"This is the open AI policy working as intended: you may use it, you must cite it, and you have to own it." },
+    { t:"Paste it in. It works. Moving on.", v:"bad", rep:-8, flags:["aiUncited"],
+      fb:"You used AI without citing it. Nobody knows yet. Hold that thought." },
+    { t:"Don't use it. AI feels like cheating.", v:"ok", rep:0, flags:["aiSkip"],
+      fb:"Not a violation, but this is a CTE class. AI tools are part of the industry you're training for. Cited AI use isn't cheating. Uncited is." }
+  ],
+  rule:{ n:7, q:"You must cite every use of AI. State which tool you used and what it did for you." },
+  discuss:"Where's the line between 'AI helped me debug' and 'AI did my assignment'?" },
+
+{ day:1, time:"8:58 AM", title:"Walk me through it",
+  text:"Mr. Cruz stops at your station. 'Nice fix. Walk me through how the collision works now.'",
+  choices:[
+    { t:"Explain it line by line, including what you changed to fit your tile system.", v:"best", rep:4,
+      fb:"You can explain it, modify it, and defend it. That's what owning your work looks like." },
+    { t:"'Honestly, the AI wrote it. It just works.'", v:"bad", rep:-8,
+      fb:"You cited it, which is good. But if you can't explain it, you don't own it. Cited AI you can't explain still isn't your work." }
+  ],
+  rule:{ n:7, q:"AI is a tool, not a substitute. You must be able to explain, modify, and defend anything you submit. If you can't explain it, you don't own it." },
+  discuss:"Should a teacher be able to tell whether you understand code you submitted? How?",
+  alts:[
+    { when:"aiUncited",
+      text:"Mr. Cruz stops at your station. 'Nice fix. Walk me through how the collision works now.' You didn't cite the AI, and you're not totally sure what it does.",
+      choices:[
+        { t:"Come clean: an AI tool wrote it, you didn't cite it, and you can't fully explain it.", v:"ok", rep:-4, grade:-12, flags:["disq","call"],
+          fb:"Honesty matters here. But uncited AI is treated like plagiarism: the work is disqualified and there's a call home. The fix was citing it at 8:45." },
+        { t:"Bluff. Point at the code and say some words about vectors.", v:"bad", rep:-20, grade:-12, flags:["disq","call"],
+          fb:"He's been debugging collision code longer than you've been alive. Uncited AI plus a bluff: work disqualified, call home, and your credibility with him is gone." }
+      ],
+      rule:{ n:7, q:"Uncited AI use is treated like plagiarism. Work submitted with uncited AI can be disqualified and receive no credit." } },
+    { when:"aiSkip",
+      text:"Mr. Cruz stops at your station. Your player is still falling through the floor. 'Walk me through what you've tried.'",
+      choices:[
+        { t:"Show what you tried and ask if there's a smarter way to debug it.", v:"best", rep:3,
+          fb:"Asking is always fine. And yes, there was a smarter way: use the AI tool and cite it." },
+        { t:"Say you're close and you'll figure it out.", v:"ok", rep:-2,
+          fb:"Maybe. But you're burning class time avoiding a tool the class explicitly allows." }
+      ],
+      rule:{ n:7, q:"You may use AI tools to help you learn, plan, debug, and build unless I specifically tell you not to for a given assignment or assessment." } }
+  ] },
+
+{ day:1, time:"9:02 AM", title:"Send me your CSS",
+  text:"Jaden's layout is a disaster and the checkpoint closes in ten minutes. 'Just send me your CSS file, I'll change the colors.'",
+  choices:[
+    { t:"Pull up a chair and walk him through flexbox so he can fix his own.", v:"best", rep:5,
+      fb:"Collaboration is encouraged; copying is not. Helping someone learn it is the version of help this class wants." },
+    { t:"Send it. He's your friend and it's just CSS.", v:"bad", rep:-15, grade:-12, flags:["disq","call"],
+      fb:"Letting someone copy your work is the same violation as copying. Both files get disqualified, both of you get a call home." },
+    { t:"'Figure it out yourself.'", v:"ok", rep:0,
+      fb:"Not a violation. But communicate professionally and help others learn are rules too. Be a coworker, not a wall." }
+  ],
+  rule:{ n:6, q:"Letting someone copy your work, or submitting the same work for two different assignments without permission, is a violation of academic integrity." },
+  discuss:"Where's the line between helping and copying when you're both stuck at 9:02?" },
+
+/* WEDNESDAY */
+{ day:2, time:"6:40 PM", title:"Out sick",
+  text:"You were out sick today. It's evening. Your group did a big chunk of the project without you, and there was an exit slip.",
+  choices:[
+    { t:"Open Google Classroom now, see what you missed, message Mr. Cruz and a groupmate.", v:"best", rep:5,
+      fb:"You're responsible for everything you miss, and you check the same day. Missed in-class work is made up on a schedule Mr. Cruz sets, so the sooner you ask, the better that schedule is." },
+    { t:"Wait. Mr. Cruz will tell you what you missed tomorrow.", v:"bad", rep:-8,
+      fb:"He won't chase you. Google Classroom is the official hub. Check it daily, especially on the days you're not there." },
+    { t:"It's one day. You'll catch up whenever.", v:"bad", rep:-12, grade:-10, flags:["missing"],
+      fb:"Whenever becomes never. Absences don't lower your grade. Missing work does. That exit slip is now a zero." }
+  ],
+  rule:{ n:4, q:"You are responsible for every assignment you miss. Check Google Classroom the same day and reach out to me or a classmate." },
+  discuss:"Why can't hands-on lab work always be made up at home?" },
+
+/* THURSDAY */
+{ day:3, time:"8:25 AM", title:"The template",
+  text:"You find an open-source game template on GitHub that does about half of what your project needs, license and all.",
+  choices:[
+    { t:"Use it, credit it in a code comment and the write-up, and be ready to explain what you kept and changed.", v:"best", rep:4,
+      fb:"Outside resources are how real developers work. Credit your sources and be able to explain what you used and why. That's the whole rule." },
+    { t:"Use it and keep quiet. Everybody uses templates.", v:"bad", rep:-15, grade:-12, flags:["disq","call"],
+      fb:"Copying code from a website and presenting it as your own is on the list. Using it was fine. Hiding it is what got the work disqualified." },
+    { t:"Skip it. Build all of it yourself from scratch.", v:"ok", rep:0,
+      fb:"Allowed, but you just chose to do twice the work to avoid writing one credit line." }
+  ],
+  rule:{ n:6, q:"Using outside resources honestly is fine. The rule is simple: credit your sources and be able to explain what you used and why." },
+  discuss:"What does crediting a source look like in a code file versus a slide deck?" },
+
+{ day:3, time:"8:50 AM", title:"The ghost",
+  text:"The group task breakdown is due. Priya was supposed to do the sprite animations. She's been on YouTube all week.",
+  choices:[
+    { t:"Talk to her directly first, then fill out the task breakdown and peer evaluation honestly.", v:"best", rep:5,
+      fb:"Professional move: address it with her, then document what actually happened. Peer evaluations are part of the collaborative-work grade for exactly this reason." },
+    { t:"Do her part yourself and put her name on it so nobody gets in trouble.", v:"bad", rep:-10,
+      fb:"She just put her name on work she didn't do. That's an integrity violation, and you helped it happen. A member who doesn't contribute doesn't get the group's grade. The breakdown exists so this doesn't land on you." },
+    { t:"Say nothing, submit the breakdown with her name on the animations, and torch her in the peer evals.", v:"ok", rep:-5,
+      fb:"The evals will catch it, but you filed a task breakdown you know is false. Talk to her first, then tell the truth on paper." }
+  ],
+  rule:{ n:5, q:"Group accountability: groups submit a task breakdown showing who did what. Peer evaluations are part of your collaborative-work grade, and a member who does not contribute will not receive the group's grade." },
+  discuss:"You're on a new team for every project this year. How do you handle a teammate who isn't pulling weight, before it's too late?" },
+
+{ day:3, time:"9:00 AM", title:"Two days late",
+  text:"Your individual reflection was due Tuesday night. You forgot. It's Thursday.",
+  choices:[
+    { t:"Submit it now. Late is better than missing.", v:"best", rep:3, grade:-3,
+      fb:"Late work can take up to a 25% penalty at Mr. Cruz's discretion. A zero takes 100%. Late is always better than missing." },
+    { t:"Ask Mr. Cruz privately what the penalty is, then submit it today.", v:"ok", rep:1, grade:-3,
+      fb:"Fine. Asking is always allowed. Just make sure the asking doesn't turn into another day of not submitting." },
+    { t:"Skip it. It's getting marked down anyway.", v:"bad", rep:-10, grade:-10, flags:["missing"],
+      fb:"You traded a 75 for a 0. Missing work is what sinks grades in this class." }
+  ],
+  rule:{ n:8, q:"Late work: late or incomplete submissions may receive a penalty of up to 25%, at my discretion. Late is always better than missing." },
+  discuss:"Do the math: what's the difference between a 25% penalty and a zero on your marking-period grade?" },
+
+/* FRIDAY */
+{ day:4, time:"8:20 AM", title:"Screens down",
+  text:"Presentation day. Another group is up. You just noticed a bug in your own project, and you're presenting third.",
+  choices:[
+    { t:"Screens down, eyes up. Watch, then ask them a real question at the end.", v:"best", rep:4,
+      fb:"How you treat other presenters is part of your participation grade. And you'll want the same attention when you're up there." },
+    { t:"Fix the bug quietly. You're not bothering anyone.", v:"bad", rep:-10,
+      fb:"Side work during presentations is exactly what screens-down-eyes-up forbids. The presenters can see your screen glow from the front of the room." },
+    { t:"Watch, but whisper to a groupmate about the bug so they can fix it.", v:"bad", rep:-6,
+      fb:"No talking, no side work. Now two people aren't watching, and one of them is on a screen." }
+  ],
+  rule:{ n:5, q:"Audience etiquette: screens down, eyes up. No talking, no side work, no working on other things. How you treat other presenters is part of your participation grade." },
+  discuss:"What does a good audience actually do during a presentation?" },
+
+{ day:4, time:"8:40 AM", title:"Explain the physics",
+  text:"You're up. You built the UI; Marcus built the physics. During Q and A, Mr. Cruz looks at you: 'Explain how the jump arc works.'",
+  choices:[
+    { t:"Explain it. You made Marcus walk you through it last night for exactly this reason.", v:"best", rep:5,
+      fb:"Every group member presents, and every member can explain any part, not just their own piece. You prepared like it was real." },
+    { t:"'That was Marcus's part.'", v:"bad", rep:-10,
+      fb:"Not an answer in this class. Each person must be able to explain any part of the project. That's the presentation-skills bar, and it rises every time." },
+    { t:"Read the physics bullet points off the slide, word for word.", v:"ok", rep:-4,
+      fb:"You said words, but no reading straight off the slides is on the etiquette list. Know it well enough to say it in your own words." }
+  ],
+  rule:{ n:5, q:"Every group member presents. Each person must speak and must be able to explain any part of the project, not just their own piece." },
+  discuss:"How do you prepare to explain a part of a project you didn't build?" },
+
+{ day:4, time:"9:00 AM", title:"The 72",
+  text:"Grades post on Google Classroom. Your project got a 72. You put real hours into it.",
+  choices:[
+    { t:"Ask Mr. Cruz for a private explanation of the grade, then use the revision window.", v:"best", rep:4, grade:6,
+      fb:"You always have the right to a private explanation. And a grade shows where you are now, not a final verdict. Revisions, re-dos, and retakes exist. Use them." },
+    { t:"Say something about it in front of the whole class.", v:"bad", rep:-10,
+      fb:"Not professional, and it doesn't change the grade. A private explanation is a right. A public complaint isn't the way to claim it." },
+    { t:"Take the 72 and move on.", v:"ok", rep:0,
+      fb:"Allowed, but you left points on the table. Growth mindset isn't a poster. It's the re-do you didn't submit." }
+  ],
+  rule:{ n:8, q:"Growth mindset: you will have opportunities to improve through revisions, re-dos, targeted retakes, and extra credit. You always have the right to a private explanation of your grade." },
+  discuss:"What's the difference between asking about a grade and arguing about it?" }
+];
+
+const app = document.getElementById("app");
+let S, teacher = false, lastName = "";
+
+function reset(){ S = { rep:30, grade:90, flags:new Set(), i:0, secs:{}, picked:null, stampNew:null, extra:"" }; }
+function clamp(n){ return Math.max(0, Math.min(100, Math.round(n))); }
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function resolve(sc){
+  if (sc.alts) for (const a of sc.alts) if (S.flags.has(a.when)) return Object.assign({}, sc, a);
+  return sc;
+}
+
+function hud(){
+  const done = S.i >= SCENES.length;
+  const curDay = done ? 5 : SCENES[S.i].day;
+  const days = DAYS.map((d,k) => `<span class="day ${k===curDay?"on":k<curDay?"done":""}">${d.slice(0,3)}</span>`).join("");
+  const repC = S.rep < 35 ? "bad" : S.rep < 70 ? "warn" : "";
+  const grC  = S.grade < 65 ? "bad" : S.grade < 80 ? "warn" : "";
+  const stamps = [...S.flags].filter(f => FLAGS[f]).map(f => `<span class="stamp ${f===S.stampNew?"new":""}">${FLAGS[f]}</span>`).join("");
+  return `<header class="hud">
+    <div class="hud-row"><span class="brand">Room 333: survive the week</span><nav class="days" aria-label="Days">${days}</nav></div>
+    <div class="meters">
+      <div class="meter"><label>Reputation with Mr. Cruz <b>${S.rep}</b></label><div class="bar"><i class="${repC}" style="width:${S.rep}%"></i></div></div>
+      <div class="meter"><label>Projected grade <b>${S.grade}</b></label><div class="bar"><i class="${grC}" style="width:${S.grade}%"></i></div></div>
+      <div class="record" aria-label="Your record">${stamps || '<span class="hint">Clean record</span>'}</div>
+    </div></header>`;
+}
+
+function renderStart(){
+  app.innerHTML = `<main class="card" style="margin-top:40px">
+    <p class="when">Web / Game Design and IT, Room 333</p>
+    <h1>Survive the week in Room 333</h1>
+    <p>Five days. Eighteen decisions. Every one of them is covered in the class rules you're about to sign. Your reputation with Mr. Cruz starts at 30 and your grade starts at 90. Reputation is built slowly and lost fast. Keep both up.</p>
+    <p>Consequences carry forward. Show up late Monday and you'll feel it later that period. Skip a citation Tuesday and it comes back around.</p>
+    <label class="toggle"><input type="checkbox" id="tm" ${teacher?"checked":""}> Teacher mode: show a discussion prompt after each scene</label>
+    <div class="name-row"><input id="name" type="text" placeholder="Your full name (goes on your result)" autocomplete="off" maxlength="60" value="${esc(lastName)}"><span class="err" id="name-err">Enter your name first.</span></div>
+    <div class="actions"><span class="hint">Keys 1 to 3 pick an answer. Enter moves on.</span><button class="btn" id="start">Start Monday</button></div>
+  </main>`;
+  document.getElementById("name").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("start").click(); });
+}
+
+function renderScene(){
+  const sc = resolve(SCENES[S.i]);
+  const p = S.picked;
+  const choices = sc.choices.map((c,k) => {
+    const cls = p == null ? "" : k === p ? `picked ${c.v}` : "dim";
+    return `<button class="choice ${cls}" data-k="${k}" ${p!=null?"disabled":""}><span class="k">${k+1}</span><span>${esc(c.t)}</span></button>`;
+  }).join("");
+  let fb = "";
+  if (p != null){
+    const c = sc.choices[p];
+    const label = { best:"Solid call", ok:"Not quite", bad:"Violation" }[c.v];
+    const d = [];
+    if (c.rep) d.push(`rep ${c.rep>0?"+":""}${c.rep}`);
+    if (c.grade) d.push(`grade ${c.grade>0?"+":""}${c.grade}`);
+    fb = `<div class="verdict ${c.v}">${label}${d.map(x=>`<span class="delta">${x}</span>`).join("")}</div>
+      <p>${esc(c.fb)}${S.extra ? " " + esc(S.extra) : ""}</p>
+      <div class="rule"><small>Section ${sc.rule.n}: ${SECTIONS[sc.rule.n]}</small>${esc(sc.rule.q)}</div>
+      ${teacher && sc.discuss ? `<div class="discuss"><small>Talk it out</small>${esc(sc.discuss)}</div>` : ""}
+      <div class="actions"><span class="hint">${S.i+1} of ${SCENES.length}</span><button class="btn" id="next">${S.i === SCENES.length-1 ? "See your week" : "Next"}</button></div>`;
+  }
+  app.innerHTML = hud() + `<main class="card">
+    <p class="when">${DAYS[sc.day]}, ${sc.time}</p>
+    <h2>${esc(sc.title)}</h2>
+    <p>${esc(sc.text)}</p>
+    <div class="choices">${choices}</div>${fb}</main>`;
+  if (p != null) document.getElementById("next").focus({ preventScroll:true });
+}
+
+function renderEnd(){
+  const r = S.rep;
+  const tier = r >= 90 ? ["Model coworker", "Mr. Cruz would put you on any team in this room. Sign the acknowledgment and mean it."]
+    : r >= 70 ? ["Solid week", "You know most of the rules cold. Reread the flagged sections and you're there."]
+    : r >= 45 ? ["Rough week", "Nothing unrecoverable, but the rules aren't landing yet. Read the flagged sections before you sign anything."]
+    : ["Meeting with Mr. Cruz", "There's a parent call in your future. Go back to the rules, all eight sections, before Monday."];
+  const secs = Object.keys(SECTIONS).map(n => {
+    const v = S.secs[n] || "best";
+    const t = { best:"Solid", ok:"Close", bad:`Reread section ${n}` }[v];
+    return `<div class="sec"><span>${n}. ${SECTIONS[n]}</span><span class="tag ${v}">${t}</span></div>`;
+  }).join("");
+  const stamps = [...S.flags].filter(f => FLAGS[f]).map(f => `<span class="stamp">${FLAGS[f]}</span>`).join("") || '<span class="hint">Clean</span>';
+  app.innerHTML = hud() + `<main class="card">
+    <p class="when">Friday, 9:05 AM</p>
+    <h1>${tier[0]}</h1>
+    <p>${tier[1]}</p>
+    <div class="grid">
+      <div class="metric"><small>Reputation</small><b>${S.rep}</b></div>
+      <div class="metric"><small>Projected grade</small><b>${S.grade}</b></div>
+      <div class="metric"><small>Record</small><div class="record" style="margin-top:6px">${stamps}</div></div>
+    </div>
+    <h2 style="font-size:20px">Section by section</h2>
+    <div class="secs">${secs}</div>
+    <div class="sign">Acknowledgment: "I have read and understand Mr. Cruz's class rules and expectations for the 2026–2027 school year." If you signed that today, would you mean it?</div>
+    <div id="hsct-result"></div>
+    <div class="actions"><button class="btn ghost" id="again">Play again</button></div>
+  </main>`;
+  /* Seal the result file and render the standard card. Score = reputation out of 100. */
+  HSCT.endScreen("#hsct-result", {
+    earned: S.rep, possible: 100, tier: tier[0],
+    sections: Object.keys(SECTIONS).map(n => ({ id: "sec" + n, title: n + ". " + SECTIONS[n], status: { best: "Solid", ok: "Close", bad: "Reread" }[S.secs[n] || "best"] })),
+    extra: { grade: S.grade, flags: [...S.flags], teacherMode: teacher },
+  });
+}
+
+function choose(k){
+  const sc = resolve(SCENES[S.i]);
+  const c = sc.choices[k];
+  if (!c || S.picked != null) return;
+  S.picked = k; S.extra = ""; S.stampNew = null;
+  S.rep = clamp(S.rep + (c.rep || 0));
+  S.grade = clamp(S.grade + (c.grade || 0));
+  (c.flags || []).forEach(f => {
+    if (f === "disq" && S.flags.has("disq")) {
+      S.flags.add("referral"); S.stampNew = "referral";
+      S.extra = "Second integrity violation. That's a referral to administration under the Discipline Code, and it can affect CTE certification eligibility and recommendation letters.";
+    }
+    if (!S.flags.has(f)) { S.flags.add(f); if (FLAGS[f] && !S.stampNew) S.stampNew = f; }
+  });
+  const rank = { best:0, ok:1, bad:2 }, sec = sc.rule.n;
+  if (!(sec in S.secs) || rank[c.v] > rank[S.secs[sec]]) S.secs[sec] = c.v;
+  HSCT.log("choice", { scene: S.i, day: DAYS[sc.day], section: sec, picked: k, verdict: c.v, rep: S.rep, grade: S.grade, flags: [...S.flags] });
+  renderScene();
+}
+
+function next(){
+  S.i++; S.picked = null; S.stampNew = null; S.extra = "";
+  window.scrollTo({ top:0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  S.i >= SCENES.length ? renderEnd() : renderScene();
+}
+
+app.addEventListener("click", e => {
+  const ch = e.target.closest(".choice");
+  if (ch && !ch.disabled) return choose(+ch.dataset.k);
+  if (e.target.id === "next") return next();
+  if (e.target.id === "start") {
+    const name = document.getElementById("name").value.trim();
+    if (name.length < 2) { document.getElementById("name-err").style.display = "inline"; document.getElementById("name").focus(); return; }
+    lastName = name; teacher = document.getElementById("tm").checked; reset(); HSCT.start(name); renderScene();
+  }
+  if (e.target.id === "again") { reset(); renderStart(); }
+});
+document.addEventListener("keydown", e => {
+  if (!S || S.i >= SCENES.length) return;
+  if (/^[1-4]$/.test(e.key) && S.picked == null) choose(+e.key - 1);
+  else if (e.key === "Enter" && S.picked != null && e.target.id !== "next") next();
+});
+
+renderStart();
+</script>
+</body>
+</html>
