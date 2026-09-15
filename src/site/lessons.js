@@ -32,7 +32,19 @@ export const CATEGORIES = [
     tone: 'blue',
     blurb: 'How data gets from one machine to another — cables, Wi-Fi, addresses, and what to check when it stops.',
     topics: [
-      { id: 'how-networks-work', title: 'How networks work', lessons: [] },
+      { id: 'how-networks-work', title: 'How networks work',
+         lessons: [
+                  {
+          slug: 'how-the-internet-works',
+          title: 'How the internet works',
+          description: 'Six stops with diagrams you can click and run: why every device needs an IP address, why data is cut into packets, how packets are routed hop by hop (and what happens when one is lost), how DNS turns names into numbers, what ports are for, and the whole journey of one click put in order.',
+          file: 'how-the-internet-works.html',
+          kind: 'lab',
+          minutes: 40,
+          added: '2026-09-15',
+          tags: ['internet', 'IP address', 'IPv4', 'packets', 'routing', 'router', 'DNS', 'ports', 'TCP', 'UDP', 'NAT', 'public', 'private', 'layers', 'traceroute', 'TTL'],
+          },
+         ] },
       { id: 'cabling-and-wifi', title: 'Cabling & Wi-Fi', lessons: [] },
       { id: 'connection-problems', title: 'Connection problems', lessons: [] },
     ],

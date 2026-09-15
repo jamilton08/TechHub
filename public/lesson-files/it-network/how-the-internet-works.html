@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How the internet works — HSCT IT Network</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f7fc; --paper:#fff; --bench:#eef1f8; --ink:#101a3f; --muted:#5b6485; --line:#d3d9ee;
+  --blue:#1f3fae; --blue-soft:#e9edf8; --green:#1f7a3d; --green-soft:#e1f2e6; --red:#b3261e; --red-soft:#fbe3e1;
+  --amber:#b96f00; --amber-soft:#fff3d6; --board:#0f1533; --board-ink:#e6e9f5;
+  --sans:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --hsct-color: var(--blue);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.55}
+h1,h2,h3,h4{margin:0;line-height:1.2}
+p{margin:0 0 .8rem}
+button{font:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid #a9b7ea;outline-offset:2px}
+code{font-family:var(--mono);font-size:.9em;background:var(--blue-soft);padding:.05em .35em;border-radius:3px}
+.btn{border:2px solid var(--blue);background:var(--blue);color:#fff;border-radius:8px;padding:.6rem 1.1rem;font-weight:600}
+.btn:hover{filter:brightness(.92)}.btn.ghost{background:transparent;color:var(--blue)}.btn.small{padding:.4rem .85rem;font-size:.92rem}
+.btn:disabled{opacity:.5;cursor:not-allowed;filter:none}
+.view{display:none}.view.active{display:block}
+
+.topbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:1rem;padding:.6rem 1.2rem;background:var(--paper);border-bottom:1px solid var(--line)}
+.topbar .brand{font-weight:700;white-space:nowrap}.topbar .brand span{color:var(--muted);font-weight:400}
+.progress{display:flex;gap:4px}.progress i{display:block;width:26px;height:8px;border-radius:2px;background:var(--line)}
+.progress i.now{background:var(--blue)}.progress i.done{background:var(--green)}
+.topbar .grow{flex:1}.stat{font-family:var(--mono);font-size:.85rem;color:var(--muted);white-space:nowrap}.stat b{color:var(--ink)}
+
+.wrap{max-width:900px;margin:0 auto;padding:2rem 1.2rem 5rem}
+.intro h1{font-size:2.1rem;letter-spacing:-.01em;margin-bottom:.4rem}
+.lede{font-size:1.12rem;color:var(--muted);margin-bottom:1.4rem}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:1.1rem 1.3rem;margin-bottom:1rem}
+.card h3{font-size:1.05rem;margin-bottom:.5rem}
+.rules{margin:0;padding-left:1.2rem}.rules li{margin:.3rem 0}
+.name-row{display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap}
+.name-row input{flex:1;min-width:220px;padding:.7rem .8rem;border:1.5px solid var(--line);border-radius:8px;font:inherit}
+.err{color:var(--red);margin-top:.5rem;display:none}
+
+.kicker{font-family:var(--mono);font-size:.8rem;color:var(--muted);letter-spacing:.03em;margin-bottom:.35rem}
+.mod h2{font-size:1.7rem;margin-bottom:.4rem}
+.mod .lede{margin-bottom:1rem}
+.explain p{margin-bottom:.7rem}
+.explain b{color:var(--blue)}
+.explain ul{margin:.2rem 0 .8rem;padding-left:1.2rem}.explain li{margin:.25rem 0}
+.explain table{border-collapse:collapse;width:100%;font-size:.95rem;margin:.3rem 0 .9rem}
+.explain th,.explain td{text-align:left;padding:.35rem .5rem;border-bottom:1px solid var(--line);vertical-align:top}
+.explain th{font-size:.78rem;color:var(--muted)}
+
+/* the board: where visuals live */
+.board{background:var(--board);color:var(--board-ink);border-radius:12px;padding:.8rem;margin:.6rem 0 1rem;border:1px solid #26306a}
+.board svg{display:block;width:100%;height:auto;font-family:var(--sans)}
+.board .controls{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-top:.6rem}
+.board .controls input{font:inherit;font-family:var(--mono);font-size:.9rem;padding:.45rem .6rem;border-radius:6px;border:1px solid #3a4590;background:#1a2250;color:#fff;flex:1;min-width:200px}
+.board .btn{border-color:#8ec5ff;background:#8ec5ff;color:#0f1533;padding:.45rem .9rem;font-size:.92rem}
+.board .btn.ghost{background:transparent;color:#8ec5ff}
+.board .caption{font-size:.9rem;color:#b8c0e6;margin:.5rem 0 0;min-height:1.4em}
+.board .caption b{color:#fff}
+.board .note{font-family:var(--mono);font-size:.8rem;color:#8b95c9;margin-top:.3rem}
+/* svg pieces */
+.node{fill:#1a2250;stroke:#3a4590;stroke-width:1.5}
+.node.hot{stroke:#8ec5ff;stroke-width:2.5}
+.lbl{fill:#e6e9f5;font-size:13px;font-weight:600}
+.sub{fill:#8b95c9;font-size:11px;font-family:var(--mono)}
+.ip{fill:#ffd166;font-size:11.5px;font-family:var(--mono);font-weight:500}
+.wire{stroke:#3a4590;stroke-width:2;fill:none}
+.wire.live{stroke:#8ec5ff}
+.pk{fill:#ffd166;stroke:#0f1533;stroke-width:1}
+.pk.lost{fill:#ff6b6b}
+.pkt{fill:#0f1533;font-size:9px;font-family:var(--mono);font-weight:600}
+.cloud{fill:#1a2250;stroke:#3a4590;stroke-width:1.5}
+.callout{fill:#fff;stroke:#8ec5ff;stroke-width:1}
+.callout-t{fill:#0f1533;font-size:12px}
+.slot{fill:#1a2250;stroke:#3a4590;stroke-width:1}
+.slot.full{fill:#274a2b;stroke:#7bd88f}
+.x{stroke:#ff6b6b;stroke-width:3;stroke-linecap:round}
+.door{fill:#1a2250;stroke:#3a4590;stroke-width:1.5}
+.door.open{fill:#274a2b;stroke:#7bd88f}
+.clickable{cursor:pointer}
+/* packet envelopes (module 2) */
+.envelopes{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:.7rem}
+.env{background:#fff;color:var(--ink);border-radius:8px;padding:.5rem .6rem;min-width:150px;font-size:.8rem;box-shadow:0 6px 18px rgba(0,0,0,.35);opacity:0;transform:translateY(8px);transition:opacity .35s,transform .35s}
+.env.in{opacity:1;transform:none}
+.env .h{font-family:var(--mono);font-size:.72rem;color:var(--muted);border-bottom:1px dashed var(--line);padding-bottom:.3rem;margin-bottom:.3rem;line-height:1.4}
+.env .h b{color:var(--blue);font-weight:600}
+.env .p{font-family:var(--mono);font-size:.95rem;font-weight:600;white-space:pre}
+.env .p span{background:var(--amber-soft)}
+/* order task (module 6) */
+.order{list-style:none;margin:0;padding:0;display:grid;gap:.4rem}
+.order li{display:flex;align-items:center;gap:.6rem;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:.5rem .7rem}
+.order li .n{font-family:var(--mono);font-size:.8rem;color:var(--muted);min-width:1.4em}
+.order li .t{flex:1}
+.order li button{border:1px solid var(--line);background:var(--bench);border-radius:6px;padding:.2rem .5rem;font-size:.85rem}
+.order li button:disabled{opacity:.3}
+.order.graded li.ok{border-color:#7bd88f;background:var(--green-soft)}
+.order.graded li.bad{border-color:#e39a95;background:var(--red-soft)}
+
+/* check */
+.check{border-left:5px solid var(--blue)}
+.check h3{font-size:1.05rem}
+.check .q{font-size:1.05rem;font-weight:500;margin-bottom:.7rem}
+.opts{display:grid;gap:.5rem;margin-bottom:.6rem}
+.opt{text-align:left;padding:.65rem .8rem;border:1.5px solid var(--line);border-radius:8px;background:var(--paper);font:inherit}
+.opt:hover:not(:disabled){border-color:var(--blue)}
+.opt.right{border-color:var(--green);background:var(--green-soft)}
+.opt.wrong{border-color:var(--red);background:var(--red-soft)}
+.opt:disabled{cursor:default}
+.fb{padding:.7rem .9rem;border-radius:8px;background:var(--blue-soft);margin:.4rem 0;display:none}
+.fb.show{display:block}
+.fb.good{background:var(--green-soft)}.fb.bad{background:var(--amber-soft)}
+.check .pts{font-family:var(--mono);font-size:.82rem;color:var(--muted)}
+.nav{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-top:1rem}
+
+.finale h1{font-size:2rem;margin-bottom:.4rem}
+.recap{width:100%;border-collapse:collapse;font-size:.95rem;margin:.4rem 0 .5rem}
+.recap th,.recap td{text-align:left;padding:.45rem .5rem;border-bottom:1px solid var(--line);vertical-align:top}
+.recap th{font-size:.78rem;color:var(--muted)}
+.recap td:last-child{font-family:var(--mono);text-align:right;white-space:nowrap}
+.actions{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:1rem}
+.teacher{margin-top:2rem;font-size:.9rem;color:var(--muted)}.teacher summary{cursor:pointer}
+@media (max-width:600px){.topbar{gap:.6rem;padding:.5rem .8rem}.topbar .brand{font-size:.85rem;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}.topbar .brand span{display:none}.topbar .grow{display:none}.stat{font-size:.75rem}#stat-mod{display:none}.progress i{width:14px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media print{.topbar,.actions,.teacher,.nav{display:none!important}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">How the internet works <span>— HSCT IT Network</span></div>
+  <div class="progress" id="progress" aria-label="Progress"></div>
+  <div class="grow"></div>
+  <div class="stat" id="stat-mod"></div>
+  <div class="stat" id="stat-total"></div>
+</header>
+
+<!-- ===== INTRO ===== -->
+<section class="view intro active" id="view-intro">
+  <div class="wrap">
+    <h1>How the internet works.</h1>
+    <p class="lede">You tap a link and a page appears from a computer on the other side of the world. Nothing about that is magic. In six short stops you'll see the whole trip: why every device has an address, why your data gets chopped into packets, how those packets find their way, how names become numbers, and how it all comes back together on your screen.</p>
+    <div class="card">
+      <h3>How this works</h3>
+      <ul class="rules">
+        <li>Six stops. Each one has an explanation, a diagram you can click and run, and one check question.</li>
+        <li>Checks are worth <b>15 points</b> each; the last one, where you put the whole journey in order, is worth <b>25</b>. That's 100.</li>
+        <li>Miss a question and you get one more try for half the points. Read the explanation and the diagram before you answer.</li>
+        <li>At the end you download a result file and submit it in Google Classroom.</li>
+      </ul>
+      <div class="name-row">
+        <input id="name" type="text" placeholder="Your full name (goes on your result)" autocomplete="off" maxlength="60">
+        <button class="btn" id="start">Start</button>
+      </div>
+      <div class="err" id="name-err">Enter your name first — it goes on your result file.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== MODULE ===== -->
+<section class="view" id="view-work">
+  <div class="wrap mod">
+    <div class="kicker" id="m-kicker"></div>
+    <h2 id="m-title"></h2>
+    <p class="lede" id="m-lede"></p>
+    <div class="explain" id="m-explain"></div>
+    <div class="board" id="board"></div>
+    <div class="explain" id="m-after"></div>
+    <div class="card check" id="check"></div>
+    <div class="nav"><span class="pts" id="m-pts"></span><button class="btn hidden" id="next">Next</button></div>
+  </div>
+</section>
+
+<!-- ===== END ===== -->
+<section class="view finale" id="view-end">
+  <div class="wrap">
+    <h1>That's the whole trip.</h1>
+    <p class="lede" id="end-lede"></p>
+    <div class="card"><h3>Your stops</h3><table class="recap" id="recap"></table></div>
+    <div id="hsct-result"></div>
+    <div class="actions"><button class="btn ghost" id="again">Start over</button></div>
+    <details class="teacher"><summary>Teachers</summary><p>The result file records every answer (first and second try), the order the student submitted in the final task, and which diagrams they interacted with. Open files at <b>hsct.tech/lessons/verify</b>.</p></details>
+  </div>
+</section>
+
+<!-- HSCT KIT START — do not edit; copy the whole block from lesson-template/hsct-lesson.js -->
+<script>
+/* ============================================================================
+   HSCT LESSON KIT  v1.0
+   Every lesson on HSCT TechHub inlines this block unchanged (between the
+   <!-- HSCT KIT START --> and <!-- HSCT KIT END --> markers). It gives a
+   lesson three things:
+
+     1. A clock.   HSCT.start(name) when the student begins. The kit records
+                   wall-clock time and "active" time (tab visible).
+     2. A log.     HSCT.log(type, data) for anything worth remembering —
+                   answers, hints, retries. Ends up inside the result file.
+     3. A result.  HSCT.endScreen(el, {...scores}) renders the standard result
+                   card: name, score, time taken, badge code, and a button
+                   that downloads the encrypted result file the student
+                   submits in Google Classroom.
+
+   The file is encrypted with the teacher's PUBLIC key below (RSA-OAEP wrapping
+   an AES-256-GCM key). It can only be opened with the matching private key,
+   on the site's /lessons/verify page. Students can't read or edit it.
+
+   API (all on window.HSCT):
+     HSCT.lesson({ id, title, version, course, possible })   once, at load
+     HSCT.start(name)                                        when work begins
+     HSCT.log(type, data)                                    any time
+     HSCT.elapsed()   -> { seconds, activeSeconds }
+     HSCT.finish({ earned, possible, sections, tier, extra }) -> Promise<result>
+     HSCT.endScreen(el, { earned, possible, sections, tier, extra, note })
+                      -> Promise<result>   (calls finish, renders the card)
+     HSCT.download()  / HSCT.copyCode()                      after finish
+   ========================================================================== */
+(function () {
+  'use strict';
+  var KIT = '1.0';
+
+  /* Mr. Cruz's public key. Replace the whole object if the key pair is ever
+     regenerated on /lessons/verify — and keep the private key out of git. */
+  var PUBLIC_KEY = {"kty":"RSA","n":"rZUBRxn7dUikufJq7z2XVn-on4Of0IyQr_YaPSTgIUaGsYKcrZ4FNROL4A_ZM5JShLf6OVp2ZeAI7XN_7iX0tvd79RqAWRM9an6rx-s6bMYSW1wmtRxZyL-BX56vTtikVRLNO7uyzCb8kevJE71Fi6nlPhdXa-iS4vtIEm2Wjh4cLPinAKhMnkO3BpGHUhtFw7Hyus1w04EdLxowk4UcN7d0w4MQRnBV8ehXQVoLVQ0_QtfrtPTQOpScHuwyaw9nwnTA7h7BEOv1ZkbEyq2N4TFixSSCsneUsc3PlbZOndDzMGMmdMr00ulntRZBfyioFzRcsRUGGwAqpB9SuH7XGQ","e":"AQAB","alg":"RSA-OAEP-256","ext":true};
+
+  var VERIFY_URL = 'hsct.tech/lessons/verify';
+
+  var cfg = null;      // lesson config
+  var ses = null;      // current session
+  var ticker = null;   // active-time interval
+  var result = null;   // { badge, filename, text, envelope, payload }
+
+  /* ---------- small helpers ---------- */
+  var enc = new TextEncoder();
+  function b64(buf) {
+    var bytes = new Uint8Array(buf), s = '';
+    for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return btoa(s);
+  }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function fmtDuration(sec) {
+    sec = Math.max(0, Math.round(sec || 0));
+    var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+    if (h) return h + ' h ' + pad(m) + ' min';
+    if (m) return m + ' min ' + pad(s) + ' s';
+    return s + ' s';
+  }
+  function fmtDate(iso) {
+    try { return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+    catch (e) { return iso; }
+  }
+  function slug(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'student'; }
+  function stamp(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes()); }
+
+  /* Badge code: 8 characters from a SHA-256 of the result, shown on screen
+     so a screenshot can be matched to its file. */
+  var ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ23456789';
+  function badgeFrom(hashBuf) {
+    var bytes = new Uint8Array(hashBuf), out = '';
+    for (var i = 0; i < 8; i++) out += ALPHABET[bytes[i] % ALPHABET.length];
+    return out.slice(0, 4) + '-' + out.slice(4);
+  }
+
+  function needSubtle() {
+    if (!(window.crypto && crypto.subtle)) {
+      throw new Error('Result files need a secure page (https). Open this lesson from the TechHub site and finish again.');
+    }
+  }
+
+  /* ---------- public API ---------- */
+  function lesson(c) {
+    if (!c || !c.id || !c.title) throw new Error('HSCT.lesson needs { id, title }');
+    cfg = { version: '1.0', course: '', possible: 100 };
+    for (var k in c) cfg[k] = c[k];
+    return HSCT;
+  }
+
+  function start(name) {
+    if (!cfg) throw new Error('Call HSCT.lesson({...}) before HSCT.start(name)');
+    name = String(name || '').trim().replace(/\s+/g, ' ');
+    if (name.length < 2) throw new Error('HSCT.start needs the student\'s name');
+    ses = { name: name, started: new Date().toISOString(), t0: Date.now(), active: 0, events: [] };
+    result = null;
+    clearInterval(ticker);
+    ticker = setInterval(function () { if (document.visibilityState === 'visible') ses.active += 1; }, 1000);
+    log('start');
+    return HSCT;
+  }
+
+  function log(type, data) {
+    if (!ses) return HSCT;
+    var e = { t: Math.round((Date.now() - ses.t0) / 100) / 10, type: String(type) };
+    if (data && typeof data === 'object') for (var k in data) if (k !== 't' && k !== 'type') e[k] = data[k];
+    if (ses.events.length < 800) ses.events.push(e);
+    return HSCT;
+  }
+
+  function elapsed() {
+    if (!ses) return { seconds: 0, activeSeconds: 0 };
+    return { seconds: Math.round((Date.now() - ses.t0) / 1000), activeSeconds: ses.active };
+  }
+
+  /* Build, seal, and keep the result. Resolves to { badge, filename, text, payload }. */
+  async function finish(opts) {
+    if (!cfg || !ses) throw new Error('HSCT.start(name) was never called');
+    needSubtle();
+    opts = opts || {};
+    clearInterval(ticker);
+    var finished = new Date();
+    var el = elapsed();
+    var earned = Number(opts.earned || 0), possible = Number(opts.possible || cfg.possible || 0);
+    var payload = {
+      kit: KIT,
+      lesson: { id: cfg.id, title: cfg.title, version: cfg.version, course: cfg.course },
+      student: { name: ses.name },
+      started: ses.started,
+      finished: finished.toISOString(),
+      seconds: el.seconds,
+      activeSeconds: el.activeSeconds,
+      score: { earned: earned, possible: possible, percent: possible ? Math.round(1000 * earned / possible) / 10 : null },
+      tier: opts.tier || null,
+      sections: (opts.sections || []).map(function (s) { return { id: s.id, title: s.title, earned: s.earned, possible: s.possible, status: s.status }; }),
+      extra: opts.extra || null,
+      events: ses.events,
+      env: { tz: Intl.DateTimeFormat().resolvedOptions().timeZone, ua: navigator.userAgent, url: location.href.split('?')[0] },
+    };
+    var hash = await crypto.subtle.digest('SHA-256', enc.encode(JSON.stringify(payload)));
+    var badge = badgeFrom(hash);
+    payload.badge = badge;
+
+    /* header travels in the clear but is authenticated (AES-GCM additional data) */
+    var header = { hsct: 1, kit: KIT, lesson: cfg.id, title: cfg.title, student: ses.name, finished: payload.finished, badge: badge };
+    var pub = await crypto.subtle.importKey('jwk', PUBLIC_KEY, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['wrapKey']);
+    var aes = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt']);
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    var data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv, additionalData: enc.encode(JSON.stringify(header)) }, aes, enc.encode(JSON.stringify(payload)));
+    var wrapped = await crypto.subtle.wrapKey('raw', aes, pub, { name: 'RSA-OAEP' });
+    var envelope = {};
+    for (var k in header) envelope[k] = header[k];
+    envelope.key = b64(wrapped); envelope.iv = b64(iv); envelope.data = b64(data);
+
+    result = {
+      badge: badge,
+      filename: 'HSCT_' + cfg.id + '_' + slug(ses.name) + '_' + stamp(finished) + '.hsct',
+      text: JSON.stringify(envelope),
+      payload: payload,
+    };
+    return result;
+  }
+
+  function download() {
+    if (!result) throw new Error('Nothing to download yet — call HSCT.finish first');
+    var blob = new Blob([result.text], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = result.filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+    return result.filename;
+  }
+
+  async function copyCode() {
+    if (!result) throw new Error('Nothing to copy yet — call HSCT.finish first');
+    try { await navigator.clipboard.writeText(result.text); return true; }
+    catch (e) {
+      var ta = document.createElement('textarea'); ta.value = result.text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      var ok = false; try { ok = document.execCommand('copy'); } catch (e2) {}
+      ta.remove(); return ok;
+    }
+  }
+
+  /* ---------- the standard end screen ---------- */
+  var CSS = '.hsct-card{--hsct-ink:#101a3f;--hsct-mute:#5b6485;--hsct-line:#d3d9ee;--hsct-accent:var(--hsct-color,#1f3fae);--hsct-ok:#1f7a3d;--hsct-bad:#b3261e;'
+    + 'font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;color:var(--hsct-ink);background:#fff;border:1px solid var(--hsct-line);border-left:6px solid var(--hsct-accent);border-radius:12px;padding:20px 22px;margin:20px 0;line-height:1.45}'
+    + '.hsct-card *{box-sizing:border-box}.hsct-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--hsct-mute)}.hsct-head b{color:var(--hsct-accent)}'
+    + '.hsct-name{font-size:22px;font-weight:700;margin:6px 0 2px}.hsct-score{font-size:15px;margin:0 0 12px}.hsct-score b{font-size:28px;font-weight:700}.hsct-score .hsct-tier{display:inline-block;margin-left:8px;padding:2px 10px;border-radius:999px;background:var(--hsct-accent);color:#fff;font-size:13px;font-weight:600;vertical-align:middle}'
+    + '.hsct-facts{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0 0 14px;font-size:14px}.hsct-facts dt{color:var(--hsct-mute)}.hsct-facts dd{margin:0}.hsct-facts code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;letter-spacing:.08em;font-weight:600}'
+    + '.hsct-secs{width:100%;border-collapse:collapse;font-size:14px;margin:0 0 14px}.hsct-secs td{padding:5px 0;border-top:1px solid var(--hsct-line)}.hsct-secs td:last-child{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}'
+    + '.hsct-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.hsct-btn{font:600 15px "IBM Plex Sans","Segoe UI",system-ui,sans-serif;padding:11px 18px;border-radius:8px;border:2px solid var(--hsct-accent);background:var(--hsct-accent);color:#fff;cursor:pointer}.hsct-btn:hover{filter:brightness(.92)}.hsct-btn.hsct-alt{background:transparent;color:var(--hsct-accent)}.hsct-btn:focus-visible{outline:3px solid #a9b7ea;outline-offset:2px}.hsct-btn:disabled{opacity:.55;cursor:wait}'
+    + '.hsct-note{margin:12px 0 0;font-size:13.5px;color:var(--hsct-mute)}.hsct-status{margin:8px 0 0;font-size:14px;min-height:1.4em}.hsct-status.ok{color:var(--hsct-ok)}.hsct-status.bad{color:var(--hsct-bad)}'
+    + '@media print{.hsct-actions,.hsct-note,.hsct-status{display:none}}';
+
+  function injectCss() {
+    if (document.getElementById('hsct-kit-css')) return;
+    var s = document.createElement('style'); s.id = 'hsct-kit-css'; s.textContent = CSS; document.head.appendChild(s);
+  }
+
+  /* Renders the card into `el` and seals the result. Resolves with the result. */
+  async function endScreen(el, opts) {
+    if (typeof el === 'string') el = document.querySelector(el);
+    if (!el) throw new Error('HSCT.endScreen needs an element');
+    injectCss();
+    opts = opts || {};
+    var elp = elapsed();
+    var possible = Number(opts.possible || cfg.possible || 0), earned = Number(opts.earned || 0);
+    var pct = possible ? Math.round(100 * earned / possible) : null;
+    var secs = (opts.sections || []).map(function (s) {
+      var right = s.status != null ? esc(s.status) : (s.possible != null ? esc(s.earned) + ' / ' + esc(s.possible) : esc(s.earned));
+      return '<tr><td>' + esc(s.title) + '</td><td>' + right + '</td></tr>';
+    }).join('');
+    el.innerHTML = '<div class="hsct-card">'
+      + '<div class="hsct-head"><span><b>HSCT TechHub</b> result</span><span>' + esc(cfg.title) + '</span></div>'
+      + '<div class="hsct-name">' + esc(ses ? ses.name : '') + '</div>'
+      + '<div class="hsct-score"><b>' + esc(earned) + '</b> / ' + esc(possible) + (pct != null ? ' <span>(' + pct + '%)</span>' : '') + (opts.tier ? '<span class="hsct-tier">' + esc(opts.tier) + '</span>' : '') + '</div>'
+      + '<dl class="hsct-facts"><dt>Finished</dt><dd>' + esc(fmtDate(new Date().toISOString())) + '</dd>'
+      + '<dt>Time taken</dt><dd>' + esc(fmtDuration(elp.seconds)) + (elp.activeSeconds < elp.seconds - 60 ? ' <span style="color:var(--hsct-mute)">(' + esc(fmtDuration(elp.activeSeconds)) + ' with the tab open)</span>' : '') + '</dd>'
+      + '<dt>Code</dt><dd><code class="hsct-badge">........</code></dd></dl>'
+      + (secs ? '<table class="hsct-secs"><tbody>' + secs + '</tbody></table>' : '')
+      + '<div class="hsct-actions"><button type="button" class="hsct-btn hsct-dl" disabled>Download your result file</button><button type="button" class="hsct-btn hsct-alt hsct-copy" disabled>Copy result code</button></div>'
+      + '<p class="hsct-note">' + esc(opts.note || 'Submit the file in Google Classroom. If downloads are blocked, copy the code and paste it instead. The file is encrypted: only your teacher can open it.') + '</p>'
+      + '<p class="hsct-status" aria-live="polite">Preparing your result file…</p>'
+      + '</div>';
+    var status = el.querySelector('.hsct-status'), dl = el.querySelector('.hsct-dl'), cp = el.querySelector('.hsct-copy');
+    try {
+      var r = await finish(opts);
+      el.querySelector('.hsct-badge').textContent = r.badge;
+      status.textContent = 'Ready: ' + r.filename;
+      dl.disabled = false; cp.disabled = false;
+      dl.onclick = function () { try { download(); status.className = 'hsct-status ok'; status.textContent = 'Downloaded ' + r.filename + ' — now submit it.'; } catch (e) { status.className = 'hsct-status bad'; status.textContent = e.message; } };
+      cp.onclick = async function () { var ok = await copyCode(); status.className = 'hsct-status ' + (ok ? 'ok' : 'bad'); status.textContent = ok ? 'Code copied — paste it into your submission.' : 'Copy failed. Use the download instead.'; };
+      return r;
+    } catch (e) {
+      status.className = 'hsct-status bad';
+      status.textContent = e.message || String(e);
+      throw e;
+    }
+  }
+
+  var HSCT = {
+    kit: KIT, verifyUrl: VERIFY_URL,
+    lesson: lesson, start: start, log: log, elapsed: elapsed,
+    finish: finish, download: download, copyCode: copyCode, endScreen: endScreen,
+    get result() { return result; },
+    get session() { return ses ? { name: ses.name, started: ses.started } : null; },
+    fmtDuration: fmtDuration,
+  };
+  window.HSCT = HSCT;
+})();
+</script>
+<!-- HSCT KIT END -->
+
+<script>
+HSCT.lesson({ id: 'how-the-internet-works', title: 'How the internet works', version: '1.0', course: 'it-network', possible: 100 });
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const SPEED = REDUCED ? 0.15 : 1;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms * SPEED));
+const svgNS = 'http://www.w3.org/2000/svg';
+
+/* ---------- reusable SVG bits ---------- */
+const S = {
+  laptop: (x, y, label, ip) => `<g transform="translate(${x},${y})"><rect class="node" x="-34" y="-22" width="68" height="40" rx="4"/><rect x="-27" y="-16" width="54" height="26" rx="2" fill="#0b1029"/><rect class="node" x="-40" y="18" width="80" height="6" rx="2"/><text class="lbl" y="44" text-anchor="middle">${label}</text>${ip ? `<text class="ip" y="60" text-anchor="middle">${ip}</text>` : ''}</g>`,
+  phone: (x, y, label, ip) => `<g transform="translate(${x},${y})"><rect class="node" x="-14" y="-26" width="28" height="52" rx="5"/><rect x="-10" y="-20" width="20" height="36" rx="1" fill="#0b1029"/><text class="lbl" y="44" text-anchor="middle">${label}</text>${ip ? `<text class="ip" y="60" text-anchor="middle">${ip}</text>` : ''}</g>`,
+  printer: (x, y, label, ip) => `<g transform="translate(${x},${y})"><rect class="node" x="-30" y="-10" width="60" height="30" rx="4"/><rect class="node" x="-18" y="-24" width="36" height="16" rx="2"/><text class="lbl" y="44" text-anchor="middle">${label}</text>${ip ? `<text class="ip" y="60" text-anchor="middle">${ip}</text>` : ''}</g>`,
+  router: (x, y, label, ip, ip2) => `<g transform="translate(${x},${y})"><rect class="node" x="-36" y="-12" width="72" height="24" rx="12"/><circle cx="-16" cy="0" r="3" fill="#7bd88f"/><circle cx="-4" cy="0" r="3" fill="#7bd88f"/><circle cx="8" cy="0" r="3" fill="#ffd166"/><line x1="24" y1="-10" x2="30" y2="-26" stroke="#8b95c9" stroke-width="2"/><text class="lbl" y="34" text-anchor="middle">${label}</text>${ip ? `<text class="ip" y="50" text-anchor="middle">${ip}</text>` : ''}${ip2 ? `<text class="ip" y="64" text-anchor="middle">${ip2}</text>` : ''}</g>`,
+  server: (x, y, label, ip) => `<g transform="translate(${x},${y})"><rect class="node" x="-26" y="-34" width="52" height="68" rx="4"/><rect x="-20" y="-28" width="40" height="10" rx="2" fill="#0b1029"/><rect x="-20" y="-12" width="40" height="10" rx="2" fill="#0b1029"/><rect x="-20" y="4" width="40" height="10" rx="2" fill="#0b1029"/><circle cx="14" cy="-23" r="2" fill="#7bd88f"/><circle cx="14" cy="-7" r="2" fill="#7bd88f"/><circle cx="14" cy="9" r="2" fill="#7bd88f"/><text class="lbl" y="52" text-anchor="middle">${label}</text>${ip ? `<text class="ip" y="68" text-anchor="middle">${ip}</text>` : ''}</g>`,
+  cloud: (x, y, w, h, label) => `<g transform="translate(${x},${y})"><rect class="cloud" x="${-w / 2}" y="${-h / 2}" width="${w}" height="${h}" rx="${h / 2}" stroke-dasharray="6 5"/><text class="sub" y="${-h / 2 + 16}" text-anchor="middle">${label}</text></g>`,
+  hop: (x, y, label) => `<g transform="translate(${x},${y})" data-hop="${label}"><circle class="node" r="16"/><text class="lbl" y="4" text-anchor="middle" font-size="11">${label}</text></g>`,
+};
+
+/* ---------- modules ---------- */
+const MODULES = [
+/* 1 ── addresses */
+{
+  id: 'addresses', kicker: 'Stop 1 of 6 · Addresses', title: 'Every device needs an address', points: 15,
+  lede: 'Before anything can be sent, the network has to know where to send it. So the very first idea is the same one the post office uses.',
+  explain: `
+    <p>A letter needs an address on the envelope, and the address has to be <b>unique</b>: two houses can't share one, or the mail carrier can't choose. Networks work the same way. Every device that wants to send or receive anything gets an <b>IP address</b>, and no two devices on the same network may have the same one.</p>
+    <p>An IPv4 address is four numbers separated by dots, like <code>192.168.1.23</code>. Each number is one byte, so it runs from <b>0 to 255</b>. That's it: four bytes, 32 bits, about four billion possible addresses.</p>
+    <p>Why numbers instead of names? Because routers — the machines that forward your data — have to make a decision on every packet in a fraction of a microsecond. A fixed-size number that they can compare in one step is what makes that possible. Names are for you; numbers are for the machines.</p>
+    <p><b>Click each device</b> on the diagram to see its address and what kind it is.</p>`,
+  visual: 'addresses',
+  after: `
+    <p>Two things you saw: the devices inside the house have <b>private</b> addresses (<code>192.168.x.x</code> at home, often <code>10.x.x.x</code> at school), which only have to be unique inside that building — every home in the city can reuse them. And the router has <b>two</b> addresses: a private one facing inside and a single <b>public</b> one facing the internet, which the whole building shares. The router keeps track of which inside device asked for what, and hands the replies back to the right one. That trick is called NAT, and it's why four billion addresses have lasted this long — though the newer <b>IPv6</b> (128-bit, written in hex like <code>2607:f8b0::200e</code>) exists because they're running out anyway.</p>`,
+  check: { q: 'Which of these is a valid IPv4 address?', opts: ['192.168.1.300', '10.0.0.53', '256.1.1.1', '192.168.1'], right: 1,
+    good: 'Four numbers, each 0–255. That one is the school DNS server, by the way.',
+    bad: 'Each of the four numbers is one byte, so it has to be 0–255, and there have to be exactly four of them.' },
+},
+/* 2 ── packets */
+{
+  id: 'packets', kicker: 'Stop 2 of 6 · Packets', title: 'Why your message gets chopped up', points: 15,
+  lede: 'The internet never sends a whole file at once. It sends small pieces, each carrying its own address label.',
+  explain: `
+    <p>Type a message below and cut it into packets. Every packet gets a <b>header</b> — where it's from, where it's going, and its <b>sequence number</b> — and a <b>payload</b>, the actual slice of your data. Real packets carry up to about 1,500 bytes; ours are tiny so you can see them.</p>`,
+  visual: 'packets',
+  after: `
+    <p>Why bother? Three reasons, and each one is a design decision somebody made on purpose:</p>
+    <ul>
+      <li><b>Sharing.</b> Thousands of computers use the same wire. If one of them could send a 4 GB movie in one shot, everyone else would wait. Small packets take turns, so a video call and a download can share a line and both feel instant.</li>
+      <li><b>Recovery.</b> If one packet is lost or damaged, only <i>that</i> packet is sent again — not the whole file.</li>
+      <li><b>Routes.</b> Packets from the same message can travel different paths and still be put back together, because each one knows its number.</li>
+    </ul>
+    <p>The header is what makes all of it work. Without the sequence number the receiver couldn't reorder them; without the addresses no router could forward them.</p>`,
+  check: { q: 'A message goes out as 5 packets and packet #3 never arrives. What gets sent again?', opts: ['The whole message, all 5 packets', 'Packets 3, 4 and 5', 'Only packet #3', 'Nothing — the receiver fills in the gap'], right: 2,
+    good: 'That\'s the point of numbering them: the receiver knows exactly which one is missing and asks for just that one.',
+    bad: 'Each packet is numbered, so the receiver can name the exact one that\'s missing and ask for only that.' },
+},
+/* 3 ── routing */
+{
+  id: 'routing', kicker: 'Stop 3 of 6 · Routing', title: 'How a packet finds its way', points: 15,
+  lede: 'No single machine knows the whole path. Each router knows one thing: which way to hand the packet next.',
+  explain: `
+    <p>Between your laptop and a server there are usually 10 to 20 <b>routers</b>: your home router, then your internet provider's, then bigger ones that connect providers to each other. A router looks at a packet's destination address, checks its <b>routing table</b>, and forwards the packet to the neighbor that is closer to that address. Then it forgets about it. The next router does the same.</p>
+    <p><b>Send your packets</b> from the last stop and watch. They won't all take the same road, they won't arrive in order, and one of them is about to get lost.</p>`,
+  visual: 'routing',
+  after: `
+    <p>Three things happened. The packets took <b>different routes</b>, because routers pick whichever neighbor is best <i>right now</i>. They <b>arrived out of order</b>, and the receiver used the sequence numbers to put them back. And one packet was <b>dropped</b> — a router was too busy — so the receiver noticed the gap and asked for just that one again.</p>
+    <p>Every packet also carries a hop counter (the <b>TTL</b>) that goes down at each router; when it hits zero the packet is thrown away, so a packet with a bad route can't circle the internet forever. The <code>tracert</code> command works by abusing exactly that counter to make each router along the way reveal itself.</p>`,
+  check: { q: 'A router receives a packet addressed to 142.250.72.14. What does the router actually know?', opts: ['The complete path all the way to the server', 'Which neighboring router to hand it to next', 'What the packet\'s data says', 'How many packets are in the message'], right: 1,
+    good: 'Next hop, nothing more. That\'s what makes the internet survive broken links: every router just picks the best neighbor it has at that moment.',
+    bad: 'Routers don\'t know the whole path and don\'t read the payload. They know one thing per packet: the best next hop toward that destination.' },
+},
+/* 4 ── dns */
+{
+  id: 'dns', kicker: 'Stop 4 of 6 · Names', title: 'You typed a name. The network needs a number.', points: 15,
+  lede: 'hsct.tech is for you. 104.21.6.190 is for the routers. Something has to translate.',
+  explain: `
+    <p>Nothing in the last three stops used a name. Routers only understand addresses. So when you type <code>hsct.tech</code>, your computer first has to ask: <i>what number is that?</i></p>
+    <p>The answer comes from <b>DNS</b>, the Domain Name System — a set of servers whose only job is to turn names into addresses, like a phone book that the whole internet shares. Your computer learns <i>which</i> DNS server to ask at the same time it gets its IP address (from DHCP, at the router). At school that's <code>10.0.0.53</code>.</p>
+    <p><b>Run the lookup</b> and watch the order of events.</p>`,
+  visual: 'dns',
+  after: `
+    <p>The lookup happens <b>before</b> anything is sent to the website, and the answer is cached so the second visit skips it. Which explains a whole family of "the internet is broken" tickets: if the DNS server is wrong or unreachable, <code>ping 8.8.8.8</code> works (that's an address; no lookup needed) while <code>ping google.com</code> fails with "could not find host." The internet is fine. The phone book is missing.</p>`,
+  check: { q: 'On a laptop, ping 8.8.8.8 gets replies, but ping google.com says "could not find host." What is broken?', opts: ['The Wi-Fi radio', 'The internet connection', 'DNS — turning names into addresses', 'The website itself'], right: 2,
+    good: 'Addresses work, names don\'t. Only DNS sits in that gap.',
+    bad: 'If an address pings fine, the radio and the connection are fine. The only thing that a name needs and an address doesn\'t is DNS.' },
+},
+/* 5 ── ports */
+{
+  id: 'ports', kicker: 'Stop 5 of 6 · Ports', title: 'One address, many doors', points: 15,
+  lede: 'An IP address gets a packet to the right machine. A port number gets it to the right program on that machine.',
+  explain: `
+    <p>A server runs many programs at once — a website, email, a DNS service — and they all share the one IP address. So every packet also carries a <b>port number</b>: think of the IP as the building and the port as the apartment number. Some ports are agreed on worldwide so nobody has to ask:</p>
+    <table><tr><th>Port</th><th>Who answers</th></tr>
+      <tr><td><code>443</code></td><td>The website, encrypted (HTTPS). <code>80</code> is the old unencrypted version.</td></tr>
+      <tr><td><code>53</code></td><td>DNS</td></tr>
+      <tr><td><code>25</code> / <code>587</code></td><td>Email delivery</td></tr>
+      <tr><td><code>22</code></td><td>Remote login (SSH)</td></tr>
+      <tr><td><code>3389</code></td><td>Windows Remote Desktop</td></tr></table>
+    <p><b>Deliver a few packets</b> and watch which door each one goes to.</p>`,
+  visual: 'ports',
+  after: `
+    <p>One more idea lives at this layer. Packets can be sent two ways. <b>TCP</b> numbers every packet, waits for the receiver to confirm each one, and re-sends anything missing — that's what Stop 3 showed you, and it's how web pages, email and files travel, because a page with a missing piece is broken. <b>UDP</b> just fires packets and never looks back. That sounds worse, but for a video call or a game a packet that arrives late is useless anyway; better to skip it and show the next frame. Reliable and slow, or fast and lossy: the program picks.</p>`,
+  check: { q: 'During a video call one packet is lost. Why doesn\'t the app ask for it again?', opts: ['Because video packets don\'t have sequence numbers', 'Because by the time it arrived it would be too late to show — it uses UDP', 'Because the router already re-sent it', 'Because video never loses packets'], right: 1,
+    good: 'Live media uses UDP on purpose: a frame from half a second ago is worth nothing, so skip it and keep going.',
+    bad: 'A re-sent packet would arrive after the moment it belonged to has passed. Live audio and video use UDP and simply skip what\'s lost.' },
+},
+/* 6 ── journey */
+{
+  id: 'journey', kicker: 'Stop 6 of 6 · The whole trip', title: 'The journey of one click', points: 25,
+  lede: 'You now know every piece. Here they are, in the order they actually happen.',
+  explain: `
+    <p>Press play and follow one click from your laptop to a server and back. Then, below, put the steps in order yourself.</p>`,
+  visual: 'journey',
+  after: `
+    <p>Engineers describe this as <b>layers</b>, each one using the one below and not caring how it works:</p>
+    <table><tr><th>Layer</th><th>Its job</th><th>You saw it at</th></tr>
+      <tr><td>Application</td><td>The actual conversation: HTTP for web pages, DNS for lookups</td><td>Stops 4 and 6</td></tr>
+      <tr><td>Transport</td><td>Ports, and whether to guarantee delivery (TCP) or not (UDP)</td><td>Stop 5</td></tr>
+      <tr><td>Internet</td><td>IP addresses and routing, hop by hop</td><td>Stops 1 and 3</td></tr>
+      <tr><td>Link</td><td>The physical trip to the next device: Wi-Fi radio, Ethernet cable</td><td>Underneath everything</td></tr></table>
+    <p>When something breaks, a technician tests from the bottom up — link, address, gateway, internet by IP, internet by name — because each layer can only work if the one under it does. If you've done the Help Desk lessons, that's the ladder you were climbing.</p>`,
+  check: { order: true, q: 'Put the steps of one click in the order they happen. Use the arrows, then check.', steps: [
+    'You type hsct.tech and press Enter',
+    'Your computer asks the DNS server for the site\'s IP address',
+    'Your computer opens a TCP connection to that address on port 443',
+    'The request is split into packets and routed hop by hop',
+    'The server sends the page back as numbered packets',
+    'Your computer reassembles them in order and the browser draws the page',
+  ],
+    good: 'That\'s the trip. Name → number → connection → packets out → packets back → page.',
+    bad: 'Think about what each step needs from the one before it: you can\'t connect without an address, and you can\'t have an address before the lookup.' },
+},
+];
+
+/* ---------- state ---------- */
+const state = { name: '', cur: 0, m: [] };
+const initState = () => { state.m = MODULES.map(() => ({ tries: 0, earned: 0, done: false, answers: [], interacted: false, order: null })); };
+const cur = () => state.m[state.cur];
+const mod = () => MODULES[state.cur];
+const total = () => state.m.reduce((s, m) => s + m.earned, 0);
+function show(id) { document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === id)); window.scrollTo(0, 0); }
+function renderTop() {
+  const p = $('progress'); p.innerHTML = '';
+  const inWork = $('view-work').classList.contains('active');
+  MODULES.forEach((_, i) => { const s = document.createElement('i'); if (state.m[i] && state.m[i].done) s.className = 'done'; else if (i === state.cur && inWork) s.className = 'now'; p.appendChild(s); });
+  $('stat-mod').innerHTML = inWork ? 'Stop <b>' + (state.cur + 1) + ' of ' + MODULES.length + '</b>' : '';
+  $('stat-total').innerHTML = state.name ? 'Total <b>' + total() + '</b> / 100' : '';
+}
+
+/* ---------- intro ---------- */
+$('start').onclick = () => {
+  const n = $('name').value.trim();
+  if (n.length < 2) { $('name-err').style.display = 'block'; $('name').focus(); return; }
+  $('name-err').style.display = 'none';
+  state.name = n; state.cur = 0; initState();
+  HSCT.start(n); show('view-work'); renderModule();
+};
+$('name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('start').click(); });
+
+/* ---------- module ---------- */
+let anim = { stop: false };
+function renderModule() {
+  const m = mod();
+  anim.stop = true; anim = { stop: false };
+  $('m-kicker').textContent = m.kicker; $('m-title').textContent = m.title; $('m-lede').textContent = m.lede;
+  $('m-explain').innerHTML = m.explain; $('m-after').innerHTML = m.after;
+  VISUALS[m.visual]($('board'), anim);
+  renderCheck();
+  $('next').classList.add('hidden');
+  $('m-pts').textContent = 'This check: ' + m.points + ' pts';
+  renderTop();
+}
+function interacted(what) { const s = cur(); if (!s.interacted) { s.interacted = true; } HSCT.log('visual', { module: mod().id, action: what }); }
+
+/* ---------- checks ---------- */
+function renderCheck() {
+  const m = mod(), s = cur(), c = m.check, box = $('check');
+  if (c.order) {
+    if (!s.order) { s.order = c.steps.map((_, i) => i); for (let i = s.order.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [s.order[i], s.order[j]] = [s.order[j], s.order[i]]; } if (s.order.every((v, i) => v === i)) s.order.reverse(); }
+    box.innerHTML = '<h3>Check</h3><p class="q">' + c.q + '</p><ol class="order" id="order"></ol><div class="fb" id="fb"></div><div style="margin-top:.6rem"><button class="btn" id="order-check">Check the order</button></div>';
+    renderOrder();
+    $('order-check').onclick = () => gradeOrder();
+    return;
+  }
+  box.innerHTML = '<h3>Check</h3><p class="q">' + c.q + '</p><div class="opts">' + c.opts.map((o, i) => '<button class="opt" data-i="' + i + '">' + esc(o) + '</button>').join('') + '</div><div class="fb" id="fb"></div>';
+  box.querySelectorAll('.opt').forEach((b) => { b.onclick = () => answer(+b.dataset.i); });
+}
+function renderOrder() {
+  const c = mod().check, s = cur();
+  $('order').innerHTML = s.order.map((idx, pos) => '<li data-pos="' + pos + '"><span class="n">' + (pos + 1) + '</span><span class="t">' + esc(c.steps[idx]) + '</span><button class="up" ' + (pos === 0 ? 'disabled' : '') + ' aria-label="Move up">▲</button><button class="down" ' + (pos === s.order.length - 1 ? 'disabled' : '') + ' aria-label="Move down">▼</button></li>').join('');
+  $('order').querySelectorAll('li').forEach((li) => {
+    const pos = +li.dataset.pos;
+    li.querySelector('.up').onclick = () => { [s.order[pos - 1], s.order[pos]] = [s.order[pos], s.order[pos - 1]]; renderOrder(); };
+    li.querySelector('.down').onclick = () => { [s.order[pos + 1], s.order[pos]] = [s.order[pos], s.order[pos + 1]]; renderOrder(); };
+  });
+}
+function gradeOrder() {
+  const m = mod(), s = cur(), c = m.check; if (s.done) return;
+  s.tries++;
+  const ok = s.order.every((v, i) => v === i);
+  s.answers.push({ try: s.tries, order: s.order.slice(), ok });
+  HSCT.log('check', { module: m.id, try: s.tries, ok, order: s.order.slice() });
+  const list = $('order'); list.classList.add('graded');
+  list.querySelectorAll('li').forEach((li, pos) => li.classList.add(s.order[pos] === pos ? 'ok' : 'bad'));
+  const fb = $('fb');
+  if (ok) { s.earned = s.tries === 1 ? m.points : Math.floor(m.points / 2); finishModule(fb, c.good); return; }
+  if (s.tries === 1) { fb.className = 'fb show bad'; fb.innerHTML = '<b>Not yet.</b> Green rows are in the right place. ' + c.bad + ' One more try, for ' + Math.floor(m.points / 2) + ' points.'; setTimeout(() => { list.classList.remove('graded'); list.querySelectorAll('li').forEach((li) => li.classList.remove('ok', 'bad')); }, 2500 * SPEED); return; }
+  s.earned = 0; finishModule(fb, 'The right order: ' + c.steps.map((t, i) => (i + 1) + '. ' + t).join(' → '), true);
+  s.order = c.steps.map((_, i) => i); renderOrder(); $('order').classList.add('graded'); $('order').querySelectorAll('li').forEach((li) => li.classList.add('ok'));
+}
+function answer(i) {
+  const m = mod(), s = cur(), c = m.check; if (s.done) return;
+  s.tries++;
+  const ok = i === c.right;
+  s.answers.push({ try: s.tries, picked: i, ok });
+  HSCT.log('check', { module: m.id, try: s.tries, picked: i, ok });
+  const opts = $('check').querySelectorAll('.opt'); const fb = $('fb');
+  if (ok) { opts.forEach((b, k) => { b.disabled = true; if (k === i) b.classList.add('right'); }); s.earned = s.tries === 1 ? m.points : Math.floor(m.points / 2); finishModule(fb, c.good); return; }
+  opts[i].classList.add('wrong'); opts[i].disabled = true;
+  if (s.tries === 1) { fb.className = 'fb show bad'; fb.innerHTML = '<b>Not that one.</b> ' + c.bad + ' One more try, for ' + Math.floor(m.points / 2) + ' points.'; return; }
+  opts.forEach((b, k) => { b.disabled = true; if (k === c.right) b.classList.add('right'); });
+  s.earned = 0; finishModule(fb, c.bad, true);
+}
+function finishModule(fb, msg, missed) {
+  const s = cur(); s.done = true;
+  fb.className = 'fb show ' + (missed ? 'bad' : 'good');
+  fb.innerHTML = (missed ? '<b>The answer is marked.</b> ' : '<b>' + (s.tries === 1 ? 'Right.' : 'Right, second try.') + '</b> ') + msg + ' <span class="pts">+' + s.earned + ' pts</span>';
+  HSCT.log('done', { module: mod().id, earned: s.earned, tries: s.tries });
+  const last = state.cur === MODULES.length - 1;
+  $('next').textContent = last ? 'Finish' : 'Next stop'; $('next').classList.remove('hidden');
+  $('next').onclick = () => { if (last) renderEnd(); else { state.cur++; renderModule(); } };
+  renderTop();
+  $('next').scrollIntoView({ behavior: REDUCED ? 'auto' : 'smooth', block: 'nearest' });
+}
+
+/* ---------- visuals ---------- */
+const VISUALS = {};
+
+/* 1: the home network with clickable devices */
+VISUALS.addresses = (board) => {
+  const devices = [
+    { k: 'laptop', x: 90, y: 90, label: 'Laptop', ip: '192.168.1.23', why: 'Private address. Handed out by the router (DHCP). Only has to be unique inside this house — your neighbor\'s laptop can be 192.168.1.23 too.' },
+    { k: 'phone', x: 90, y: 210, label: 'Phone', ip: '192.168.1.24', why: 'Private. Same network, so it shares the first three numbers (192.168.1) and gets its own last one.' },
+    { k: 'printer', x: 230, y: 250, label: 'Printer', ip: '192.168.1.50', why: 'Private, and this one is reserved so it never changes — other devices need to find it at the same address every day.' },
+    { k: 'router', x: 300, y: 130, label: 'Router', ip: 'inside 192.168.1.1', ip2: 'outside 74.12.88.201', why: 'Two addresses. Inside: 192.168.1.1, the gateway every device sends to. Outside: 74.12.88.201, the one public address the whole house shares. The router swaps them as packets pass (NAT).' },
+    { k: 'server', x: 690, y: 150, label: 'Web server', ip: '142.250.72.14', why: 'Public address. Unique on the entire internet. Any router in the world can figure out which way to forward a packet for it.' },
+  ];
+  board.innerHTML = `<svg viewBox="0 0 800 320" role="img" aria-label="A home network: laptop, phone and printer connected to a router, which connects through the internet to a web server">
+    <rect x="20" y="20" width="360" height="280" rx="14" fill="none" stroke="#3a4590" stroke-dasharray="6 5"/><text class="sub" x="36" y="42">HOME NETWORK · private addresses 192.168.1.x</text>
+    ${S.cloud(540, 150, 200, 110, 'THE INTERNET · public addresses')}
+    <path class="wire" d="M130 90 L264 130"/><path class="wire" d="M104 210 L264 136"/><path class="wire" d="M230 240 L286 142"/>
+    <path class="wire" d="M336 130 L445 150"/><path class="wire" d="M635 150 L664 150"/>
+    ${devices.map((d, i) => `<g class="clickable dev" data-i="${i}" tabindex="0" role="button" aria-label="${d.label} ${d.ip}"><rect x="${d.x - 46}" y="${d.y - 40}" width="92" height="112" fill="transparent" pointer-events="all"/>${S[d.k](d.x, d.y, d.label, d.ip, d.ip2)}</g>`).join('')}
+  </svg><p class="caption" id="cap">Click a device.</p>`;
+  const cap = board.querySelector('#cap');
+  board.querySelectorAll('.dev').forEach((g) => {
+    const pick = () => {
+      const d = devices[+g.dataset.i];
+      board.querySelectorAll('.node').forEach((n) => n.classList.remove('hot'));
+      g.querySelectorAll('.node').forEach((n) => n.classList.add('hot'));
+      cap.innerHTML = `<b>${d.label} — ${d.ip}${d.ip2 ? ' / ' + d.ip2 : ''}.</b> ${d.why}`;
+      interacted('device:' + d.label);
+    };
+    g.onclick = pick; g.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } };
+  });
+};
+
+/* 2: cut a message into packets */
+let lastPackets = null;
+VISUALS.packets = (board) => {
+  board.innerHTML = `<div class="controls"><input id="msg" maxlength="48" value="Meet me in Room 333 at 2:15" aria-label="Message to send"><button class="btn" id="cut">Cut into packets</button></div>
+    <div class="envelopes" id="env"></div><p class="caption" id="cap">Real packets are up to 1,500 bytes. Ours hold 6 characters so you can see the pieces.</p>`;
+  const cut = async () => {
+    const text = board.querySelector('#msg').value || 'hello world';
+    const n = 6, parts = []; for (let i = 0; i < text.length; i += n) parts.push(text.slice(i, i + n));
+    lastPackets = parts;
+    const env = board.querySelector('#env'); env.innerHTML = '';
+    interacted('cut:' + parts.length);
+    for (let i = 0; i < parts.length; i++) {
+      const e = document.createElement('div'); e.className = 'env';
+      e.innerHTML = `<div class="h">FROM <b>192.168.1.23</b><br>TO <b>142.250.72.14</b><br>SEQ <b>#${i + 1} of ${parts.length}</b></div><div class="p"><span>${esc(parts[i])}</span></div>`;
+      env.appendChild(e); await sleep(120); e.classList.add('in');
+    }
+    board.querySelector('#cap').innerHTML = `<b>${parts.length} packets.</b> Each header is the same size whether the payload is one letter or six — which is why very small packets are wasteful and very large ones hog the line. Take these to the next stop.`;
+  };
+  board.querySelector('#cut').onclick = cut;
+  board.querySelector('#msg').addEventListener('keydown', (e) => { if (e.key === 'Enter') cut(); });
+};
+
+/* 3: route the packets across a mesh, drop one, re-send it, reassemble */
+VISUALS.routing = (board, a) => {
+  const parts = lastPackets || ['Meet m', 'e in R', 'oom 33', '3 at 2', ':15'];
+  const N = { L: [60, 160], H: [170, 160], A: [290, 160], B: [400, 80], C: [400, 240], D: [520, 160], E: [520, 60], S: [720, 160] };
+  const links = [['L', 'H'], ['H', 'A'], ['A', 'B'], ['A', 'C'], ['B', 'D'], ['C', 'D'], ['B', 'E'], ['E', 'S'], ['D', 'S']];
+  const routes = [['L', 'H', 'A', 'B', 'D', 'S'], ['L', 'H', 'A', 'C', 'D', 'S'], ['L', 'H', 'A', 'B', 'E', 'S']];
+  const slotY = (i) => 70 + i * 24;
+  board.innerHTML = `<svg viewBox="0 0 800 320" role="img" aria-label="Packets travelling from a laptop through routers to a server">
+    ${links.map(([p, q]) => `<path class="wire" data-link="${p}${q}" d="M${N[p][0]} ${N[p][1]} L${N[q][0]} ${N[q][1]}"/>`).join('')}
+    ${S.laptop(N.L[0], N.L[1], 'Laptop', '192.168.1.23')}
+    ${S.router(N.H[0], N.H[1], 'Home router', '')}
+    ${['A', 'B', 'C', 'D', 'E'].map((k) => S.hop(N[k][0], N[k][1], k)).join('')}
+    <text class="sub" x="290" y="200" text-anchor="middle">ISP</text><text class="sub" x="460" y="30" text-anchor="middle">backbone routers</text>
+    ${S.server(N.S[0], N.S[1], 'Server', '142.250.72.14')}
+    <g id="slots">${parts.map((_, i) => `<rect class="slot" data-slot="${i}" x="760" y="${slotY(i)}" width="30" height="18" rx="3"/><text class="pkt" x="775" y="${slotY(i) + 13}" text-anchor="middle" fill="#8b95c9" style="fill:#8b95c9">#${i + 1}</text>`).join('')}</g>
+    <text class="sub" x="775" y="60" text-anchor="middle">arrived</text>
+    <g id="pkts"></g>
+  </svg>
+  <div class="controls"><button class="btn" id="send">Send the packets</button><button class="btn ghost" id="again2" disabled>Send again</button></div>
+  <p class="caption" id="cap">${parts.length} packets are waiting on the laptop.</p>`;
+  const svg = board.querySelector('svg'), pktG = board.querySelector('#pkts'), cap = board.querySelector('#cap');
+  const send = async () => {
+    board.querySelector('#send').disabled = true; board.querySelector('#again2').disabled = true;
+    pktG.innerHTML = ''; svg.querySelectorAll('.slot').forEach((s) => s.classList.remove('full')); svg.querySelectorAll('.wire').forEach((w) => w.classList.remove('live'));
+    interacted('send:' + parts.length);
+    const arrived = new Set(); let dropped = -1;
+    const fly = (i, route, dropAt) => new Promise((resolve) => {
+      const g = document.createElementNS(svgNS, 'g');
+      g.innerHTML = `<rect class="pk" x="-14" y="-9" width="28" height="18" rx="3"/><text class="pkt" y="4" text-anchor="middle">#${i + 1}</text>`;
+      pktG.appendChild(g);
+      const pts = route.map((k) => N[k]); const hopMs = (520 + Math.random() * 380) * SPEED;
+      let seg = 0, t0 = performance.now();
+      const step = (now) => {
+        if (a.stop) return;
+        let f = (now - t0) / hopMs;
+        if (f >= 1) { seg++; t0 = now; f = 0;
+          if (seg === dropAt) { const [x, y] = pts[seg]; g.innerHTML = `<rect class="pk lost" x="-14" y="-9" width="28" height="18" rx="3"/><text class="pkt" y="4" text-anchor="middle">#${i + 1}</text><path class="x" d="M-18 -13 L18 13 M-18 13 L18 -13"/>`; g.setAttribute('transform', `translate(${x},${y - 26})`); setTimeout(() => g.remove(), 900 * SPEED); resolve(false); return; }
+          if (seg >= pts.length - 1) { g.remove(); const slot = svg.querySelector(`[data-slot="${i}"]`); slot.classList.add('full'); slot.nextElementSibling.style.fill = '#e6e9f5'; arrived.add(i); resolve(true); return; }
+        }
+        const [x1, y1] = pts[seg], [x2, y2] = pts[seg + 1];
+        g.setAttribute('transform', `translate(${x1 + (x2 - x1) * f},${y1 + (y2 - y1) * f - 22})`);
+        requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+    cap.innerHTML = 'Packets leaving. Watch the routes — and the arrival slots on the right.';
+    const jobs = parts.map((_, i) => { const r = routes[i % routes.length]; const drop = (i === 1 && parts.length > 1) ? 3 : -1; if (drop > 0) dropped = i; return sleep(i * 260).then(() => fly(i, r, drop)); });
+    await Promise.all(jobs);
+    if (a.stop) return;
+    if (dropped < 0) { cap.innerHTML = `<b>All ${parts.length} packets in.</b> Reassembled: <span style="font-family:var(--mono);color:#ffd166">${esc(parts.join(''))}</span>`; board.querySelector('#again2').disabled = false; board.querySelector('#send').disabled = false; return; }
+    cap.innerHTML = `<b>Packet #${dropped + 1} was dropped at router C</b> — it was busy. The others arrived out of order; the receiver waits, notices the gap, and asks for #${dropped + 1} again.`;
+    await sleep(1400); if (a.stop) return;
+    cap.innerHTML = `Re-sending <b>#${dropped + 1}</b> — this time router A hands it to B instead of C.`;
+    await fly(dropped, routes[0], -1); if (a.stop) return;
+    cap.innerHTML = `<b>All ${parts.length} packets in.</b> Reassembled from the sequence numbers: <span style="font-family:var(--mono);color:#ffd166">${esc(parts.join(''))}</span>`;
+    board.querySelector('#again2').disabled = false; board.querySelector('#send').disabled = false;
+  };
+  board.querySelector('#send').onclick = send; board.querySelector('#again2').onclick = send;
+};
+
+/* 4: DNS lookup then connect */
+VISUALS.dns = (board, a) => {
+  board.innerHTML = `<svg viewBox="0 0 800 300" role="img" aria-label="A laptop asks a DNS server for the address of hsct.tech, then connects to the web server">
+    <path class="wire" id="w1" d="M120 160 L380 70"/><path class="wire" id="w2" d="M120 160 L660 160"/>
+    ${S.laptop(80, 150, 'Laptop', '192.168.1.23')}
+    ${S.server(410, 70, 'DNS server', '10.0.0.53')}
+    ${S.server(700, 150, 'hsct.tech', '?')}
+    <g id="msgs"></g>
+    <g id="steps" transform="translate(30,250)"><text class="sub" id="st">1. type hsct.tech · 2. ask DNS · 3. get the number · 4. connect to the number</text></g>
+  </svg>
+  <div class="controls"><button class="btn" id="go">Look up hsct.tech</button></div><p class="caption" id="cap">Your computer has a name. Routers need a number.</p>`;
+  const msgs = board.querySelector('#msgs'), cap = board.querySelector('#cap'), sip = board.querySelectorAll('.ip')[2] || null;
+  const bubble = async (x1, y1, x2, y2, text, ms) => {
+    const g = document.createElementNS(svgNS, 'g'); const w = text.length * 7 + 16;
+    g.innerHTML = `<rect class="callout" x="${-w / 2}" y="-11" width="${w}" height="22" rx="11"/><text class="callout-t" y="4" text-anchor="middle" font-family="${'IBM Plex Mono, monospace'}">${esc(text)}</text>`;
+    msgs.appendChild(g); const t0 = performance.now();
+    await new Promise((res) => { const step = (now) => { if (a.stop) return; const f = Math.min(1, (now - t0) / (ms * SPEED)); g.setAttribute('transform', `translate(${x1 + (x2 - x1) * f},${y1 + (y2 - y1) * f})`); if (f < 1) requestAnimationFrame(step); else res(); }; requestAnimationFrame(step); });
+    return g;
+  };
+  board.querySelector('#go').onclick = async () => {
+    board.querySelector('#go').disabled = true; msgs.innerHTML = ''; interacted('dns');
+    cap.innerHTML = '<b>1.</b> You typed <code style="background:#1a2250;color:#ffd166">hsct.tech</code>. The laptop has no idea where that is.'; await sleep(900);
+    cap.innerHTML = '<b>2.</b> It asks the DNS server it was told about at boot: "what is the address for hsct.tech?"';
+    const q = await bubble(120, 150, 380, 78, 'hsct.tech ?', 1100); q.remove(); await sleep(400);
+    cap.innerHTML = '<b>3.</b> The DNS server answers with a number.';
+    const r = await bubble(380, 78, 120, 150, '104.21.6.190', 1100); r.remove();
+    const label = board.querySelectorAll('text.ip'); if (label[2]) label[2].textContent = '104.21.6.190';
+    await sleep(500);
+    cap.innerHTML = '<b>4.</b> Now — and only now — the laptop can send packets to the website, addressed to 104.21.6.190.';
+    const c = await bubble(120, 160, 660, 160, 'GET / → 104.21.6.190', 1400); c.remove();
+    const pg = await bubble(660, 160, 120, 160, '200 OK — the page', 1400); pg.remove();
+    cap.innerHTML = '<b>Done.</b> The answer is cached for a while, so the next visit skips steps 2 and 3. If the DNS server were unreachable, you\'d be stuck at step 2 forever — even though the internet itself is fine.';
+    board.querySelector('#go').disabled = false;
+  };
+};
+
+/* 5: one building, many doors */
+VISUALS.ports = (board, a) => {
+  const doors = [{ p: 443, who: 'website (HTTPS)', x: 380 }, { p: 53, who: 'DNS', x: 470 }, { p: 25, who: 'email', x: 560 }, { p: 22, who: 'SSH', x: 650 }];
+  const deliveries = [{ p: 443, text: 'GET /lessons', from: 'laptop' }, { p: 53, text: 'hsct.tech ?', from: 'phone' }, { p: 25, text: 'MAIL FROM:', from: 'laptop' }, { p: 443, text: 'GET /verify', from: 'phone' }, { p: 3389, text: 'RDP login', from: 'laptop' }];
+  board.innerHTML = `<svg viewBox="0 0 800 300" role="img" aria-label="A server shown as a building with numbered doors for ports; packets are delivered to the right door">
+    <rect x="340" y="40" width="360" height="200" rx="8" fill="#1a2250" stroke="#3a4590" stroke-width="1.5"/>
+    <text class="lbl" x="520" y="66" text-anchor="middle">one server · one address</text><text class="ip" x="520" y="84" text-anchor="middle">104.21.6.190</text>
+    ${doors.map((d) => `<g data-door="${d.p}"><rect class="door" x="${d.x}" y="150" width="60" height="80" rx="3"/><text class="ip" x="${d.x + 30}" y="180" text-anchor="middle" font-size="14">${d.p}</text><text class="sub" x="${d.x + 30}" y="200" text-anchor="middle">${d.who}</text></g>`).join('')}
+    ${S.laptop(80, 110, 'Laptop', '')}${S.phone(80, 230, 'Phone', '')}
+    <g id="pk"></g>
+  </svg><div class="controls"><button class="btn" id="go">Deliver 5 packets</button></div><p class="caption" id="cap">Every packet carries a port number next to the address.</p>`;
+  const pk = board.querySelector('#pk'), cap = board.querySelector('#cap');
+  board.querySelector('#go').onclick = async () => {
+    board.querySelector('#go').disabled = true; pk.innerHTML = ''; interacted('ports');
+    board.querySelectorAll('.door').forEach((d) => d.classList.remove('open'));
+    for (const d of deliveries) {
+      if (a.stop) return;
+      const door = doors.find((x) => x.p === d.p); const from = d.from === 'laptop' ? [110, 110] : [96, 230];
+      const g = document.createElementNS(svgNS, 'g');
+      g.innerHTML = `<rect class="pk" x="-58" y="-10" width="116" height="20" rx="3"/><text class="pkt" y="4" text-anchor="middle">:${d.p}  ${esc(d.text)}</text>`;
+      pk.appendChild(g);
+      const to = door ? [door.x + 30, 140] : [520, 260]; const t0 = performance.now();
+      cap.innerHTML = `Packet to <b>104.21.6.190 port ${d.p}</b>` + (door ? ` → the ${door.who} program.` : ` → <span style="color:#ff6b6b">no program is listening on ${d.p}. The server refuses it.</span>`);
+      await new Promise((res) => { const step = (now) => { if (a.stop) return; const f = Math.min(1, (now - t0) / (1100 * SPEED)); g.setAttribute('transform', `translate(${from[0] + (to[0] - from[0]) * f},${from[1] + (to[1] - from[1]) * f})`); if (f < 1) requestAnimationFrame(step); else res(); }; requestAnimationFrame(step); });
+      if (door) { board.querySelector(`[data-door="${d.p}"] .door`).classList.add('open'); } else { g.querySelector('.pk').classList.add('lost'); }
+      await sleep(500); g.remove();
+    }
+    cap.innerHTML = '<b>Five packets, one address, four doors.</b> The port number is how one machine runs a website, DNS and email at the same time — and why a firewall works by simply closing doors.';
+    board.querySelector('#go').disabled = false;
+  };
+};
+
+/* 6: the whole journey as a timeline */
+VISUALS.journey = (board, a) => {
+  const steps = [
+    ['You press Enter on hsct.tech', 'Application'],
+    ['DNS: hsct.tech → 104.21.6.190', 'Application'],
+    ['TCP handshake with 104.21.6.190 : 443', 'Transport'],
+    ['Request split into packets, routed hop by hop', 'Internet'],
+    ['Server answers with numbered packets', 'Internet'],
+    ['Reassembled in order · browser draws the page', 'Application'],
+  ];
+  board.innerHTML = `<svg viewBox="0 0 800 305" role="img" aria-label="Timeline of one click: DNS lookup, TCP connection, packets out, packets back, page drawn">
+    ${S.laptop(70, 130, 'You', '192.168.1.23')}${S.server(400, 42, 'DNS', '10.0.0.53')}${S.server(720, 130, 'hsct.tech', '104.21.6.190')}
+    <path class="wire" d="M110 130 L370 55"/><path class="wire" d="M110 135 L690 135"/>
+    <g id="tl">${steps.map((s, i) => `<g data-step="${i}" opacity=".25" transform="translate(${20 + i * 128},218)"><rect class="node" width="120" height="76" rx="6"/><text class="sub" x="8" y="16">${i + 1} · ${s[1]}</text><foreignObject x="6" y="20" width="110" height="54"><div xmlns="http://www.w3.org/1999/xhtml" style="font:11px/1.25 'IBM Plex Sans',sans-serif;color:#e6e9f5">${esc(s[0])}</div></foreignObject></g>`).join('')}</g>
+    <g id="pk"></g>
+  </svg><div class="controls"><button class="btn" id="go">Play the click</button></div><p class="caption" id="cap">Six steps, in order.</p>`;
+  const pk = board.querySelector('#pk'), cap = board.querySelector('#cap');
+  const move = (x1, y1, x2, y2, text, ms) => new Promise((res) => {
+    const g = document.createElementNS(svgNS, 'g'); const w = text.length * 6.5 + 14;
+    g.innerHTML = `<rect class="pk" x="${-w / 2}" y="-9" width="${w}" height="18" rx="3"/><text class="pkt" y="4" text-anchor="middle">${esc(text)}</text>`; pk.appendChild(g);
+    const t0 = performance.now(); const step = (now) => { if (a.stop) return; const f = Math.min(1, (now - t0) / (ms * SPEED)); g.setAttribute('transform', `translate(${x1 + (x2 - x1) * f},${y1 + (y2 - y1) * f})`); if (f < 1) requestAnimationFrame(step); else { g.remove(); res(); } }; requestAnimationFrame(step);
+  });
+  const light = (i) => board.querySelectorAll('#tl g[data-step]').forEach((g, k) => g.setAttribute('opacity', k <= i ? '1' : '.25'));
+  board.querySelector('#go').onclick = async () => {
+    board.querySelector('#go').disabled = true; light(-1); interacted('journey');
+    light(0); cap.innerHTML = '<b>1.</b> Enter.'; await sleep(700);
+    light(1); cap.innerHTML = '<b>2.</b> Name to number.'; await move(110, 130, 370, 55, 'hsct.tech?', 700); await move(370, 55, 110, 130, '104.21.6.190', 700);
+    light(2); cap.innerHTML = '<b>3.</b> Three packets set up a TCP connection on port 443 — hello, hello back, got it.'; await move(110, 135, 690, 135, 'SYN', 600); await move(690, 135, 110, 135, 'SYN-ACK', 600); await move(110, 135, 690, 135, 'ACK', 600);
+    light(3); cap.innerHTML = '<b>4.</b> The request goes out as packets, each routed on its own.'; await Promise.all([move(110, 128, 690, 128, 'GET #1', 900), sleep(200).then(() => move(110, 142, 690, 142, 'GET #2', 1000))]);
+    light(4); cap.innerHTML = '<b>5.</b> The page comes back as numbered packets — and TCP confirms each one.'; await Promise.all([move(690, 128, 110, 128, 'page #1', 900), sleep(150).then(() => move(690, 142, 110, 142, 'page #2', 1000)), sleep(300).then(() => move(690, 135, 110, 135, 'page #3', 950))]);
+    light(5); cap.innerHTML = '<b>6.</b> Reassembled by sequence number, handed to the browser, drawn. About 200 milliseconds, start to finish. Now put the steps in order yourself, below.';
+    board.querySelector('#go').disabled = false;
+  };
+};
+
+/* ---------- end ---------- */
+function renderEnd() {
+  show('view-end'); renderTop();
+  const tot = total();
+  $('end-lede').textContent = tot === 100 ? 'Six for six. Download your result and submit it.' : 'You scored ' + tot + ' out of 100. Download your result and submit it in Google Classroom.';
+  $('recap').innerHTML = '<tr><th>Stop</th><th>Result</th><th>Points</th></tr>' + MODULES.map((m, i) => { const s = state.m[i]; return '<tr><td>' + esc(m.title) + '</td><td>' + (s.earned === m.points ? 'first try' : s.earned ? 'second try' : 'missed') + (s.interacted ? '' : ' · diagram not run') + '</td><td>' + s.earned + ' / ' + m.points + '</td></tr>'; }).join('');
+  HSCT.endScreen('#hsct-result', {
+    earned: tot, possible: 100,
+    tier: tot >= 90 ? 'Network literate' : tot >= 70 ? 'Getting there' : 'Read it again',
+    sections: MODULES.map((m, i) => ({ id: m.id, title: (i + 1) + '. ' + m.title, earned: state.m[i].earned, possible: m.points })),
+    extra: { stops: MODULES.map((m, i) => { const s = state.m[i]; return { id: m.id, tries: s.tries, earned: s.earned, answers: s.answers, interacted: s.interacted }; }) },
+  });
+}
+$('again').onclick = () => { show('view-intro'); $('name').focus(); renderTop(); };
+renderTop();
+</script>
+</body>
+</html>
