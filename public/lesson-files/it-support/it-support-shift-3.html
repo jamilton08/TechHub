@@ -1,0 +1,1700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HSCT Help Desk — Shift 3: Stuck at POST</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bench:#e6e4db;
+  --paper:#ffffff;
+  --ink:#1d2129;
+  --muted:#5f6675;
+  --line:#cfcdc3;
+  --line-soft:#e3e1d8;
+  --blue:#1f5fbf;
+  --hsct-color:#1f5fbf;
+  --blue-soft:#e6eefb;
+  --amber:#b96f00;
+  --amber-soft:#fff2d4;
+  --green:#1f7a3d;
+  --green-soft:#e1f2e6;
+  --red:#b3261e;
+  --red-soft:#fbe3e1;
+  --mono:'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sans:'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bench);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.5}
+button{font:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,.screen:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+h1,h2,h3,h4{margin:0;line-height:1.2}
+p{margin:0 0 .75rem}
+.view{display:none}
+.view.active{display:block}
+
+/* top bar */
+.topbar{position:sticky;top:0;z-index:5;background:var(--paper);border-bottom:1px solid var(--line);padding:.6rem 1.25rem;display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap}
+.topbar .brand{font-weight:600}
+.topbar .brand span{color:var(--muted);font-weight:400}
+.progress{display:flex;gap:.35rem;align-items:center}
+.progress i{display:block;width:26px;height:8px;border-radius:2px;background:var(--line)}
+.progress i.done{background:var(--green)}
+.progress i.now{background:var(--blue)}
+.stat{font-family:var(--mono);font-size:.9rem;color:var(--muted)}
+.stat b{color:var(--ink);font-weight:600}
+.topbar .grow{flex:1}
+
+/* intro */
+.intro{max-width:760px;margin:0 auto;padding:3rem 1.25rem 4rem}
+.intro h1{font-size:2.2rem;font-weight:700;letter-spacing:-.01em}
+.intro .lede{font-size:1.15rem;color:var(--muted);margin:.5rem 0 1.75rem}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:1.25rem 1.4rem}
+.rules{margin:0;padding-left:1.2rem}
+.rules li{margin:.3rem 0}
+.name-row{display:flex;gap:.6rem;margin-top:1.25rem;flex-wrap:wrap}
+.name-row input{flex:1;min-width:220px;padding:.65rem .8rem;border:1px solid var(--line);border-radius:4px;font:inherit}
+.btn{border:1px solid var(--blue);background:var(--blue);color:#fff;border-radius:4px;padding:.65rem 1.1rem;font-weight:600}
+.btn:hover{background:#1a51a3}
+.btn.secondary{background:var(--paper);color:var(--blue)}
+.btn.secondary:hover{background:var(--blue-soft)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.err{color:var(--red);margin-top:.5rem;display:none}
+details.teacher{margin-top:2rem;color:var(--muted);font-size:.9rem}
+details.teacher summary{cursor:pointer}
+details.teacher .card{margin-top:.6rem}
+.machines{list-style:none;margin:1rem 0 0;padding:0;display:grid;gap:.5rem;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.machines li{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:.7rem .9rem;font-size:.92rem}
+.machines li b{display:block;margin-bottom:.15rem}
+.machines li span{color:var(--muted)}
+
+/* ticket workspace */
+.work{max-width:1240px;margin:0 auto;padding:1.25rem;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:1.25rem;align-items:start}
+@media (max-width:900px){.work{grid-template-columns:1fr}}
+
+.ticket{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:1rem 1.25rem;position:relative}
+.ticket::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;border-radius:6px 0 0 6px;background:var(--blue)}
+.ticket .tno{font-family:var(--mono);color:var(--muted);font-size:.85rem}
+.ticket h2{font-size:1.35rem;margin:.15rem 0 .35rem}
+.ticket .who{color:var(--muted);font-size:.95rem;margin-bottom:.6rem}
+.ticket blockquote{margin:0;padding:.75rem .9rem;background:var(--bench);border-radius:4px;font-style:italic}
+.ticket .chip{display:inline-block;font-size:.8rem;padding:.1rem .5rem;border-radius:999px;background:var(--blue-soft);color:var(--blue);font-weight:500;margin-left:.4rem;vertical-align:middle;font-style:normal}
+
+/* the monitor */
+.monitor{margin-top:1.1rem;background:#1b1c1f;border-radius:10px;padding:14px 14px 10px;box-shadow:0 10px 30px rgba(0,0,0,.25), inset 0 0 0 1px #2c2d31}
+.screen{position:relative;aspect-ratio:16/10;background:#000;border-radius:3px;overflow:hidden;font-family:var(--mono);font-size:clamp(9.5px,1.3vw,13px);line-height:1.45;color:#d6d6d6;cursor:default}
+@media (max-width:640px){.screen{aspect-ratio:4/3;font-size:clamp(9px,2.6vw,11px)}}
+.screen::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(255,255,255,.025) 0 1px,transparent 1px 3px)}
+.monitor .chin{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding:0 4px}
+.monitor .chin span{font-family:var(--mono);font-size:.7rem;color:#6d6f75;letter-spacing:.06em}
+.led{width:8px;height:8px;border-radius:50%;background:#2a2b2f}
+.led.on{background:#39d353;box-shadow:0 0 6px #39d353}
+.led.amber{background:#f0b429;box-shadow:0 0 6px #f0b429}
+.scr-black{position:absolute;inset:0;background:#000}
+.scr-text{position:absolute;inset:0;padding:1.2em 1.4em;color:#d0d0d0;white-space:pre-wrap;overflow:auto}
+.scr-text .em{color:#fff}
+.scr-text .warn{color:#ffd166}
+.scr-text .bad{color:#ff6b6b}
+.scr-text .dim{color:#7a7a7a}
+.scr-text .keys{margin-top:1em;color:#9ad0ff}
+.scr-text.center{display:flex;align-items:center;justify-content:center;text-align:center;flex-direction:column}
+.scr-text .logo{font-size:1.6em;font-weight:600;color:#fff;letter-spacing:.08em;margin-bottom:.6em}
+.pwbox{margin-top:1em;display:flex;gap:.6em;align-items:center;flex-wrap:wrap}
+.pwbox input{font:inherit;font-size:1.05em;background:#000;color:#fff;border:1px solid #9a9a9a;padding:.25em .5em;min-width:12em;letter-spacing:.15em}
+.pwbox button{font:inherit;font-size:.95em;background:#c0c0c0;color:#000;border:0;padding:.3em .7em;cursor:pointer}
+.pwbox button:focus-visible{outline:2px solid #ffd166}
+.desk{position:absolute;inset:0;background:linear-gradient(160deg,#2d6bb8,#153f78);font-family:var(--sans)}
+.desk.lab{background:linear-gradient(160deg,#1f5fbf,#0f2d5c)}
+.desk.club{background:linear-gradient(160deg,#5b2a86,#1a0f2e)}
+.desk.lib{background:linear-gradient(160deg,#2a7a6d,#0e3a35)}
+.taskbar{position:absolute;left:0;right:0;bottom:0;height:9%;background:#0f1b2d;display:flex;align-items:center;padding:0 1em;gap:1em;color:#cfd8e6;font-size:.9em}
+.taskbar .clock{margin-left:auto;font-family:var(--mono)}
+.win{position:absolute;left:6%;top:8%;width:88%;max-height:78%;background:#f4f5f8;color:#1a1a1a;border:1px solid #9aa4b5;box-shadow:0 8px 20px rgba(0,0,0,.4);overflow:hidden;display:flex;flex-direction:column}
+.win-bar{background:#e4e7ee;padding:.3em .8em;font-weight:600;display:flex;justify-content:space-between;border-bottom:1px solid #c9cfda}
+.win-bar .x{color:#666;font-weight:400}
+.win-body{padding:.6em .8em;overflow:auto;font-size:.95em}
+.win-body p{margin:0 0 .4em}
+.bad{color:#b3261e;font-weight:600}
+.warnc{color:#b96f00;font-weight:600}
+.okc{color:#1f7a3d;font-weight:600}
+.bsod{position:absolute;inset:0;background:#0078d7;color:#fff;padding:1.6em 2em;font-family:var(--sans);overflow:auto}
+.bsod .face{font-size:4.5em;line-height:1;margin-bottom:.25em}
+.bsod p{margin:0 0 .5em;max-width:34em}
+.bsod .pct{margin:.8em 0}
+.bsod .code{font-family:var(--mono);font-size:.9em;margin:0 0 .15em}
+.bitlocker{position:absolute;inset:0;background:#004a8f;color:#fff;padding:1.4em 2em;font-family:var(--sans);overflow:auto}
+.bitlocker h4{font-size:1.5em;font-weight:400;margin-bottom:.3em}
+.bitlocker p{margin:0 0 .4em;max-width:40em}
+.bitlocker .keyrow{display:flex;gap:.4em;margin:.8em 0;flex-wrap:wrap}
+.bitlocker .keyrow span{display:inline-block;width:4.2em;height:1.6em;border:1px solid rgba(255,255,255,.6);background:rgba(255,255,255,.08)}
+.bitlocker .small{font-size:.85em;color:#cfe3ff}
+.spin{display:inline-block;width:1em;height:1em;border:2px solid #bbb;border-top-color:#1f5fbf;border-radius:50%;animation:spin 1.1s linear infinite;vertical-align:middle;margin-right:.4em}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ---- firmware setup screens: one engine, four looks ---- */
+.bios{position:absolute;inset:0;display:flex;flex-direction:column;font-family:var(--mono)}
+.bios-head{padding:.3em 1em;font-weight:600;display:flex;justify-content:space-between;gap:1em;flex-wrap:wrap}
+.bios-head small{font-weight:400;opacity:.85}
+.bios-nav{display:flex;gap:.2em;padding:.2em .6em;flex-wrap:wrap}
+.bios-nav button{font:inherit;font-size:1em;background:transparent;border:0;padding:.1em .7em;color:inherit;cursor:pointer;border-radius:2px}
+.bios-main{flex:1;display:flex;min-height:0}
+.bios-body{flex:1.4;padding:.5em .9em;overflow:auto;min-width:0}
+.bios-help{flex:1;padding:.5em .9em;overflow:auto;font-size:.92em;border-left:1px solid rgba(128,128,128,.4);min-width:0}
+.bios-help b{display:block;margin-bottom:.3em}
+.bios-row{display:flex;justify-content:space-between;gap:1em;padding:.08em .4em;cursor:pointer;border-radius:2px;align-items:baseline}
+.bios-row .k{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bios-row .v{white-space:nowrap;text-align:right}
+.bios-row.info{cursor:default;opacity:.9}
+.bios-row.locked{opacity:.55;cursor:not-allowed}
+.bios-row.sub{padding-left:1.6em}
+.bios-row.head{font-weight:600;cursor:default;margin-top:.3em}
+.bios-foot{padding:.25em 1em;font-size:.9em;display:flex;gap:1.2em;flex-wrap:wrap}
+.bios-foot span{white-space:nowrap}
+.bios .overlay{position:absolute;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:1.5em}
+.bios .box{min-width:min(26em,92%);max-width:92%;max-height:90%;overflow:auto;padding:.7em 1em;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.bios .box h5{margin:0 0 .4em;font-size:1em;font-weight:600}
+.bios .opt{padding:.12em .6em;cursor:pointer;border-radius:2px;display:flex;justify-content:space-between;gap:1em;align-items:center}
+.bios .opt .tools{display:flex;gap:.25em}
+.bios .opt .tools button,.bios .box .actions button{font:inherit;font-size:.9em;padding:.05em .5em;cursor:pointer;border:1px solid currentColor;background:transparent;color:inherit;border-radius:2px}
+.bios .box .actions{display:flex;gap:.6em;justify-content:flex-end;margin-top:.7em}
+.bios .box .actions button.sel{outline:2px solid currentColor}
+.bios .datef{display:flex;gap:.8em;align-items:center;margin:.4em 0}
+.bios .datef .f{padding:.1em .5em;border:1px solid transparent;border-radius:2px;display:flex;flex-direction:column;align-items:center;gap:.15em}
+.bios .datef .f small{opacity:.75}
+.bios .datef .f button{font:inherit;font-size:.85em;padding:0 .4em;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer;border-radius:2px}
+.bios .excl{text-decoration:line-through;opacity:.7}
+.bios .note{margin-top:.6em;font-size:.92em;opacity:.9}
+
+/* AMI-style classic: blue field, grey bars */
+.st-ami{background:#0000a8;color:#c0c0c0}
+.st-ami .bios-head,.st-ami .bios-nav,.st-ami .bios-foot{background:#c0c0c0;color:#0000a8}
+.st-ami .bios-nav button.on{background:#0000a8;color:#fff}
+.st-ami .bios-row .v{color:#fff}
+.st-ami .bios-row.sel{background:#c0c0c0;color:#0000a8}
+.st-ami .bios-row.sel .v{color:#0000a8;font-weight:600}
+.st-ami .bios-help{color:#ffff55;border-color:#c0c0c0}
+.st-ami .box{background:#0000a8;color:#c0c0c0;border:2px solid #c0c0c0}
+.st-ami .opt.sel{background:#c0c0c0;color:#0000a8}
+.st-ami .datef .f.sel{border-color:#ffff55;color:#ffff55}
+
+/* OptiPlex-style: white pages, deep blue bar, tree on the left */
+.st-dell{background:#f2f2f2;color:#1a1a1a}
+.st-dell .bios-head{background:#0b3d91;color:#fff}
+.st-dell .bios-main{flex-direction:row}
+.st-dell .bios-nav{flex-direction:column;gap:0;padding:.4em 0;background:#fff;border-right:1px solid #b9c0cc;min-width:9.5em;flex:0 0 auto}
+.st-dell .bios-nav button{text-align:left;padding:.15em .8em;border-radius:0;font-family:var(--sans)}
+.st-dell .bios-nav button.on{background:#dde8f7;color:#0b3d91;font-weight:600}
+.st-dell .bios-body{font-family:var(--sans);background:#fff}
+.st-dell .bios-row.sel{background:#dde8f7}
+.st-dell .bios-row .v{color:#0b3d91}
+.st-dell .bios-help{font-family:var(--sans);background:#f7f9fc;border-color:#b9c0cc;color:#333}
+.st-dell .bios-foot{background:#e4e8ef;color:#333;font-family:var(--sans)}
+.st-dell .box{background:#fff;color:#1a1a1a;border:1px solid #8a94a6;font-family:var(--sans)}
+.st-dell .opt.sel{background:#dde8f7}
+.st-dell .datef .f.sel{border-color:#0b3d91}
+
+/* modern UEFI: dark, orange highlight, status strip */
+.st-uefi{background:#14171d;color:#d8dbe2}
+.st-uefi .bios-head{background:#0c0e12;color:#fff;border-bottom:1px solid #2b3039}
+.st-uefi .bios-strip{display:flex;gap:1.2em;padding:.2em 1em;background:#1c2028;font-size:.9em;color:#9aa3b2;flex-wrap:wrap}
+.st-uefi .bios-strip b{color:#ffb454;font-weight:500}
+.st-uefi .bios-nav{background:#1c2028;border-bottom:1px solid #2b3039}
+.st-uefi .bios-nav button{color:#9aa3b2}
+.st-uefi .bios-nav button.on{color:#fff;box-shadow:inset 0 -2px 0 #ffb454}
+.st-uefi .bios-row .v{color:#ffb454}
+.st-uefi .bios-row.sel{background:#2a2f3a;box-shadow:inset 3px 0 0 #ffb454}
+.st-uefi .bios-help{color:#b9c1cf;border-color:#2b3039}
+.st-uefi .bios-foot{background:#0c0e12;color:#9aa3b2}
+.st-uefi .box{background:#1c2028;color:#e6e8ee;border:1px solid #3a404c}
+.st-uefi .opt.sel{background:#2a2f3a;box-shadow:inset 3px 0 0 #ffb454}
+.st-uefi .datef .f.sel{border-color:#ffb454}
+
+/* laptop setup utility: pale grey, blue header, tabs */
+.st-lap{background:#e9e9e9;color:#222}
+.st-lap .bios-head{background:#1d4fa3;color:#fff}
+.st-lap .bios-nav{background:#f6f6f6;border-bottom:1px solid #c6c6c6}
+.st-lap .bios-nav button{color:#1d4fa3}
+.st-lap .bios-nav button.on{background:#1d4fa3;color:#fff}
+.st-lap .bios-row .v{color:#1d4fa3}
+.st-lap .bios-row.sel{background:#cddcf3}
+.st-lap .bios-help{background:#f6f6f6;border-color:#c6c6c6;color:#333}
+.st-lap .bios-foot{background:#f6f6f6;color:#333;border-top:1px solid #c6c6c6}
+.st-lap .box{background:#fff;color:#222;border:1px solid #7a8aa6}
+.st-lap .opt.sel{background:#cddcf3}
+.st-lap .datef .f.sel{border-color:#1d4fa3}
+
+@media (max-width:640px){
+  .bios-main{flex-direction:column}
+  .bios-help{border-left:0;border-top:1px solid rgba(128,128,128,.4);flex:0 0 auto;max-height:34%}
+  .st-dell .bios-nav{flex-direction:row;flex-wrap:wrap;min-width:0;border-right:0;border-bottom:1px solid #b9c0cc;padding:.2em .4em}
+  .st-dell .bios-nav button{padding:.1em .5em}
+}
+
+/* keys under the monitor */
+.keys{margin-top:.6rem;display:flex;flex-wrap:wrap;gap:.3rem;align-items:center}
+.keys button{font-family:var(--mono);font-size:.82rem;padding:.35rem .55rem;border:1px solid var(--line);border-bottom-width:3px;border-radius:5px;background:var(--paper);color:var(--ink);min-width:2.4rem}
+.keys button:hover{background:var(--blue-soft);border-color:var(--blue)}
+.keys button:active{border-bottom-width:1px;transform:translateY(2px)}
+.keys button.power{background:#1d2129;color:#fff;border-color:#000}
+.keys button.power:hover{background:#000}
+.keys .gap{width:.6rem}
+.keys .hint{flex-basis:100%;font-size:.82rem;color:var(--muted);margin-top:.15rem}
+.machine{margin-top:.8rem;padding:.75rem .9rem;border-radius:5px;background:var(--paper);border:1px solid var(--line);display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;font-size:.95rem}
+.machine.up{background:var(--green-soft);border-color:#b9dcc4}
+.machine .grow{flex:1;min-width:12em}
+
+/* tech log */
+.log{margin-top:1.1rem;background:var(--paper);border:1px solid var(--line);border-radius:6px}
+.log h3{font-size:.95rem;font-weight:600;padding:.6rem 1rem;border-bottom:1px solid var(--line-soft);display:flex;justify-content:space-between}
+.log h3 span{font-family:var(--mono);font-weight:400;color:var(--muted);font-size:.85rem}
+.log ol{list-style:none;margin:0;padding:.5rem 1rem;max-height:260px;overflow:auto;font-size:.92rem}
+.log li{padding:.3rem 0;border-bottom:1px dashed var(--line-soft);display:grid;grid-template-columns:52px 1fr;gap:.6rem}
+.log li:last-child{border-bottom:0}
+.log li time{font-family:var(--mono);color:var(--muted);font-size:.85rem;padding-top:.1rem}
+.log li.hint{color:var(--amber)}
+.log li.bad{color:var(--red)}
+.log li.good{color:var(--green)}
+.log li.sys{color:var(--muted)}
+.log .empty{color:var(--muted);padding:.5rem 1rem}
+
+/* toolkit */
+.toolkit{background:var(--paper);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.tabs{display:flex;border-bottom:1px solid var(--line)}
+.tabs button{flex:1;padding:.75rem .35rem;border:0;background:var(--bench);color:var(--muted);font-weight:500;border-right:1px solid var(--line)}
+.tabs button:last-child{border-right:0}
+.tabs button.active{background:var(--paper);color:var(--ink);font-weight:600;box-shadow:inset 0 -3px 0 var(--blue)}
+.tabs button .n{display:inline-block;min-width:1.4em;padding:0 .35em;border-radius:999px;background:var(--line);font-size:.75rem;margin-left:.3em;color:var(--ink)}
+.pane{display:none;padding:1rem 1.1rem}
+.pane.active{display:block}
+.pane .help{color:var(--muted);font-size:.92rem;margin-bottom:.9rem}
+
+.diag{list-style:none;margin:0;padding:0;display:grid;gap:.5rem}
+.diag button{width:100%;text-align:left;background:var(--paper);border:1px solid var(--line);border-radius:5px;padding:.6rem .8rem;display:flex;justify-content:space-between;gap:.8rem;align-items:center}
+.diag button:hover{border-color:var(--blue);background:var(--blue-soft)}
+.diag button .t{font-family:var(--mono);font-size:.8rem;color:var(--muted);white-space:nowrap}
+.diag li.done button{background:#f6f7f4;border-color:var(--line);cursor:default}
+.diag li.done button::before{content:"✓";color:var(--green);font-weight:700;margin-right:.5rem}
+.diag li.done.bad button::before{content:"✕";color:var(--red)}
+.diag li.done.warn button::before{content:"!";color:var(--amber)}
+.diag .result{margin:.35rem 0 .2rem .4rem;padding:.55rem .8rem;border-left:3px solid var(--green);background:#f6f7f4;font-size:.93rem;border-radius:0 4px 4px 0}
+.diag li.bad .result{border-color:var(--red)}
+.diag li.warn .result{border-color:var(--amber)}
+.diag li.new button{border-color:var(--amber);background:var(--amber-soft)}
+
+.hintlist{list-style:none;margin:0 0 .9rem;padding:0;display:grid;gap:.5rem}
+.hintlist li{padding:.6rem .8rem;background:var(--amber-soft);border-left:3px solid var(--amber);border-radius:0 4px 4px 0}
+.hintlist li b{font-family:var(--mono);font-weight:500;color:var(--amber);margin-right:.4rem}
+
+.feedback{margin-top:.9rem;padding:.75rem .9rem;border-radius:5px;font-size:.95rem}
+.feedback.bad{background:var(--red-soft);border-left:3px solid var(--red)}
+.feedback.temp{background:var(--amber-soft);border-left:3px solid var(--amber)}
+.feedback.good{background:var(--green-soft);border-left:3px solid var(--green)}
+
+.ref h4{margin:1rem 0 .35rem;font-size:1rem}
+.ref h4:first-child{margin-top:0}
+.ref table{border-collapse:collapse;width:100%;font-size:.9rem}
+.ref td,.ref th{text-align:left;padding:.3rem .5rem;border-bottom:1px solid var(--line-soft);vertical-align:top}
+.ref th{font-weight:600}
+.ref td:first-child{font-family:var(--mono);white-space:nowrap}
+.ref ol,.ref ul{padding-left:1.2rem;margin:.2rem 0}
+.ref p{font-size:.93rem}
+.ref code{font-family:var(--mono);font-size:.88em;background:var(--bench);padding:0 .3em;border-radius:3px}
+
+/* resolved panel */
+.resolved{background:var(--green-soft);border:1px solid #b9dcc4;border-radius:6px;padding:1rem 1.1rem;margin-top:1rem}
+.resolved h3{font-size:1.15rem;margin-bottom:.4rem}
+.resolved .score{font-family:var(--mono);font-weight:600}
+.resolved .actions{margin-top:.8rem}
+
+/* badge */
+.finale{max-width:820px;margin:0 auto;padding:2rem 1.25rem 4rem}
+.finale h1{font-size:1.9rem;letter-spacing:-.01em;margin-bottom:.3rem}
+.finale .lede{color:var(--muted);margin-bottom:1.5rem}
+.badge-wrap{display:flex;justify-content:center;margin:1rem 0 1.5rem}
+.badge{width:300px;height:300px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:1.6rem;color:#fff;position:relative;box-shadow:0 14px 34px rgba(0,0,0,.28)}
+.badge::before{content:"";position:absolute;inset:10px;border-radius:50%;border:2px dashed rgba(255,255,255,.65)}
+.badge.gold{background:radial-gradient(circle at 30% 25%,#f8d774,#b8860b 70%)}
+.badge.silver{background:radial-gradient(circle at 30% 25%,#e9edf2,#7c8794 70%);color:#111}
+.badge.silver::before{border-color:rgba(0,0,0,.35)}
+.badge.bronze{background:radial-gradient(circle at 30% 25%,#e0a070,#8a4b1f 70%)}
+.badge .tier{font-size:.85rem;opacity:.85}
+.badge .title{font-size:1.25rem;font-weight:700;line-height:1.15;margin:.35rem 0}
+.badge .name{font-size:1.05rem;font-weight:600;margin-top:.5rem;max-width:230px;overflow-wrap:anywhere}
+.badge .pts{font-family:var(--mono);margin-top:.35rem;font-size:.95rem}
+.badge .date{font-size:.78rem;opacity:.85;margin-top:.5rem}
+.badge .code{font-family:var(--mono);font-size:.75rem;letter-spacing:.06em;margin-top:.15rem;opacity:.9}
+.results table{border-collapse:collapse;width:100%;font-size:.93rem}
+.results th,.results td{text-align:left;padding:.45rem .5rem;border-bottom:1px solid var(--line-soft)}
+.results td.num{font-family:var(--mono)}
+.results tfoot td{font-weight:600}
+.finale .actions{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:1rem}
+@media print{
+  body{background:#fff}
+  .topbar,.finale .actions,.finale .results,.finale .lede,.finale h1{display:none!important}
+  .badge{box-shadow:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">HSCT Help Desk <span>— Shift 3</span></div>
+  <div class="progress" id="progress" aria-label="Ticket progress"></div>
+  <div class="grow"></div>
+  <div class="stat" id="stat-ticket"></div>
+  <div class="stat" id="stat-total"></div>
+</header>
+
+<!-- ===== INTRO ===== -->
+<section class="view intro active" id="view-intro">
+  <h1>Four machines. None of them get to Windows.</h1>
+  <p class="lede">Shift 1 was hardware. Shift 2 was software that lied. Shift 3 is the layer in between: the firmware. Every ticket stops before the operating system even loads, and the only tools that reach that far are the Setup utility, a screwdriver, and the sticker on the case.</p>
+  <div class="card">
+    <p>Each ticket is a real machine with a live monitor. Power it on, read what the screen says, press the setup key, and work inside four different firmware utilities. Some problems are a setting. Some are a part. A few are both, and the machine will tell you which — if you read every word.</p>
+    <ul class="rules">
+      <li>Each ticket starts at <b>100 points</b>. The four tickets total 400.</li>
+      <li>Diagnostic steps are free, but they take time on the clock. Supervisor policy: log <b>at least 3</b> before you close a ticket.</li>
+      <li>Hints cost <b>10 points</b> each (3 per ticket). A wrong bench action costs <b>15</b>. A fix that works for now but leaves the root cause — or a sledgehammer fix — costs <b>8</b>.</li>
+      <li>Your first power-on of each ticket is free. After that, every boot that doesn't reach Windows costs <b>5</b>. Read the screen and the sticker before you press F10.</li>
+      <li>Click the monitor and use your keyboard, or use the keys under it. <b>Del</b> or <b>F2</b> enters Setup, <b>F9</b> loads defaults, <b>F10</b> saves and reboots. The Reference tab has the rest.</li>
+    </ul>
+    <ul class="machines">
+      <li><b>#3101 Lab PC 07</b><span>Custom build · classic blue setup</span></li>
+      <li><b>#3102 Attendance office</b><span>2012 OptiPlex · tree-style setup</span></li>
+      <li><b>#3103 Esports club rig</b><span>2024 build · modern UEFI</span></li>
+      <li><b>#3104 Library loaner L-12</b><span>Laptop · tabbed setup with passwords</span></li>
+    </ul>
+    <div class="name-row">
+      <input id="name" type="text" placeholder="Your full name (goes on your badge)" autocomplete="off" maxlength="60">
+      <button class="btn" id="start">Clock in</button>
+    </div>
+    <div class="err" id="name-err">Enter your name first — it goes on the badge.</div>
+  </div>
+
+  <details class="teacher">
+    <summary>Teachers</summary>
+    <div class="card"><p>Students download an encrypted result file at the end. Open them at <b>hsct.tech/lessons/verify</b> to see scores, time taken, every boot, every setting they changed, and every part they touched.</p></div>
+  </details>
+</section>
+
+<!-- ===== TICKET WORKSPACE ===== -->
+<section class="view" id="view-work">
+  <div class="work">
+    <div class="left">
+      <div class="ticket" id="ticket-card"></div>
+      <div class="monitor">
+        <div class="screen" id="screen" tabindex="0" aria-label="The machine's monitor. Click it and use your keyboard, or use the keys below."></div>
+        <div class="chin"><span id="chin">HSCT-VIEW 24</span><i class="led" id="led"></i></div>
+      </div>
+      <div class="keys" id="keys"></div>
+      <div class="machine" id="machine"></div>
+      <div class="log">
+        <h3>Tech log <span id="clock">0 min</span></h3>
+        <ol id="log"></ol>
+      </div>
+      <div id="resolved"></div>
+    </div>
+    <div class="toolkit">
+      <div class="tabs">
+        <button class="active" data-tab="diag">Diagnose <span class="n" id="n-diag">0</span></button>
+        <button data-tab="bench">Bench <span class="n" id="n-bench">0</span></button>
+        <button data-tab="ref">Reference</button>
+        <button data-tab="hints">Hints <span class="n" id="n-hints">3</span></button>
+      </div>
+      <div class="pane active" id="pane-diag">
+        <p class="help">Question people, read labels, watch the screen. Each step takes sim-time and goes in your log. Steps marked new appeared because of something you found.</p>
+        <ul class="diag" id="diag"></ul>
+      </div>
+      <div class="pane" id="pane-bench">
+        <p class="help">Physical work: parts, jumpers, cables, the wall plug. Some of it is the fix. Some of it is expensive. The screen tells you which.</p>
+        <ul class="diag" id="bench"></ul>
+        <div id="bench-fb"></div>
+      </div>
+      <div class="pane ref" id="pane-ref">
+        <h4>How to read a machine that won't boot</h4>
+        <ol>
+          <li>Read the screen <b>word for word</b>. Firmware messages are short and exact; every one of them names the layer that failed.</li>
+          <li>Find the target: the asset sticker or the image spec says what the settings are <i>supposed</i> to be. Compare, don't guess.</li>
+          <li>Change what's wrong, save once (F10), watch the next boot. A different message is progress. The same message means you changed the wrong thing.</li>
+          <li>When it boots, ask whether the <i>cause</i> is fixed or just the symptom. Cold-boot test if the answer depends on it.</li>
+          <li>Write down what you changed. The next tech has to be able to undo it.</li>
+        </ol>
+        <h4>Getting into Setup</h4>
+        <table>
+          <tr><td>At POST</td><td><code>Del</code> or <code>F2</code> in the first seconds (varies by maker; the screen says which). <code>F12</code> is usually a one-time boot menu.</td></tr>
+          <tr><td>From Windows</td><td>Settings → System → Recovery → Advanced startup → Troubleshoot → UEFI Firmware Settings. Works when Fast Boot skips the key window.</td></tr>
+          <tr><td>Inside</td><td><code>↑↓</code> move · <code>←→</code> change tab · <code>+ −</code> change a value · <code>Enter</code> open · <code>Esc</code> back · <code>F9</code> load defaults · <code>F10</code> save &amp; exit. Nothing is saved until you save.</td></tr>
+        </table>
+        <h4>POST messages and what they mean</h4>
+        <table>
+          <tr><td>Reboot and Select proper Boot device / No bootable device</td><td>POST finished, the firmware walked the whole boot list, and nothing in it was bootable <i>the way it's configured</i>. Detected is not bootable. Check boot mode, boot order, and whether the drive is excluded or disabled.</td></tr>
+          <tr><td>CMOS checksum error — Defaults loaded</td><td>The settings memory was lost, so the board loaded factory defaults. Every setting the image depends on may now be wrong. Usually a dead coin cell.</td></tr>
+          <tr><td>Time-of-day clock stopped / date is years wrong</td><td>Nothing kept the clock running while the power was off. Coin cell.</td></tr>
+          <tr><td>Overclocking failed! Enter setup</td><td>The board tried a saved memory or CPU profile and training failed. It will try the same profile every boot until you change it.</td></tr>
+          <tr><td>CPU fan error</td><td>No RPM on the CPU_FAN header. Wrong header or a dead fan. Don't disable the warning.</td></tr>
+          <tr><td>PXE-E61 / PXE-M0F</td><td>The network card tried to boot from a server and gave up. Harmless by itself; a sign that network boot is ahead of the disk in the order.</td></tr>
+          <tr><td>System Disabled</td><td>Too many wrong firmware passwords. Power-cycle to try again.</td></tr>
+          <tr><td>Beeps</td><td>1 short = POST OK. Repeating short or 3 long = memory. 1 long + 2 short = video. 5 short = CPU. Continuous = power or short circuit.</td></tr>
+        </table>
+        <h4>Boot mode: UEFI vs Legacy (CSM)</h4>
+        <p><b>UEFI</b> boots from a GPT disk through a small file (Windows Boot Manager). <b>Legacy/CSM</b> boots from an MBR disk through boot code in its first sector. A disk written one way cannot boot the other way — so a Windows 11 drive (GPT) in Legacy mode is "detected" and still unbootable. Windows 11 requires UEFI. Turning CSM on also <b>turns Secure Boot off</b>, and Secure Boot can't be turned back on until CSM is off. Boot order is the list the firmware walks, top to bottom; a one-time boot menu (F12) picks a device without changing the list.</p>
+        <h4>Secure Boot, TPM, BitLocker</h4>
+        <table>
+          <tr><td>Secure Boot</td><td>The firmware only runs signed boot loaders. Required by Windows 11 and by most testing and anti-cheat software.</td></tr>
+          <tr><td>TPM / fTPM</td><td>A security chip — usually built into the CPU (fTPM, PTT) and just switched on or off in Setup. Stores keys. Windows 11 requires TPM 2.0.</td></tr>
+          <tr><td>BitLocker</td><td>Drive encryption. The TPM releases the key automatically <i>only if the boot measurements match</i> what it sealed the key with: firmware, Secure Boot state, boot mode, boot loader. Change any of them and BitLocker asks for the 48-digit recovery key. Typing the key gets you in today; it does not change why it asked.</td></tr>
+        </table>
+        <h4>Drive settings</h4>
+        <p><b>SATA Operation / SATA Mode:</b> AHCI is what modern Windows expects. Switching to IDE/ATA or RAID after Windows is installed presents the drive with a different driver than the one Windows loaded at install → <b>INACCESSIBLE_BOOT_DEVICE</b> (0x7B). The drive is fine; the setting changed. Ports can also be individually disabled.</p>
+        <h4>The CMOS battery</h4>
+        <p>A CR2032 coin cell, 3.0 V new. It keeps the clock and settings alive when the machine has <i>no power at all</i> — unplugged, or a power strip switched off. With the plug in, standby power does that job, which is why a dead cell shows up "every morning" in an office and never in a lab. Symptoms: date reset, checksum error, defaults loaded, drive settings reverting. Lifespan 5–10 years; below ~2.6 V it's done. Replacing it does not restore your settings.</p>
+        <p><b>Clear CMOS</b> (a jumper or pulling the cell) = load defaults and forget everything: date, boot order, fan curves, XMP, the lot. It's the right tool when you're locked out of a desktop. It's a sledgehammer when you can see the three settings that are wrong. <b>Laptops keep their firmware passwords in the embedded controller</b>, not CMOS: pulling the cell won't clear one.</p>
+        <h4>Memory profiles</h4>
+        <p>RAM runs at a safe default (JEDEC, 2133–2666) until you enable the profile printed on its sticker: <b>XMP</b> (Intel), <b>DOCP/EXPO</b> (AMD). The sticker's speed is the rated one. A higher profile than the sticker, or a mismatched pair, fails memory training: random restarts, "Overclocking failed," a DRAM debug LED.</p>
+        <h4>Firmware passwords</h4>
+        <table>
+          <tr><td>Supervisor / Admin</td><td>Set by IT. Full access to Setup. On managed devices it's recorded in the asset system, not on the machine.</td></tr>
+          <tr><td>User / Power-on</td><td>Asked at every boot. Gets past the prompt; inside Setup it can usually only change itself. Boot order and Secure Boot stay locked.</td></tr>
+          <tr><td>Policy</td><td>No bypass tools or "master password" sites on school devices. Get the recorded password. Three wrong tries disables the machine until a power-cycle.</td></tr>
+        </table>
+        <h4>Cost of being wrong</h4>
+        <p>Swapping a part that works costs money, an hour, and sometimes someone's files. Wiping settings you didn't need to wipe costs the next tech a day. A fix that "works for now" costs a second ticket next week. Reading costs nothing.</p>
+      </div>
+      <div class="pane" id="pane-hints">
+        <p class="help">Stuck? Each hint costs 10 points and gets more specific.</p>
+        <ul class="hintlist" id="hintlist"></ul>
+        <button class="btn secondary" id="hint-btn">Reveal a hint (−10 pts)</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FINALE ===== -->
+<section class="view finale" id="view-final">
+  <h1>Shift complete.</h1>
+  <p class="lede">Four machines boot. Download your result file and submit it in Google Classroom.</p>
+  <div class="badge-wrap"><div class="badge" id="badge"></div></div>
+  <div id="hsct-result"></div>
+  <div class="card results" id="results"></div>
+  <div class="actions">
+    <button class="btn secondary" id="print">Print badge</button>
+  </div>
+</section>
+
+</file_text><!-- HSCT KIT START — do not edit; copy the whole block from lesson-template/hsct-lesson.js -->
+<script>
+/* ============================================================================
+   HSCT LESSON KIT  v1.0
+   Every lesson on HSCT TechHub inlines this block unchanged (between the
+   <!-- HSCT KIT START --> and <!-- HSCT KIT END --> markers). It gives a
+   lesson three things:
+
+     1. A clock.   HSCT.start(name) when the student begins. The kit records
+                   wall-clock time and "active" time (tab visible).
+     2. A log.     HSCT.log(type, data) for anything worth remembering —
+                   answers, hints, retries. Ends up inside the result file.
+     3. A result.  HSCT.endScreen(el, {...scores}) renders the standard result
+                   card: name, score, time taken, badge code, and a button
+                   that downloads the encrypted result file the student
+                   submits in Google Classroom.
+
+   The file is encrypted with the teacher's PUBLIC key below (RSA-OAEP wrapping
+   an AES-256-GCM key). It can only be opened with the matching private key,
+   on the site's /lessons/verify page. Students can't read or edit it.
+
+   API (all on window.HSCT):
+     HSCT.lesson({ id, title, version, course, possible })   once, at load
+     HSCT.start(name)                                        when work begins
+     HSCT.log(type, data)                                    any time
+     HSCT.elapsed()   -> { seconds, activeSeconds }
+     HSCT.finish({ earned, possible, sections, tier, extra }) -> Promise<result>
+     HSCT.endScreen(el, { earned, possible, sections, tier, extra, note })
+                      -> Promise<result>   (calls finish, renders the card)
+     HSCT.download()  / HSCT.copyCode()                      after finish
+   ========================================================================== */
+(function () {
+  'use strict';
+  var KIT = '1.0';
+
+  /* Mr. Cruz's public key. Replace the whole object if the key pair is ever
+     regenerated on /lessons/verify — and keep the private key out of git. */
+  var PUBLIC_KEY = {"kty":"RSA","n":"rZUBRxn7dUikufJq7z2XVn-on4Of0IyQr_YaPSTgIUaGsYKcrZ4FNROL4A_ZM5JShLf6OVp2ZeAI7XN_7iX0tvd79RqAWRM9an6rx-s6bMYSW1wmtRxZyL-BX56vTtikVRLNO7uyzCb8kevJE71Fi6nlPhdXa-iS4vtIEm2Wjh4cLPinAKhMnkO3BpGHUhtFw7Hyus1w04EdLxowk4UcN7d0w4MQRnBV8ehXQVoLVQ0_QtfrtPTQOpScHuwyaw9nwnTA7h7BEOv1ZkbEyq2N4TFixSSCsneUsc3PlbZOndDzMGMmdMr00ulntRZBfyioFzRcsRUGGwAqpB9SuH7XGQ","e":"AQAB","alg":"RSA-OAEP-256","ext":true};
+
+  var VERIFY_URL = 'hsct.tech/lessons/verify';
+
+  var cfg = null;      // lesson config
+  var ses = null;      // current session
+  var ticker = null;   // active-time interval
+  var result = null;   // { badge, filename, text, envelope, payload }
+
+  /* ---------- small helpers ---------- */
+  var enc = new TextEncoder();
+  function b64(buf) {
+    var bytes = new Uint8Array(buf), s = '';
+    for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return btoa(s);
+  }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function fmtDuration(sec) {
+    sec = Math.max(0, Math.round(sec || 0));
+    var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+    if (h) return h + ' h ' + pad(m) + ' min';
+    if (m) return m + ' min ' + pad(s) + ' s';
+    return s + ' s';
+  }
+  function fmtDate(iso) {
+    try { return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+    catch (e) { return iso; }
+  }
+  function slug(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'student'; }
+  function stamp(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes()); }
+
+  /* Badge code: 8 characters from a SHA-256 of the result, shown on screen
+     so a screenshot can be matched to its file. */
+  var ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ23456789';
+  function badgeFrom(hashBuf) {
+    var bytes = new Uint8Array(hashBuf), out = '';
+    for (var i = 0; i < 8; i++) out += ALPHABET[bytes[i] % ALPHABET.length];
+    return out.slice(0, 4) + '-' + out.slice(4);
+  }
+
+  function needSubtle() {
+    if (!(window.crypto && crypto.subtle)) {
+      throw new Error('Result files need a secure page (https). Open this lesson from the TechHub site and finish again.');
+    }
+  }
+
+  /* ---------- public API ---------- */
+  function lesson(c) {
+    if (!c || !c.id || !c.title) throw new Error('HSCT.lesson needs { id, title }');
+    cfg = { version: '1.0', course: '', possible: 100 };
+    for (var k in c) cfg[k] = c[k];
+    return HSCT;
+  }
+
+  function start(name) {
+    if (!cfg) throw new Error('Call HSCT.lesson({...}) before HSCT.start(name)');
+    name = String(name || '').trim().replace(/\s+/g, ' ');
+    if (name.length < 2) throw new Error('HSCT.start needs the student\'s name');
+    ses = { name: name, started: new Date().toISOString(), t0: Date.now(), active: 0, events: [] };
+    result = null;
+    clearInterval(ticker);
+    ticker = setInterval(function () { if (document.visibilityState === 'visible') ses.active += 1; }, 1000);
+    log('start');
+    return HSCT;
+  }
+
+  function log(type, data) {
+    if (!ses) return HSCT;
+    var e = { t: Math.round((Date.now() - ses.t0) / 100) / 10, type: String(type) };
+    if (data && typeof data === 'object') for (var k in data) if (k !== 't' && k !== 'type') e[k] = data[k];
+    if (ses.events.length < 800) ses.events.push(e);
+    return HSCT;
+  }
+
+  function elapsed() {
+    if (!ses) return { seconds: 0, activeSeconds: 0 };
+    return { seconds: Math.round((Date.now() - ses.t0) / 1000), activeSeconds: ses.active };
+  }
+
+  /* Build, seal, and keep the result. Resolves to { badge, filename, text, payload }. */
+  async function finish(opts) {
+    if (!cfg || !ses) throw new Error('HSCT.start(name) was never called');
+    needSubtle();
+    opts = opts || {};
+    clearInterval(ticker);
+    var finished = new Date();
+    var el = elapsed();
+    var earned = Number(opts.earned || 0), possible = Number(opts.possible || cfg.possible || 0);
+    var payload = {
+      kit: KIT,
+      lesson: { id: cfg.id, title: cfg.title, version: cfg.version, course: cfg.course },
+      student: { name: ses.name },
+      started: ses.started,
+      finished: finished.toISOString(),
+      seconds: el.seconds,
+      activeSeconds: el.activeSeconds,
+      score: { earned: earned, possible: possible, percent: possible ? Math.round(1000 * earned / possible) / 10 : null },
+      tier: opts.tier || null,
+      sections: (opts.sections || []).map(function (s) { return { id: s.id, title: s.title, earned: s.earned, possible: s.possible, status: s.status }; }),
+      extra: opts.extra || null,
+      events: ses.events,
+      env: { tz: Intl.DateTimeFormat().resolvedOptions().timeZone, ua: navigator.userAgent, url: location.href.split('?')[0] },
+    };
+    var hash = await crypto.subtle.digest('SHA-256', enc.encode(JSON.stringify(payload)));
+    var badge = badgeFrom(hash);
+    payload.badge = badge;
+
+    /* header travels in the clear but is authenticated (AES-GCM additional data) */
+    var header = { hsct: 1, kit: KIT, lesson: cfg.id, title: cfg.title, student: ses.name, finished: payload.finished, badge: badge };
+    var pub = await crypto.subtle.importKey('jwk', PUBLIC_KEY, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['wrapKey']);
+    var aes = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt']);
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    var data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv, additionalData: enc.encode(JSON.stringify(header)) }, aes, enc.encode(JSON.stringify(payload)));
+    var wrapped = await crypto.subtle.wrapKey('raw', aes, pub, { name: 'RSA-OAEP' });
+    var envelope = {};
+    for (var k in header) envelope[k] = header[k];
+    envelope.key = b64(wrapped); envelope.iv = b64(iv); envelope.data = b64(data);
+
+    result = {
+      badge: badge,
+      filename: 'HSCT_' + cfg.id + '_' + slug(ses.name) + '_' + stamp(finished) + '.hsct',
+      text: JSON.stringify(envelope),
+      payload: payload,
+    };
+    return result;
+  }
+
+  function download() {
+    if (!result) throw new Error('Nothing to download yet — call HSCT.finish first');
+    var blob = new Blob([result.text], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = result.filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+    return result.filename;
+  }
+
+  async function copyCode() {
+    if (!result) throw new Error('Nothing to copy yet — call HSCT.finish first');
+    try { await navigator.clipboard.writeText(result.text); return true; }
+    catch (e) {
+      var ta = document.createElement('textarea'); ta.value = result.text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      var ok = false; try { ok = document.execCommand('copy'); } catch (e2) {}
+      ta.remove(); return ok;
+    }
+  }
+
+  /* ---------- the standard end screen ---------- */
+  var CSS = '.hsct-card{--hsct-ink:#101a3f;--hsct-mute:#5b6485;--hsct-line:#d3d9ee;--hsct-accent:var(--hsct-color,#1f3fae);--hsct-ok:#1f7a3d;--hsct-bad:#b3261e;'
+    + 'font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;color:var(--hsct-ink);background:#fff;border:1px solid var(--hsct-line);border-left:6px solid var(--hsct-accent);border-radius:12px;padding:20px 22px;margin:20px 0;line-height:1.45}'
+    + '.hsct-card *{box-sizing:border-box}.hsct-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--hsct-mute)}.hsct-head b{color:var(--hsct-accent)}'
+    + '.hsct-name{font-size:22px;font-weight:700;margin:6px 0 2px}.hsct-score{font-size:15px;margin:0 0 12px}.hsct-score b{font-size:28px;font-weight:700}.hsct-score .hsct-tier{display:inline-block;margin-left:8px;padding:2px 10px;border-radius:999px;background:var(--hsct-accent);color:#fff;font-size:13px;font-weight:600;vertical-align:middle}'
+    + '.hsct-facts{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0 0 14px;font-size:14px}.hsct-facts dt{color:var(--hsct-mute)}.hsct-facts dd{margin:0}.hsct-facts code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;letter-spacing:.08em;font-weight:600}'
+    + '.hsct-secs{width:100%;border-collapse:collapse;font-size:14px;margin:0 0 14px}.hsct-secs td{padding:5px 0;border-top:1px solid var(--hsct-line)}.hsct-secs td:last-child{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}'
+    + '.hsct-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.hsct-btn{font:600 15px "IBM Plex Sans","Segoe UI",system-ui,sans-serif;padding:11px 18px;border-radius:8px;border:2px solid var(--hsct-accent);background:var(--hsct-accent);color:#fff;cursor:pointer}.hsct-btn:hover{filter:brightness(.92)}.hsct-btn.hsct-alt{background:transparent;color:var(--hsct-accent)}.hsct-btn:focus-visible{outline:3px solid #a9b7ea;outline-offset:2px}.hsct-btn:disabled{opacity:.55;cursor:wait}'
+    + '.hsct-note{margin:12px 0 0;font-size:13.5px;color:var(--hsct-mute)}.hsct-status{margin:8px 0 0;font-size:14px;min-height:1.4em}.hsct-status.ok{color:var(--hsct-ok)}.hsct-status.bad{color:var(--hsct-bad)}'
+    + '@media print{.hsct-actions,.hsct-note,.hsct-status{display:none}}';
+
+  function injectCss() {
+    if (document.getElementById('hsct-kit-css')) return;
+    var s = document.createElement('style'); s.id = 'hsct-kit-css'; s.textContent = CSS; document.head.appendChild(s);
+  }
+
+  /* Renders the card into `el` and seals the result. Resolves with the result. */
+  async function endScreen(el, opts) {
+    if (typeof el === 'string') el = document.querySelector(el);
+    if (!el) throw new Error('HSCT.endScreen needs an element');
+    injectCss();
+    opts = opts || {};
+    var elp = elapsed();
+    var possible = Number(opts.possible || cfg.possible || 0), earned = Number(opts.earned || 0);
+    var pct = possible ? Math.round(100 * earned / possible) : null;
+    var secs = (opts.sections || []).map(function (s) {
+      var right = s.status != null ? esc(s.status) : (s.possible != null ? esc(s.earned) + ' / ' + esc(s.possible) : esc(s.earned));
+      return '<tr><td>' + esc(s.title) + '</td><td>' + right + '</td></tr>';
+    }).join('');
+    el.innerHTML = '<div class="hsct-card">'
+      + '<div class="hsct-head"><span><b>HSCT TechHub</b> result</span><span>' + esc(cfg.title) + '</span></div>'
+      + '<div class="hsct-name">' + esc(ses ? ses.name : '') + '</div>'
+      + '<div class="hsct-score"><b>' + esc(earned) + '</b> / ' + esc(possible) + (pct != null ? ' <span>(' + pct + '%)</span>' : '') + (opts.tier ? '<span class="hsct-tier">' + esc(opts.tier) + '</span>' : '') + '</div>'
+      + '<dl class="hsct-facts"><dt>Finished</dt><dd>' + esc(fmtDate(new Date().toISOString())) + '</dd>'
+      + '<dt>Time taken</dt><dd>' + esc(fmtDuration(elp.seconds)) + (elp.activeSeconds < elp.seconds - 60 ? ' <span style="color:var(--hsct-mute)">(' + esc(fmtDuration(elp.activeSeconds)) + ' with the tab open)</span>' : '') + '</dd>'
+      + '<dt>Code</dt><dd><code class="hsct-badge">........</code></dd></dl>'
+      + (secs ? '<table class="hsct-secs"><tbody>' + secs + '</tbody></table>' : '')
+      + '<div class="hsct-actions"><button type="button" class="hsct-btn hsct-dl" disabled>Download your result file</button><button type="button" class="hsct-btn hsct-alt hsct-copy" disabled>Copy result code</button></div>'
+      + '<p class="hsct-note">' + esc(opts.note || 'Submit the file in Google Classroom. If downloads are blocked, copy the code and paste it instead. The file is encrypted: only your teacher can open it.') + '</p>'
+      + '<p class="hsct-status" aria-live="polite">Preparing your result file…</p>'
+      + '</div>';
+    var status = el.querySelector('.hsct-status'), dl = el.querySelector('.hsct-dl'), cp = el.querySelector('.hsct-copy');
+    try {
+      var r = await finish(opts);
+      el.querySelector('.hsct-badge').textContent = r.badge;
+      status.textContent = 'Ready: ' + r.filename;
+      dl.disabled = false; cp.disabled = false;
+      dl.onclick = function () { try { download(); status.className = 'hsct-status ok'; status.textContent = 'Downloaded ' + r.filename + ' — now submit it.'; } catch (e) { status.className = 'hsct-status bad'; status.textContent = e.message; } };
+      cp.onclick = async function () { var ok = await copyCode(); status.className = 'hsct-status ' + (ok ? 'ok' : 'bad'); status.textContent = ok ? 'Code copied — paste it into your submission.' : 'Copy failed. Use the download instead.'; };
+      return r;
+    } catch (e) {
+      status.className = 'hsct-status bad';
+      status.textContent = e.message || String(e);
+      throw e;
+    }
+  }
+
+  var HSCT = {
+    kit: KIT, verifyUrl: VERIFY_URL,
+    lesson: lesson, start: start, log: log, elapsed: elapsed,
+    finish: finish, download: download, copyCode: copyCode, endScreen: endScreen,
+    get result() { return result; },
+    get session() { return ses ? { name: ses.name, started: ses.started } : null; },
+    fmtDuration: fmtDuration,
+  };
+  window.HSCT = HSCT;
+})();
+</script>
+<!-- HSCT KIT END -->
+
+<script>
+HSCT.lesson({ id: 'it-support-shift-3', title: 'HSCT Help Desk — Shift 3: Stuck at POST', version: '1.0', course: 'it-support', possible: 400 });
+
+/* ---------- constants ---------- */
+const MIN_STEPS = 3, HINT_COST = 10, WRONG_COST = 15, PARTIAL_COST = 8, BOOT_COST = 5, SPLASH_MS = 2200;
+
+/* ---------- helpers ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const clone = o => JSON.parse(JSON.stringify(o));
+const fmtDate = iso => { const [y,mo,d] = iso.split('-'); return mo+'/'+d+'/'+y; };
+const yearOf = iso => iso.slice(0,4);
+
+/* ---------- screen builders ---------- */
+const SCR = {
+  text(lines, cls){ return "<div class='scr-text "+(cls||'')+"'>"+lines.join("\n")+"</div>"; },
+  black(){ return "<div class='scr-black'></div>"; },
+  desk(cls, title, body, clock){
+    return "<div class='desk "+cls+"'><div class='win'><div class='win-bar'><span>"+title+"</span><span class='x'>— ☐ ✕</span></div><div class='win-body'>"+body+"</div></div>"+
+      "<div class='taskbar'><span>⊞</span><span>🔍</span><span class='clock'>"+(clock||"8:12 AM")+"</span></div></div>";
+  },
+  bsod(code){
+    return "<div class='bsod'><div class='face'>:(</div><p>Your PC ran into a problem and needs to restart. We're just collecting some error info, and then we'll restart for you.</p>"+
+      "<p class='pct'>0% complete</p><p class='code'>Stop code: "+code+"</p></div>";
+  },
+  bitlocker(reason){
+    return "<div class='bitlocker'><h4>BitLocker recovery</h4><p>Enter the recovery key for this drive</p>"+
+      "<div class='keyrow'><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>"+
+      "<p class='small'>Recovery key ID: 7A2F19C4-…</p><p class='small'>"+reason+"</p>"+
+      "<p class='small'>For more information on how to retrieve this key, go to aka.ms/recoverykey from another PC.</p><p class='small'>Press Esc for BitLocker recovery — Press Enter to continue</p></div>";
+  },
+  password(msg, mode, blankOk){
+    return "<div class='scr-text center'><div class='logo'>HSCT-Book</div>"+
+      "<div>"+(mode==='setup' ? "Enter Supervisor Password" : "Enter Password")+(blankOk ? " <span class='dim'>(Enter alone = user access)</span>" : "")+"</div>"+
+      "<div class='pwbox'><input type='password' id='pw' autocomplete='off' aria-label='Firmware password' maxlength='24'>"+
+      (mode==='setup' ? "<button type='button' data-act='pw-setup'>Enter Setup</button>" : "<button type='button' data-act='pw-continue'>Continue</button><button type='button' data-act='pw-setup'>Enter Setup (F2)</button>")+"</div>"+
+      (msg ? "<div class='warn' style='margin-top:.8em'>"+msg+"</div>" : "")+"</div>";
+  }
+};
+
+/* ---------- the four machines ---------- */
+const TICKETS = [
+/* ===== #3101 — lab PC, classic blue setup ===== */
+{
+  no:"#3101", title:"\"Lab computer 7 says no bootable device\"", comp:"Firmware / boot mode",
+  user:"Mr. Cruz, Room 333", room:"Room 333 lab", style:"st-ami", layout:"tabs", setupKey:"Del",
+  pc:"HSCT-LAB-07 · custom build", chin:"HSCT-VIEW 24 · LAB-07", desk:"lab",
+  complaint:"Lab computer 7 won't start — it gets past the memory count and then says something about 'select proper boot device.' Nothing was opened, nothing was unplugged. A student was using it yesterday for the OS project.",
+  init(){ return { hw:{ usbIn:true }, cfg:{ csm:'Enabled', secureBoot:'Disabled', boot:['usb','disk','pxe'], date:'2026-09-16', fastBoot:'Disabled', sataMode:'AHCI', xhci:'Enabled', cstates:'Enabled', netBoot:'Enabled' } }; },
+  defaults(){ return { csm:'Disabled', secureBoot:'Enabled', boot:['usb','disk','pxe'], date:'2020-01-01', fastBoot:'Disabled', sataMode:'AHCI', xhci:'Enabled', cstates:'Enabled', netBoot:'Enabled' }; },
+  postLines(m){ return ["HSCT-FORGE H510 BIOS 2.14   08/2025","","CPU: Intel Core i5-11400 @ 2.60GHz","Memory Test: 16384 MB  OK","SATA Port 0: Samsung SSD 870 EVO 500GB","USB Device(s): "+(m.hw.usbIn?"1 Drive (SanDisk Cruzer Glide 32GB)":"None"),"","<span class='keys'>Press DEL to enter SETUP        F12 for Boot Menu</span>"]; },
+  entries(c, h){ const L = c.csm==='Enabled';
+    return [ {id:'usb', label: L ? 'USB: SanDisk Cruzer Glide 32GB' : 'UEFI: SanDisk Cruzer Glide 32GB', present: h.usbIn},
+             {id:'disk', label: L ? 'SATA: Samsung SSD 870 EVO 500GB' : 'Windows Boot Manager (Samsung SSD 870 EVO)', present:true},
+             {id:'pxe', label: L ? 'Network: Realtek Boot Agent' : 'UEFI: PXE IPv4 (Realtek)', present: c.netBoot==='Enabled'} ]; },
+  boot(m, cyc){
+    const c = m.cfg, h = m.hw, order = this.entries(c,h).filter(e => c.boot.indexOf(e.id) >= 0 && e.present).sort((a,b)=>c.boot.indexOf(a.id)-c.boot.indexOf(b.id));
+    const lines = ["Memory Test: 16384 MB  OK","Detecting SATA devices... Samsung SSD 870 EVO 500GB",""];
+    if (c.csm==='Enabled') {
+      order.forEach(e => {
+        if (e.id==='usb') lines.push("Attempting Boot From USB: SanDisk Cruzer Glide ... <span class='dim'>not bootable</span>");
+        if (e.id==='disk') lines.push("Attempting Boot From Hard Drive (C:) ... <span class='dim'>no boot sector</span>");
+        if (e.id==='pxe') lines.push("Realtek PCIe GBE Boot Agent","  PXE-E53: No boot filename received","  PXE-M0F: Exiting PXE ROM.");
+      });
+      lines.push("","<span class='bad'>Reboot and Select proper Boot device</span>","<span class='bad'>or Insert Boot Media in selected Boot device and press a key</span>");
+      return { kind:'stop', id:'nobootdev', screen: SCR.text(lines), log:"Stops after POST: 'Reboot and Select proper Boot device.' Boot mode: Legacy (CSM). The firmware walked the whole boot list and nothing in it was bootable as configured.", hint:"Stopped at POST. Del → restart into Setup · Power → off" };
+    }
+    let warn = '';
+    for (const e of order) {
+      if (e.id==='usb') return { kind:'stop', id:'linux', screen: SCR.text(["<span class='em'>                    GNU GRUB  version 2.12</span>","","  ┌──────────────────────────────────────────────┐","  │<span class='em'>*Try or Install Linux                        </span>│","  │ Linux (safe graphics)                        │","  │ UEFI Firmware Settings                       │","  └──────────────────────────────────────────────┘","","      Use the ↑ and ↓ keys to select which entry is highlighted."]), log:"It booted the student's USB stick — a Linux installer — because the stick is first in the boot order.", hint:"Booted the wrong device. Del → restart into Setup · Power → off" };
+      if (e.id==='pxe') { warn += "Waited 60 s at 'PXE-E53: No boot filename received' first. "; continue; }
+      if (e.id==='disk') {
+        const body = "<p>HSCT Lab image v4 · Windows 11</p><p>Boot mode: <span class='okc'>UEFI</span> · Secure Boot: "+(c.secureBoot==='Enabled'?"<span class='okc'>On</span>":"<span class='bad'>Off</span> — Windows Security: 'Standard hardware security not supported'")+"</p>"+(h.usbIn?"<p class='warnc'>Removable drive (D:) SanDisk Cruzer Glide</p>":"");
+        return { kind:'windows', screen: SCR.desk('lab', 'HSCT Lab 07 — Sign in', body, '8:20 AM'), log:"Boots to Windows. "+warn, warn };
+      }
+    }
+    return { kind:'stop', id:'nobootdev', screen: SCR.text(lines.concat(["<span class='bad'>Reboot and Select proper Boot device</span>"])), log:"Nothing in the boot list is bootable.", hint:"Stopped at POST. Del → restart into Setup · Power → off" };
+  },
+  close(m){
+    const c = m.cfg;
+    if (c.secureBoot!=='Enabled') return { id:'secureboot', msg:"Supervisor review: Secure Boot is still off. The lab image policy on the sticker requires it, and the imaging server refuses machines without it at the next refresh. Restart into Setup and finish the job." };
+    if (c.boot[0]!=='disk') return { id:'bootorder', msg: c.boot[0]==='usb' ? "Supervisor review: a USB device is still first in the boot order. The next stick anyone leaves in the front port boots instead of Windows. The sticker says Windows Boot Manager first." : "Supervisor review: network boot is first in the boot order, so every startup waits a minute for a boot server that has nothing to give. The sticker says Windows Boot Manager first." };
+    return null;
+  },
+  fixedScreen(m){ return SCR.desk('lab', 'HSCT Lab 07 — Sign in', "<p class='okc'>Windows 11 · Lab image v4</p><p>Boot mode: UEFI · Secure Boot: On · Boot: Windows Boot Manager → PXE</p>"+(m.hw.usbIn?"<p class='warnc'>Removable drive (D:) still plugged in — give it back to Jayden.</p>":"<p>No removable drives.</p>"), '8:31 AM'); },
+  diags:[
+    {id:"ask", label:"Ask Mr. Cruz and the student who used it", t:3,
+     r:"Jayden: \"I made a Linux USB for the OS project. It didn't show up in the boot menu, so I found a forum post that said to turn on CSM. Then it showed up but still didn't boot, so I gave up.\" The stick is still in the front port.", unlocks:"stick"},
+    {id:"front", label:"Look at the front of the case", t:1,
+     r:"A SanDisk USB stick in the front port. Power LED on. The drive LED blinks a few times during POST, then stays dark."},
+    {id:"sticker", label:"Read the tech sticker on the side of the case", t:1,
+     r:"HSCT-LAB-07 · Lab image v4 (Windows 11) · Boot mode: UEFI · Secure Boot: ON · Boot order: Windows Boot Manager, then PXE · \"Do not enable CSM.\""},
+    {id:"rewatch", label:"Watch the POST carefully", t:1,
+     r:"Memory OK, the SSD is detected on SATA port 0, then it tries the USB, then the SSD, then the network card gives up, then the error. The firmware is walking the whole boot list and nothing in it is bootable the way it's configured."},
+    {id:"drives", label:"Check that the SSD is detected in Setup", t:2,
+     r:"Setup → Main: SATA Port 0: Samsung SSD 870 EVO 500GB. The firmware sees the drive. Detected and bootable are two different things."},
+    {id:"stick", label:"Check what's on the USB stick (on another PC)", t:3, hidden:true,
+     r:"A Linux installer, written in GPT/UEFI-only mode. It boots on UEFI machines. It cannot boot in Legacy/CSM mode at all — the setting the student changed to \"make it show up\" is the one thing guaranteed to stop it, and it broke Windows in the same move."}
+  ],
+  bench:[
+    {id:"usbout", label:"Remove the USB stick", t:1, v:"ok", needsOff:false, apply(m){ m.hw.usbIn=false; }, f:"Stick out. Jayden can have it back after class. That alone won't boot the machine — the setting he changed is still changed."},
+    {id:"ssd", label:"Swap in a spare imaged SSD", t:15, v:"wrong", f:"Same message on the spare. It carries the same UEFI/GPT image, and the firmware is still in Legacy mode. You also just pulled a drive with a student's project files on it. Put it back."},
+    {id:"cable", label:"Reseat the SATA and power cables on the SSD", t:4, v:"ok", f:"Both ends were seated. Nothing changes — the drive was never missing from the list."},
+    {id:"ram", label:"Reseat the RAM", t:3, v:"ok", f:"Seated fine. The memory test passed at POST anyway."},
+    {id:"cmos", label:"Clear CMOS with the jumper", t:5, v:"wasteful", apply(m,s,T){ m.cfg = T.defaults(m); }, f:"Every setting is back to factory: date 2020, factory boot order, fan curve gone. It may boot now — but you reset forty settings you couldn't see to fix three you could. On a lab PC the sticker tells you exactly what to set."}
+  ],
+  hints:[
+    "The sticker on the case is the answer key: it names the boot mode, the Secure Boot state, and the boot order this machine is supposed to have. Compare each one to what Setup shows.",
+    "A Windows 11 drive is GPT and boots only through UEFI. With CSM (Legacy) on, the firmware looks for old-style boot code on the drive, finds none, and moves on. Boot tab → CSM.",
+    "Turn CSM off, then Secure Boot can be turned on (it's locked until CSM is off). Then put Windows Boot Manager first in the boot order. F10 to save."
+  ],
+  why:"Root cause: the student enabled CSM (Legacy boot) to make his USB show up. Windows 11 lives on a GPT drive with no legacy boot code, so in Legacy mode the firmware can't boot it — and the USB, written UEFI-only, couldn't boot either. CSM off, Secure Boot back on, Windows Boot Manager first: the config on the sticker. Detected is not bootable; the boot mode has to match how the disk was written."
+},
+
+/* ===== #3102 — attendance office OptiPlex, tree-style setup ===== */
+{
+  no:"#3102", title:"\"It forgets what year it is\"", comp:"CMOS / SATA mode",
+  user:"Mr. Okafor, Attendance office", room:"Main office", style:"st-dell", layout:"tree", setupKey:"F2",
+  pc:"Dell OptiPlex 7010 (2012)", chin:"DELL P2214H · OFFICE-14", desk:"",
+  complaint:"Every morning the attendance computer stops at a black screen about CMOS and 'press F1.' For months pressing F1 worked. This week it shows a blue screen instead. It also thinks it's 2011 — when I fix the clock in Windows it's wrong again the next day.",
+  init(){ return { hw:{ battery:'dead', cold:true }, cfg: this.defaults() }; },
+  defaults(){ return { date:'2011-01-01', sata:'ATA', bootList:'Legacy', boot:['hdd','usb','nic'], excl:{}, nic:'Enabled', usbCfg:'Enabled', tpm:'Off', multicore:'All', speedstep:'Enabled', acRecovery:'Power Off', kbErrors:'Report', fastboot:'Thorough', numlock:'On' }; },
+  postLines(){ return ["Dell OptiPlex 7010","BIOS Revision A29","","<span class='keys'>F2 = Setup        F12 = Boot Options</span>","","Initializing..."]; },
+  entries(c){ return [ {id:'hdd', label:'Internal HDD (ST500DM002)', present:true}, {id:'usb', label:'USB Storage Device', present:true}, {id:'nic', label:'Onboard NIC', present: c.nic==='Enabled'} ]; },
+  boot(m, cyc){
+    const c = m.cfg, h = m.hw;
+    if (cyc.cold && h.battery==='dead' && !cyc.ack) {
+      if (!cyc.reset) { m.cfg = this.defaults(); cyc.reset = true; }
+      return { kind:'stop', interim:true, id:'checksum', keys:{ F1:'continue', F2:'setup' }, screen: SCR.text(["Dell OptiPlex 7010","BIOS Revision A29","","<span class='warn'>Alert! The time-of-day clock stopped.</span>","<span class='warn'>Alert! CMOS checksum error - Defaults loaded.</span>","<span class='warn'>Alert! System battery voltage is low.</span>","","<span class='em'>Strike the F1 key to continue, F2 to run the setup utility</span>"]), log:"Cold boot: 'Time-of-day clock stopped. CMOS checksum error - Defaults loaded.' Every setting is back at factory.", hint:"Stopped at POST. F1 → continue · F2 → Setup" };
+    }
+    const c2 = m.cfg;
+    const order = c2.boot.filter(id => !c2.excl[id]);
+    if (c2.bootList==='UEFI' || c2.sata==='Disabled' || order.indexOf('hdd') < 0) {
+      return { kind:'stop', id:'noboot', keys:{ F1:'reboot', F2:'setup' }, screen: SCR.text(["Dell OptiPlex 7010","","<span class='bad'>No boot device available.</span>","","Strike F1 to retry boot, F2 for setup utility","Press F5 to run onboard diagnostics"]), log:"'No boot device available.' The drive is "+(c2.sata==='Disabled'?"switched off in SATA Operation.":(c2.bootList==='UEFI'?"an MBR disk and the boot list is set to UEFI.":"not in the boot sequence.")), hint:"Stopped at POST. F2 → Setup · Power → off" };
+    }
+    if (c2.sata!=='AHCI') return { kind:'stop', id:'bsod', screen: SCR.bsod('INACCESSIBLE_BOOT_DEVICE'), log:"Windows starts loading, then blue-screens: INACCESSIBLE_BOOT_DEVICE. SATA Operation is "+c2.sata+"; the image was installed in AHCI.", hint:"Blue screen. F2 → restart into Setup · Power → off" };
+    const badClock = yearOf(c2.date)!=='2026';
+    const body = badClock
+      ? "<p class='bad'>Your clock is behind</p><p>A private connection to attendance.hsct.tech can't be established because your computer's date and time (Saturday, January 1, 2011) are incorrect.</p><p class='bad'>NET::ERR_CERT_DATE_INVALID</p><p>Sign-in failed: the clock on this computer is out of sync with the server.</p>"
+      : "<p class='okc'>attendance.hsct.tech — signed in as okafor</p><p>Period 1 attendance · 27 of 28 present</p>";
+    return { kind:'windows', screen: SCR.desk('', badClock ? 'Microsoft Edge — Privacy error' : 'Microsoft Edge — Attendance', body, badClock ? '12:00 AM' : '7:52 AM'), log: badClock ? "Boots to Windows — but every site says the clock is wrong and the attendance system refuses the sign-in. The date in Setup is 2011." : "Boots to Windows. Attendance system signs in.", warn: badClock ? 'Clock wrong.' : '' };
+  },
+  close(m){
+    const c = m.cfg, h = m.hw;
+    if (h.battery==='dead') return { id:'battery', msg:"Closed at 3:10. At 7:40 the next morning Mr. Okafor calls: \"CMOS checksum error. Again.\" The custodian switched the power strip off overnight, and nothing in the machine kept the settings alive.", apply(m){ m.hw.cold = true; }, off:true, note:"Next morning. The power strip was off all night. Power it on." };
+    if (yearOf(c.date)!=='2026') return { id:'clock', msg:"Mr. Okafor at lunch: \"Every website says my clock is wrong and the attendance system won't sign me in.\" The date in Setup is still 2011. Windows can't fix a clock the firmware keeps resetting." };
+    return null;
+  },
+  fixedScreen(){ return SCR.desk('', 'Microsoft Edge — Attendance', "<p class='okc'>attendance.hsct.tech — signed in as okafor</p><p>Period 1 attendance · 27 of 28 present</p><p>Setup: SATA Operation AHCI · Date 09/16/2026 · Battery 3.0 V</p>", '7:52 AM'); },
+  diags:[
+    {id:"ask", label:"Ask Mr. Okafor", t:3,
+     r:"\"Every morning it says CMOS and press F1. For months I just pressed F1. This week it started blue-screening after that. And it thinks it's 2011 — the clock is wrong again every day.\" Follow-up: \"Oh — the custodian turns off the power strip under the desk every night. Fire code.\""},
+    {id:"post", label:"Read the POST message word for word", t:1,
+     r:"'Alert! The time-of-day clock stopped.' 'CMOS checksum error - Defaults loaded.' 'System battery voltage is low.' Three facts: the clock stopped (nothing kept it running), every setting is back at factory, and the board is telling you why.", unlocks:"volt"},
+    {id:"label", label:"Read the asset label", t:1,
+     r:"Deployed 08/2012 · Office image (Windows 10, Legacy/MBR) · SATA Operation: AHCI · Boot: Internal HDD first. A 2012 board has a 2012 coin cell in it."},
+    {id:"bsod", label:"Read the blue screen's stop code", t:1, hidden:true, unlockOn:"bsod",
+     r:"INACCESSIBLE_BOOT_DEVICE. Windows started loading from the drive, then lost it. That happens when the drive is presented differently than when Windows was installed — ATA mode instead of AHCI. The drive is fine; the setting changed."},
+    {id:"diag", label:"Run the built-in hard drive test (F12 → Diagnostics)", t:6,
+     r:"ST500DM002 · SMART status OK · short self-test passed. The drive is healthy."},
+    {id:"volt", label:"Measure the coin cell with a multimeter", t:2, hidden:true,
+     r:"CR2032 reads 1.9 V. A fresh one is 3.0 V; below about 2.6 V the clock stops the moment the power is cut."}
+  ],
+  bench:[
+    {id:"battery", label:"Replace the CR2032 coin cell", t:5, v:"correct", apply(m){ m.hw.battery='new'; }, f:"New cell, 3.0 V. Replacing it does not restore your settings — they're still at factory. Set them in Setup, save, then prove it with a cold-boot test."},
+    {id:"unplug", label:"Cold-boot test: unplug for a minute, then power on", t:3, v:"test", cold:true, boot:true, repeat:true, f:"Unplugged 60 seconds. Powering on."},
+    {id:"hdd", label:"Replace the hard drive with a spare", t:20, v:"wrong", f:"Same blue screen on the spare — the spare was imaged in AHCI too, and the board is still in ATA. And the original drive had the attendance database on it. Put it back."},
+    {id:"psu", label:"Replace the power supply", t:15, v:"wrong", f:"The PC powers on fine and passes POST every time. The PSU wasn't the problem, and the attendance office was down another 15 minutes."},
+    {id:"ram", label:"Reseat the RAM", t:3, v:"ok", f:"Seated. Nothing changes."}
+  ],
+  hints:[
+    "'Time-of-day clock stopped' means nothing kept the clock running while the power was off — and the custodian's power strip cuts the power every night. What keeps a clock running with no power?",
+    "'Defaults loaded' means every setting is factory again, including how the drive is presented to Windows (System Configuration → SATA Operation). The asset label says what the image needs.",
+    "Replace the coin cell. Then in Setup set the date and SATA Operation = AHCI, save, and run the cold-boot test from the Bench tab. If it comes back without the error, close it."
+  ],
+  why:"Root cause: a dead CMOS battery. With the power strip switched off every night, nothing kept the clock or the settings, so every morning the board loaded factory defaults — including SATA Operation = ATA, which Windows (installed in AHCI) can't boot from: INACCESSIBLE_BOOT_DEVICE. Fixing the settings fixes today; the coin cell fixes tomorrow. 'Defaults loaded' is an instruction: go check every setting the image depends on."
+},
+
+/* ===== #3103 — esports club rig, modern UEFI ===== */
+{
+  no:"#3103", title:"\"BitLocker wants a recovery key every boot\"", comp:"TPM / Secure Boot / memory",
+  user:"Coach Rivera, Esports club", room:"Room 118", style:"st-uefi", layout:"tabs", setupKey:"Del",
+  pc:"HSCT-FORGE B550 build (2024)", chin:"HSCT-VIEW 27G · CLUB-01", desk:"club",
+  complaint:"The club PC boots to a blue BitLocker screen asking for a recovery key. I don't have it. A student says a game needed a 'BIOS change' and he did it Friday. Some mornings it also restarts twice first with a message about overclocking. And the fans are loud.",
+  init(){ return { hw:{}, cfg:{ xmp:'Profile 2', boost:'Auto', rebar:'Enabled', fan:'Full Speed', tpm:'Disabled', svm:'Enabled', sata:'AHCI', csm:'Enabled', fastBoot:'Enabled', boot:['wbm','pxe'], secureBoot:'Disabled', date:'2026-09-16' } }; },
+  defaults(){ return { xmp:'Disabled', boost:'Auto', rebar:'Disabled', fan:'Standard', tpm:'Enabled', svm:'Enabled', sata:'AHCI', csm:'Disabled', fastBoot:'Enabled', boot:['wbm','pxe'], secureBoot:'Enabled', date:'2026-09-16' }; },
+  freq(c){ return c.xmp==='Profile 2' ? 3600 : c.xmp==='Profile 1' ? 3200 : 2133; },
+  postLines(m){ return ["HSCT-FORGE B550  ·  UEFI 2.61","AMD Ryzen 5 5600 6-Core","DRAM training @ "+this.freq(m.cfg)+" MHz ...","","<span class='keys'>Press DEL or F2 to enter UEFI Setup</span>"]; },
+  entries(){ return [ {id:'wbm', label:'Windows Boot Manager (WD SN770 1TB)', present:true}, {id:'pxe', label:'UEFI: Realtek PXE IPv4', present:true} ]; },
+  boot(m, cyc){
+    const c = m.cfg;
+    if (c.xmp==='Profile 2' && !cyc.safe) {
+      return { kind:'stop', interim:true, id:'ocfail', keys:{ F1:'setup', F2: () => { cyc.safe = true; continueBoot('Continued with default memory settings for this boot.'); } },
+        screen: SCR.text(["HSCT-FORGE B550  ·  UEFI 2.61","DRAM: XMP Profile 2 (DDR4-3600) — <span class='warn'>training failed</span>","EZ Debug LED: <span class='warn'>DRAM</span>","","<span class='bad'>Overclocking failed! Please enter setup to re-configure your system.</span>","","<span class='em'>Press F1 to Run SETUP</span>","<span class='em'>Press F2 to continue with default memory settings (this boot only)</span>"]),
+        log:"Restarts once, then: 'Overclocking failed!' The board tried the saved memory profile (DDR4-3600) and training failed.", hint:"Stopped at POST. F1 → Setup · F2 → continue at safe memory speed (this boot only)" };
+    }
+    if ((c.tpm==='Disabled' || c.secureBoot!=='Enabled') && !cyc.bypass) {
+      const reason = c.tpm==='Disabled' ? "The TPM is not present or has been disabled, so BitLocker can't unlock the drive automatically." : "Secure Boot policy has unexpectedly changed. BitLocker can't confirm the boot environment matches the one the key was sealed to.";
+      return { kind:'stop', id:'bitlocker', screen: SCR.bitlocker(reason), log:"Windows Boot Manager stops at BitLocker recovery: "+reason, hint:"BitLocker recovery. Del → restart into Setup · Bench has the recovery key · Power → off" };
+    }
+    const notes = [];
+    if (c.fan==='Full Speed') notes.push("<span class='warnc'>Fans at 100% (Fan Profile: Full Speed)</span>");
+    if (c.xmp==='Disabled') notes.push("Memory at 2133 MHz (XMP off; kit is rated 3200)");
+    const body = "<p class='okc'>BitLocker: this drive is unlocked automatically</p><p>"+(cyc.bypass ? "<span class='warnc'>Unlocked with the recovery key this boot</span>" : "TPM 2.0 present · Secure Boot on")+"</p><p>Memory: "+this.freq(c)+" MHz</p>"+(notes.length?"<p>"+notes.join(' · ')+"</p>":"");
+    return { kind:'windows', screen: SCR.desk('club', 'This PC — HSCT Esports', body, '3:05 PM'), log:"Boots to Windows."+(cyc.bypass?" (recovery key typed)":""), warn: notes.join(' ') };
+  },
+  close(m){
+    const c = m.cfg;
+    if (c.tpm==='Disabled' || c.secureBoot!=='Enabled' || c.csm==='Enabled') return { id:'bitlocker', msg:"Monday, Coach Rivera: \"The key screen is back.\" Typing the recovery key got you in once; the boot measurements BitLocker checks — TPM, Secure Boot, boot mode — are still not what it sealed the key with." };
+    if (c.xmp==='Profile 2') return { id:'xmp', msg:"Next day: \"It restarted twice with the overclocking message before it came up.\" The memory profile is still one this kit can't hold. The sticker on the RAM says which one it can." };
+    return null;
+  },
+  fixedScreen(m){ const c = m.cfg; return SCR.desk('club', 'This PC — HSCT Esports', "<p class='okc'>BitLocker: unlocked automatically · TPM 2.0 present · Secure Boot on</p><p>Memory: "+this.freq(c)+" MHz"+(c.xmp==='Disabled'?" (XMP off — Profile 1 would give the rated 3200)":"")+"</p><p>"+(c.fan==='Full Speed'?"<span class='warnc'>Fans still at 100% — Coach will ask again.</span>":"<span class='okc'>Fan profile: "+esc(c.fan)+"</span>")+"</p>", '3:22 PM'); },
+  diags:[
+    {id:"ask", label:"Ask Coach Rivera and the student", t:3,
+     r:"Coach: \"Marcus watched a video to 'unlock more FPS.' He said he turned on XMP and something called ReBAR and a 'compatibility' thing, and turned off a thing the video said was 'for Windows 11 spying.'\" Marcus: \"I picked the highest XMP profile, that's what the video said.\"", unlocks:"video"},
+    {id:"inside", label:"Open the side panel and read the parts", t:2,
+     r:"2 × 8 GB DDR4, sticker: DDR4-3200 CL16 — rated for 3200 (XMP Profile 1). Ryzen 5 5600 on a B550 board. The TPM is the CPU's built-in fTPM — there's no module to install or remove, just a switch in Setup. A DRAM debug LED on the board lights during the failed boots."},
+    {id:"screen", label:"Read the BitLocker screen", t:1, hidden:true, unlockOn:"bitlocker",
+     r:"'Enter the recovery key for this drive,' and below it the reason. BitLocker unlocks the drive automatically only when the boot measurements match the ones it sealed the key with: TPM, Secure Boot state, boot mode, boot loader. Change any of them and it asks for the key."},
+    {id:"key", label:"Find out where the recovery key is", t:4,
+     r:"It's in the club's school Microsoft account, 48 digits. Typing it works today. BitLocker will ask again tomorrow, because the reason it asked hasn't changed."},
+    {id:"video", label:"Watch the video Marcus followed", t:5, hidden:true,
+     r:"It's for a different board and a Windows 10 dual-boot: turn CSM on, Secure Boot off, 'disable the TPM to stop Windows 11 nagging,' and 'pick the highest XMP profile.' Three of those four are exactly wrong for this machine, and the fourth is wrong for this RAM."},
+    {id:"ocread", label:"Read the 'Overclocking failed' message", t:1, hidden:true, unlockOn:"ocfail",
+     r:"The board tried the saved memory profile, memory training failed, it reset and is telling you. It will try the same profile every boot until you change it. F2 gets past it once; it doesn't change the profile."}
+  ],
+  bench:[
+    {id:"key", label:"Type the 48-digit recovery key from the club account", t:3, v:"temp", needsOff:false, when(m,s){ return (s.power==='stop' && s.stop && s.stop.id==='bitlocker') ? null : "There's no BitLocker screen in front of you right now."; }, apply(m,s){ s.cyc.bypass = true; continueBoot('Recovery key accepted. Windows continues.'); }, f:"You're in. Coach can use it today. Tomorrow's boot measures the same wrong Secure Boot state and asks again. Works for now, root cause open."},
+    {id:"ram", label:"Replace the RAM with a kit from the parts bin", t:10, v:"wrong", f:"The parts-bin kit is DDR4-2666 and it's slower than the club's own RAM, which is fine at its rated 3200. You haven't touched the reason it asks for a key. The original kit goes back in."},
+    {id:"reinstall", label:"Reinstall Windows", t:45, v:"wrong", f:"The Windows 11 installer stops at 'This PC can't run Windows 11' — because the TPM is off. Forty-five minutes, and the club's game library would have gone with it anyway."},
+    {id:"tpmmod", label:"Order a TPM 2.0 header module", t:2, v:"wrong", f:"This CPU has fTPM built in — the board just has it switched off. A $40 module and a week of shipping to add a thing that's already there."},
+    {id:"gpu", label:"Reseat the graphics card", t:3, v:"ok", f:"Seated; the display works; nothing changes."},
+    {id:"cmos", label:"Clear CMOS", t:5, v:"wasteful", apply(m,s,T){ m.cfg = T.defaults(m); }, f:"Factory defaults: it boots and BitLocker unlocks. You also lost ReBAR, the fan curve, and the memory profile — the RAM is at 2133 instead of the 3200 it's rated for. Right result, sledgehammer."}
+  ],
+  hints:[
+    "BitLocker asks for the key when the boot 'fingerprint' changed: TPM, Secure Boot, or boot mode. Marcus changed all three. Advanced tab for the TPM, Boot tab for CSM, Security tab for Secure Boot.",
+    "Order matters: Secure Boot can't be enabled while CSM is on. CSM off → Secure Boot on → fTPM on. Then the fingerprint matches what BitLocker sealed.",
+    "'Overclocking failed' is the memory profile. The RAM sticker says DDR4-3200: that's Profile 1, not Profile 2. OC Tweaker tab. Set it, save, and the double-restart stops."
+  ],
+  why:"Root cause: following a video made for a different setup, the student turned off the fTPM and Secure Boot and turned CSM on. BitLocker seals its key to those exact boot measurements, so it demanded the recovery key every boot; typing the key bypasses the check without fixing it. Separately, XMP Profile 2 asked the RAM for a speed it isn't rated for, so memory training failed at random. Put the security settings back in order (CSM off → Secure Boot on → fTPM on) and pick the profile that matches the sticker."
+},
+
+/* ===== #3104 — library loaner laptop, tabbed setup with passwords ===== */
+{
+  no:"#3104", title:"\"Loaner laptop 12 wants a password before it starts\"", comp:"Firmware passwords / boot order",
+  user:"Ms. Whitfield, Library", room:"Library", style:"st-lap", layout:"tabs", setupKey:"F2", access:true,
+  pc:"HSCT-Book 14G laptop · Loaner L-12", chin:"HSCT-BOOK 14G · L-12", desk:"lib",
+  complaint:"Loaner laptop 12 came back from a student and now it won't start — it asks for a password at a black screen before anything loads. The student says he didn't set anything. State testing is tomorrow morning and the library needs it back, working, with the testing app happy.",
+  init(){ return { hw:{ attempts:0, disabled:false }, cfg:{ supPw:'Loaner12!', userPw:'2277', secureBoot:'Disabled', bootMode:'UEFI', fastBoot:'Enabled', usbBoot:'Enabled', pxe:'Enabled', boot:['pxe','usb','nvme'], excl:{ nvme:true }, sata:'AHCI', wlan:'Enabled', hotkey:'Enabled', vt:'Enabled' } }; },
+  defaults(m){ return { supPw:m.cfg.supPw, userPw:m.cfg.userPw, secureBoot:'Enabled', bootMode:'UEFI', fastBoot:'Enabled', usbBoot:'Disabled', pxe:'Disabled', boot:['nvme','usb','pxe'], excl:{}, sata:'AHCI', wlan:'Enabled', hotkey:'Enabled', vt:'Enabled' }; },
+  postLines(){ return ["<span class='logo'>HSCT-Book</span>","","<span class='keys'>Press F2 for Setup Utility     F12 for Boot Menu</span>"]; },
+  entries(c){ return [ {id:'nvme', label:'NVMe: KIOXIA 256 GB', present: c.bootMode==='UEFI'}, {id:'usb', label:'USB HDD', present:true}, {id:'pxe', label:'Network Boot (IPv4)', present:true} ]; },
+  passwordStop(m, s, mode, msg){
+    const c = m.cfg, blankOk = mode==='setup' && !c.userPw;
+    return { kind:'stop', interim:true, id:'password', screen: SCR.password(msg, mode, blankOk), keys:{ Enter:'submit', F2:'submit-setup' }, mode, blankOk,
+      hint: mode==='setup' ? "Setup asks for the supervisor password. Enter alone = user-level access." : "Power-on password. Type it and press Enter (or Enter Setup). Three wrong tries disables the laptop until a power-cycle.",
+      log: mode==='setup' ? "Setup asks for the supervisor password." : "Stops at 'Enter Password' before anything loads. Attempt "+(m.hw.attempts+1)+" of 3." };
+  },
+  submit(m, s, val, mode){
+    const c = m.cfg, h = m.hw, cyc = s.cyc;
+    let level = null;
+    if (val && val===c.supPw) level = 'sup';
+    else if (val && c.userPw && val===c.userPw) level = 'user';
+    else if (!val && s.stop.blankOk) level = 'user';
+    if (!level) {
+      h.attempts++;
+      HSCT.log('password', { ticket:this.no, ok:false, attempt:h.attempts });
+      addLog('Wrong password (attempt '+h.attempts+' of 3).', 'bad');
+      if (h.attempts >= 3) { h.disabled = true; showStop({ kind:'stop', id:'disabled', screen: SCR.text(["","","<span class='bad'>System Disabled</span>","<span class='dim'>[ Power off and try again ]</span>"], 'center'), log:"Three wrong passwords. 'System Disabled.' It stays that way until it's power-cycled.", hint:"Disabled. Power → off, then Power → on." }); return; }
+      showStop(this.passwordStop(m, s, s.stop.mode, "Invalid password. Attempt "+(h.attempts)+" of 3."), true); return;
+    }
+    h.attempts = 0; cyc.unlocked = true; cyc.access = level;
+    HSCT.log('password', { ticket:this.no, ok:true, level });
+    addLog((level==='sup' ? 'Supervisor' : 'User') + '-level password accepted.', 'good');
+    if (mode==='setup' || s.stop.mode==='setup') openSetup(); else continueBoot();
+  },
+  gate(m, s){ if (s.cyc.unlocked) return null; return this.passwordStop(m, s, 'setup'); },
+  boot(m, cyc){
+    const c = m.cfg, h = m.hw;
+    if (h.disabled) return { kind:'stop', id:'disabled', screen: SCR.text(["","","<span class='bad'>System Disabled</span>","<span class='dim'>[ Power off and try again ]</span>"], 'center'), log:"'System Disabled.' Power-cycle it.", hint:"Disabled. Power → off, then Power → on." };
+    if (c.userPw && !cyc.unlocked) return this.passwordStop(m, cur(), 'boot');
+    const order = c.boot.filter(id => !c.excl[id]);
+    const lines = [];
+    for (const id of order) {
+      if (id==='pxe' && c.pxe==='Enabled') { lines.push("Network Boot (IPv4) ...","  PXE-E61: Media test failure, check cable","  PXE-M0F: Exiting PXE ROM."); continue; }
+      if (id==='usb') { if (c.usbBoot==='Enabled') lines.push("USB HDD ... <span class='dim'>no media</span>"); continue; }
+      if (id==='nvme') {
+        if (c.bootMode!=='UEFI') { lines.push("<span class='dim'>(NVMe drive not visible in Legacy boot mode)</span>"); continue; }
+        const body = "<p>Loaner L-12 · Windows 11 · Testing app: "+(c.secureBoot==='Enabled' ? "<span class='okc'>ready</span>" : "<span class='bad'>'Secure Boot must be enabled on this device'</span>")+"</p><p>Power-on password: "+(c.userPw ? "<span class='warnc'>set</span>" : "<span class='okc'>none</span>")+(lines.length ? "</p><p class='warnc'>Waited at PXE before booting" : "")+"</p>";
+        return { kind:'windows', screen: SCR.desk('lib', 'HSCT Library — Loaner L-12', body, '1:40 PM'), log:"Boots to Windows."+(lines.length ? " (after trying network boot first)" : ""), warn: lines.length ? 'PXE first.' : '' };
+      }
+    }
+    lines.push("","<span class='bad'>No bootable device found.</span>","Press any key to reboot.");
+    return { kind:'stop', id:'noboot', keys:{ Enter:'reboot' }, screen: SCR.text(lines), log:"Walks the boot order and finds nothing: the internal drive is "+(c.bootMode!=='UEFI' ? "invisible in Legacy mode." : "excluded from the boot order."), hint:"No bootable device. F2 → restart into Setup · Power → off" };
+  },
+  close(m){
+    const c = m.cfg, order = c.boot.filter(id => !c.excl[id]);
+    if (c.userPw) return { id:'userpw', msg:"Ms. Whitfield, next period: \"The next student got a password prompt.\" The user password the kid set is still there. Security → Clear User Password." };
+    if (c.secureBoot!=='Enabled') return { id:'secureboot', msg:"Testing morning: the testing app refuses to launch — \"Secure Boot must be enabled on this device.\" The proctor is not happy. The asset record said this would happen." };
+    if (c.pxe==='Enabled' && order[0]==='pxe') return { id:'pxe', msg:"\"It sits at a PXE screen for thirty seconds every time it starts.\" Network boot is still first in the order and still enabled." };
+    return null;
+  },
+  fixedScreen(){ return SCR.desk('lib', 'HSCT Library — Loaner L-12', "<p class='okc'>Windows 11 · Secure Boot on · Testing app ready</p><p>Power-on password: none · Supervisor password: set (IT)</p><p>Boot: NVMe first · PXE off</p>", '1:52 PM'); },
+  diags:[
+    {id:"student", label:"Ask the student who had it", t:3,
+     r:"\"I wanted to boot my own USB to get past the web filter. I went into the setup thing, moved stuff around and turned off the drive so it would pick the USB. Then it asked me to set a password so I put my locker number, 2277. My USB never worked so I gave it back.\""},
+    {id:"lib", label:"Ask Ms. Whitfield", t:2,
+     r:"\"Every loaner was set up by IT with an admin password so students can't change settings. Obviously that didn't work. The password's in the asset system, not on the laptop. Testing is tomorrow, and the testing app is picky about setup.\"", unlocks:"asset"},
+    {id:"asset", label:"Look up L-12 in the asset system", t:2, hidden:true,
+     r:"L-12 · HSCT-Book 14G · Loaner image (Windows 11) · Secure Boot: ON (required by the testing app) · Boot: NVMe only, PXE off · BIOS supervisor password: see IT vault → <b>Loaner12!</b>"},
+    {id:"post", label:"Read the password screen", t:1, hidden:true, unlockOn:"password",
+     r:"'Enter Password' before anything loads: a power-on password. Three wrong tries and the laptop disables itself until a power-cycle. A laptop stores this password in the embedded controller — not in CMOS — so pulling the coin cell won't clear it."},
+    {id:"model", label:"Check the model's service notes", t:3,
+     r:"HSCT-Book 14G: a power-on (user) password is cleared from Security in Setup. A user-level login can clear its own password but can't touch Secure Boot or boot settings — those need the supervisor password. Setup asks for it on F2; Enter alone gives user-level access."},
+    {id:"sticker", label:"Read the loaner sticker under the laptop", t:1,
+     r:"PROPERTY OF HSCT LIBRARY · Loaner L-12 · Do not change BIOS settings · Secure Boot required for testing."}
+  ],
+  bench:[
+    {id:"coin", label:"Open the bottom cover and disconnect the coin cell", t:12, v:"wasteful", f:"Twelve screws, main battery unplugged, coin cell out for a minute. The password prompt is still there — this model keeps it in the embedded controller, not CMOS. The clock reset to 2020, though. Twelve screws for nothing."},
+    {id:"bypass", label:"Search online for a BIOS password bypass", t:8, v:"wrong", f:"No. Not on a school device, not ever — and the sites you'd find want you to lock the laptop out completely to get a 'code.' IT set an admin password on every loaner. Go get it."},
+    {id:"board", label:"Send it out for a motherboard replacement", t:2, v:"wrong", f:"Three weeks and $380 to replace a board that works perfectly, on a laptop the library needs tomorrow."},
+    {id:"power", label:"Hold the power button 10 seconds, then power on", t:1, v:"ok", repeat:true, boot:true, needsOff:false, apply(m){ m.hw.disabled=false; m.hw.attempts=0; }, f:"Forced off, then on. The lockout resets; the password does not."},
+    {id:"usb", label:"Check the USB ports for a stuck drive", t:1, v:"ok", needsOff:false, f:"Empty. The student took his USB back."}
+  ],
+  hints:[
+    "A laptop like this has two firmware passwords: the supervisor one IT sets, and the user (power-on) one. The student set the user one. Either gets you past the prompt — but only one lets you change settings.",
+    "The asset system has the supervisor password. Type it, choose Enter Setup, then Security → Clear User Password.",
+    "With supervisor rights: Boot → put the NVMe drive back in the boot order (it's excluded — the x key), PXE Boot off, and Security → Secure Boot: Enabled. F10."
+  ],
+  why:"Root cause: a student, trying to boot his own USB, excluded the internal drive from the boot order and — without realizing — set a power-on (user) password. Laptops keep that password in the embedded controller, so no jumper or coin cell clears it; the right move is the supervisor password IT recorded in the asset system. With supervisor rights, clear the user password, restore the boot order, and turn Secure Boot back on for the testing app. Two password levels, two different amounts of power."
+}
+];
+
+/* ---------- setup definitions (what each firmware utility shows) ---------- */
+const SETUP = {
+  '#3101'(d, m, s){
+    const T = TICKETS[0];
+    return { title:'HSCT-FORGE BIOS Setup Utility', sub:'v2.14', foot:['↑↓ Select item','←→ Select screen','+/− Change','Enter Select','Esc Exit','F9 Defaults','F10 Save & Exit'],
+      tabs:[
+        { id:'main', title:'Main', items:[
+          {t:'info', k:'BIOS Version', v:'2.14  (08/2025)'}, {t:'info', k:'Processor', v:'Intel Core i5-11400'}, {t:'info', k:'Total Memory', v:'16384 MB'},
+          {t:'info', k:'SATA Port 0', v:'Samsung SSD 870 EVO 500GB'}, {t:'info', k:'SATA Port 1', v:'Not Present'},
+          {t:'info', k:'USB Devices', v: m.hw.usbIn ? '1 Drive' : 'None'},
+          {t:'date', k:'date', label:'System Date', help:'Set the system date. Windows syncs the clock from the network once it boots.'} ] },
+        { id:'adv', title:'Advanced', items:[
+          {t:'enum', k:'sataMode', label:'SATA Mode Selection', opts:['AHCI','IDE'], help:'AHCI: modern mode, what Windows was installed in. IDE: legacy compatibility. Changing this after Windows is installed can make Windows unbootable.'},
+          {t:'enum', k:'xhci', label:'XHCI Hand-off', opts:['Enabled','Disabled'], help:'Lets the OS take over USB 3 control from the firmware.'},
+          {t:'enum', k:'cstates', label:'CPU C-States', opts:['Enabled','Disabled'], help:'Power saving states for the CPU.'} ] },
+        { id:'boot', title:'Boot', items:[
+          {t:'enum', k:'csm', label:'CSM (Compatibility Support Module)', opts:['Enabled','Disabled'], help:'Legacy boot support for old operating systems and MBR disks. Windows 11 requires UEFI (CSM Disabled). Enabling CSM turns Secure Boot off.', onChange(d,v){ if (v==='Enabled') d.secureBoot='Disabled'; }},
+          {t:'info', k:'Boot mode', v: d.csm==='Enabled' ? 'Legacy (CSM)' : 'UEFI'},
+          {t:'enum', k:'fastBoot', label:'Fast Boot', opts:['Enabled','Disabled'], help:'Skips some POST checks and the USB keyboard window. Use the Windows recovery menu to reach Setup when it is on.'},
+          {t:'order', k:'boot', label:'Boot Option Priorities', entries: T.entries(d, m.hw), help:'The list the firmware walks, top to bottom, until something boots. Entries change with the boot mode: in UEFI mode a Windows disk shows as Windows Boot Manager.'},
+          {t:'enum', k:'netBoot', label:'Network Boot (PXE)', opts:['Enabled','Disabled'], help:'Allow booting from the school imaging server.'} ] },
+        { id:'sec', title:'Security', items:[
+          {t:'enum', k:'secureBoot', label:'Secure Boot', opts:['Enabled','Disabled'], lock: d.csm==='Enabled' ? 'Not available while CSM is Enabled' : null, help:'Only run signed boot loaders. Required by Windows 11 and by the lab image policy. Cannot be enabled while CSM is on.'},
+          {t:'info', k:'Secure Boot state', v: d.secureBoot==='Enabled' ? 'Active' : 'Not active'},
+          {t:'info', k:'Administrator Password', v:'Not Installed'}, {t:'info', k:'User Password', v:'Not Installed'} ] },
+        exitTab() ] };
+  },
+  '#3102'(d, m, s){
+    const T = TICKETS[1];
+    return { title:'Dell OptiPlex 7010 — System Setup', sub:'BIOS A29', foot:['↑↓ Select item','←→ Select section','+/− Change','Enter Open','Esc Exit','F9 Defaults','F10 Save & Exit'],
+      tabs:[
+        { id:'gen', title:'General', items:[
+          {t:'info', k:'BIOS Version', v:'A29  (11/2019)'}, {t:'info', k:'Service Tag', v:'7XK2QW1'}, {t:'info', k:'Processor', v:'Intel Core i5-3470 @ 3.20 GHz'}, {t:'info', k:'Memory Installed', v:'8192 MB'},
+          {t:'enum', k:'bootList', label:'Boot List Option', opts:['Legacy','UEFI'], help:'Legacy: boots MBR disks through the BIOS. UEFI: boots GPT disks. The office image is Legacy/MBR.'},
+          {t:'order', k:'boot', label:'Boot Sequence', entries: T.entries(d), excl:true, help:'Order the system tries devices. Unchecked (x) devices are skipped.'},
+          {t:'date', k:'date', label:'Date/Time', help:'System date. If it keeps resetting, nothing is keeping the clock alive without power.'} ] },
+        { id:'sys', title:'System Configuration', items:[
+          {t:'enum', k:'nic', label:'Integrated NIC', opts:['Enabled','Disabled'], help:'The onboard network adapter.'},
+          {t:'enum', k:'sata', label:'SATA Operation', opts:['Disabled','ATA','AHCI','RAID On'], help:'How the drive is presented to the operating system. ATA: as an IDE device. AHCI: as an AHCI device — what modern Windows installs expect. RAID On: AHCI plus Intel RAID. Changing this after Windows is installed can make Windows unbootable.'},
+          {t:'info', k:'Drives', v:'SATA-0: ST500DM002 (500 GB) · SATA-1: DVD+/-RW'},
+          {t:'enum', k:'usbCfg', label:'USB Configuration', opts:['Enabled','Disabled'], help:'External USB ports.'} ] },
+        { id:'sec', title:'Security', items:[
+          {t:'info', k:'Admin Password', v:'Not Set'}, {t:'info', k:'System Password', v:'Not Set'},
+          {t:'enum', k:'tpm', label:'TPM Security', opts:['On','Off'], help:'Trusted Platform Module 1.2. Not used by the office image.'} ] },
+        { id:'perf', title:'Performance', items:[
+          {t:'enum', k:'multicore', label:'Multi Core Support', opts:['All','1','2'], help:'Number of enabled cores.'},
+          {t:'enum', k:'speedstep', label:'Intel SpeedStep', opts:['Enabled','Disabled'], help:'CPU frequency scaling.'} ] },
+        { id:'pwr', title:'Power Management', items:[
+          {t:'enum', k:'acRecovery', label:'AC Recovery', opts:['Power Off','Power On','Last State'], help:'What the system does when AC power returns after being cut — for example, when a power strip is switched back on.'} ] },
+        { id:'post', title:'POST Behavior', items:[
+          {t:'enum', k:'kbErrors', label:'Keyboard Errors', opts:['Report','Do Not Report'], help:'Stop at POST when no keyboard is found.'},
+          {t:'enum', k:'fastboot', label:'Fastboot', opts:['Minimal','Thorough','Auto'], help:'How much the BIOS tests at power-on.'},
+          {t:'enum', k:'numlock', label:'Numlock LED', opts:['On','Off'], help:'Numlock state at boot.'} ] },
+        { id:'maint', title:'Maintenance', items:[ {t:'info', k:'Service Tag', v:'7XK2QW1'}, {t:'info', k:'Asset Tag', v:'HSCT-OFF-14'}, {t:'info', k:'Deployed', v:'08/2012'} ] },
+        exitTab() ] };
+  },
+  '#3103'(d, m, s){
+    const T = TICKETS[2];
+    return { title:'HSCT-FORGE B550 — UEFI BIOS Utility', sub:'Advanced Mode', foot:['↑↓ Select','←→ Screen','+/− Change','Enter Open','Esc Exit','F9 Defaults','F10 Save & Exit'],
+      strip:'CPU <b>38°C</b> · CPU Fan <b>'+(d.fan==='Full Speed'?'2900':d.fan==='Silent'?'700':'1100')+' RPM</b> · DRAM <b>'+T.freq(d)+' MHz</b> · fTPM <b>'+d.tpm+'</b> · '+fmtDate(d.date),
+      tabs:[
+        { id:'main', title:'Main', items:[
+          {t:'info', k:'BIOS Version', v:'2.61  (05/2026)'}, {t:'info', k:'Processor', v:'AMD Ryzen 5 5600 6-Core'}, {t:'info', k:'Memory', v:'16384 MB (2 × 8 GB) @ '+T.freq(d)+' MHz'},
+          {t:'date', k:'date', label:'System Date', help:'System date.'} ] },
+        { id:'oc', title:'OC Tweaker', items:[
+          {t:'enum', k:'xmp', label:'XMP / DOCP Profile', opts:[{v:'Disabled',l:'Disabled (JEDEC 2133)'},{v:'Profile 1',l:'Profile 1: DDR4-3200 16-18-18'},{v:'Profile 2',l:'Profile 2: DDR4-3600 18-22-22'}], help:'Memory speed profile. Disabled runs the safe default. Pick the profile printed on the RAM sticker; a higher one is an overclock the kit may not hold.'},
+          {t:'enum', k:'boost', label:'Precision Boost Overdrive', opts:['Auto','Disabled'], help:'CPU boost behavior.'},
+          {t:'enum', k:'rebar', label:'Re-Size BAR Support', opts:['Enabled','Disabled'], help:'Lets the CPU see all of the GPU memory at once. Harmless; helps some games.'},
+          {t:'enum', k:'fan', label:'CPU Fan Profile', opts:['Silent','Standard','Full Speed'], help:'Fan curve. Full Speed runs the fan at 100% all the time.'} ] },
+        { id:'adv', title:'Advanced', items:[
+          {t:'enum', k:'tpm', label:'AMD fTPM switch', opts:['Enabled','Disabled'], help:'Firmware TPM 2.0 built into the CPU. Windows 11 requires it; BitLocker stores its key in it. Disabling it does not remove anything — it hides the TPM from the OS.'},
+          {t:'enum', k:'svm', label:'SVM Mode', opts:['Enabled','Disabled'], help:'CPU virtualization.'},
+          {t:'enum', k:'sata', label:'SATA Mode', opts:['AHCI','RAID'], help:'How storage is presented to the OS.'} ] },
+        { id:'boot', title:'Boot', items:[
+          {t:'enum', k:'csm', label:'CSM (Compatibility Support Module)', opts:['Enabled','Disabled'], help:'Legacy boot support. Windows 11 requires it Disabled. Enabling CSM turns Secure Boot off.', onChange(d,v){ if (v==='Enabled') d.secureBoot='Disabled'; }},
+          {t:'info', k:'Boot mode', v: d.csm==='Enabled' ? 'UEFI + Legacy (CSM)' : 'UEFI only'},
+          {t:'enum', k:'fastBoot', label:'Fast Boot', opts:['Enabled','Disabled'], help:'Skips some POST checks.'},
+          {t:'order', k:'boot', label:'Boot Option Priorities', entries: T.entries(d), help:'Boot order.'} ] },
+        { id:'sec', title:'Security', items:[
+          {t:'enum', k:'secureBoot', label:'Secure Boot', opts:['Enabled','Disabled'], lock: d.csm==='Enabled' ? 'Not available while CSM is Enabled' : null, help:'Only run signed boot loaders. Required by Windows 11 and by most anti-cheat. BitLocker measures its state. Cannot be enabled while CSM is on.'},
+          {t:'info', k:'Secure Boot state', v: d.secureBoot==='Enabled' ? 'Active' : 'Not active'},
+          {t:'info', k:'TPM device', v: d.tpm==='Enabled' ? 'fTPM 2.0 (AMD) — present' : 'Not present'},
+          {t:'info', k:'Administrator Password', v:'Not Installed'} ] },
+        exitTab() ] };
+  },
+  '#3104'(d, m, s){
+    const T = TICKETS[3];
+    return { title:'Setup Utility', sub:'HSCT-Book 14G · Rev 5.0 · '+(s.cyc && s.cyc.access==='sup' ? 'Supervisor' : 'User')+' access', foot:['↑↓ Select','←→ Tab','+/− Change','Enter Open','x Exclude','Esc Exit','F9 Defaults','F10 Save & Exit'],
+      tabs:[
+        { id:'info', title:'Information', items:[
+          {t:'info', k:'Product Name', v:'HSCT-Book 14G'}, {t:'info', k:'BIOS Version', v:'1.09'}, {t:'info', k:'Serial Number', v:'HB14G-0912'}, {t:'info', k:'Processor', v:'Intel Core i5-1235U'}, {t:'info', k:'Memory', v:'8192 MB'}, {t:'info', k:'Storage', v:'NVMe: KIOXIA 256 GB'} ] },
+        { id:'cfg', title:'Configuration', items:[
+          {t:'enum', k:'sata', label:'Storage Controller Mode', opts:['AHCI','Intel RST'], sup:true, help:'How the NVMe drive is presented to Windows.'},
+          {t:'enum', k:'wlan', label:'Wireless LAN', opts:['Enabled','Disabled'], help:'Wi-Fi adapter.'},
+          {t:'enum', k:'hotkey', label:'Hotkey Mode', opts:['Enabled','Disabled'], help:'F-keys act as media keys unless Fn is held.'},
+          {t:'enum', k:'vt', label:'Intel Virtualization', opts:['Enabled','Disabled'], help:'CPU virtualization.'} ] },
+        { id:'sec', title:'Security', items:[
+          {t:'info', k:'Supervisor Password', v: d.supPw ? 'Set' : 'Clear'}, {t:'info', k:'User Password', v: d.userPw ? 'Set' : 'Clear'},
+          {t:'action', label:'Set Supervisor Password', sup:true, note:'Changing the supervisor password is an IT decision, recorded in the asset system. Not today.', help:'Full-access password. Set by IT.'},
+          {t:'action', label:'Clear User Password', confirm:'Clear the user (power-on) password?', run(d){ d.userPw=''; return 'User password cleared (takes effect when you save).'; }, lock: d.userPw ? null : 'No user password is set', help:'Removes the power-on password. A user-level login can clear its own password.'},
+          {t:'enum', k:'secureBoot', label:'Secure Boot', opts:['Enabled','Disabled'], sup:true, help:'Only run signed boot loaders. The state testing app requires it.'} ] },
+        { id:'boot', title:'Boot', items:[
+          {t:'enum', k:'bootMode', label:'Boot Mode', opts:['UEFI','Legacy'], sup:true, help:'UEFI is required for the NVMe drive and Windows 11.'},
+          {t:'enum', k:'fastBoot', label:'Fast Boot', opts:['Enabled','Disabled'], help:'Skips some POST checks.'},
+          {t:'enum', k:'usbBoot', label:'USB Boot', opts:['Enabled','Disabled'], sup:true, help:'Allow booting from USB.'},
+          {t:'enum', k:'pxe', label:'PXE Boot to LAN', opts:['Enabled','Disabled'], sup:true, help:'Allow network boot. When it is first in the order it waits for a server at every startup.'},
+          {t:'order', k:'boot', label:'Boot Priority Order', entries: T.entries(d), excl:true, sup:true, help:'Boot order. Excluded (x) devices are skipped. In Legacy mode the NVMe drive is not listed.'} ] },
+        exitTab(true) ] };
+  }
+};
+function exitTab(sup){ return { id:'exit', title:'Exit', items:[
+  {t:'action', label:'Save Changes and Exit', act:'save', confirm:'Save configuration and exit?', help:'Write the changes and restart.'},
+  {t:'action', label:'Discard Changes and Exit', act:'discard', confirm:'Discard changes and exit?', help:'Restart without saving.'},
+  {t:'action', label:'Load Default Settings', act:'defaults', confirm:'Load default settings? (Nothing is written until you save.)', sup: !!sup, help:'Factory settings for every item. Passwords are kept.'} ] }; }
+
+/* ---------- state ---------- */
+const state = { name:'', cur:0, t:[] };
+function initState(){
+  state.t = TICKETS.map(T => ({
+    score:100, hints:0, wrong:0, partial:0, failed:0, boots:0, minutes:0, ran:[], bench:[], benchLog:{}, log:[], done:false,
+    unlocked:new Set(T.diags.filter(d=>!d.hidden).map(d=>d.id)),
+    m: T.init(), power:'off', first:true, cyc:null, stop:null, timer:null, ui:null, changes:[], note:'', fb:'', screen: SCR.black()
+  }));
+}
+const cur = () => state.t[state.cur];
+const tk  = () => TICKETS[state.cur];
+
+/* ---------- views ---------- */
+function show(id){ document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id===id)); window.scrollTo(0,0); }
+function renderTop(){
+  const p = $('progress'); p.innerHTML='';
+  TICKETS.forEach((_,i)=>{ const s=document.createElement('i'); if(state.t[i].done) s.className='done'; else if(i===state.cur && $('view-work').classList.contains('active')) s.className='now'; p.appendChild(s); });
+  const inWork = $('view-work').classList.contains('active');
+  $('stat-ticket').innerHTML = inWork ? 'Ticket <b>'+(state.cur+1)+' of '+TICKETS.length+'</b> · <b>'+cur().score+'</b> pts' : '';
+  $('stat-total').innerHTML = state.name ? 'Total <b>'+total()+'</b> / '+(TICKETS.length*100) : '';
+}
+function total(){ return state.t.reduce((s,t)=>s+t.score,0); }
+
+/* ---------- ticket workspace ---------- */
+function renderTicket(){
+  const T = tk(), s = cur();
+  $('ticket-card').innerHTML = '<div class="tno">Ticket '+T.no+' · '+esc(T.pc)+'</div><h2>'+esc(T.title)+'<span class="chip">'+esc(T.comp)+'</span></h2>'+
+    '<div class="who">Reported by '+esc(T.user)+' · '+esc(T.room)+'</div><blockquote>'+esc(T.complaint)+'</blockquote>';
+  $('chin').textContent = T.chin;
+  $('resolved').innerHTML='';
+  setScreen(s.screen);
+  renderKeys(); renderMachine(); renderLog(); renderDiag(); renderBench(); renderHints(); renderTop();
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab==='diag'));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('active', p.id==='pane-diag'));
+}
+function setScreen(html){
+  const s = cur(); s.screen = html; $('screen').innerHTML = html;
+  const led = $('led'); led.className = 'led' + (s.power==='off' ? '' : (s.power==='stop' ? ' amber' : ' on'));
+  const inp = $('pw'); if (inp) inp.focus({ preventScroll:true });
+}
+function renderKeys(){
+  const T = tk();
+  const keys = [['Power'],null,['Esc'],['F1'],['F2'],['F9'],['F10'],['Del'],null,['←','Left'],['↑','Up'],['↓','Down'],['→','Right'],['Enter'],null,['+'],['−','-'],['x']];
+  $('keys').innerHTML = keys.map(k => k===null ? '<span class="gap"></span>' : '<button type="button" data-key="'+(k[1]||k[0])+'"'+(k[0]==='Power'?' class="power"':'')+' aria-label="'+esc(k[1]||k[0])+' key">'+esc(k[0])+'</button>').join('') +
+    '<span class="hint">Click the monitor to type, or tap the keys. This machine enters Setup with <b>'+esc(T.setupKey)+'</b>.</span>';
+}
+function renderMachine(){
+  const T = tk(), s = cur(), el = $('machine');
+  el.className = 'machine' + (s.power==='windows' ? ' up' : '');
+  let html = '';
+  if (s.done) html = '<span class="grow">Ticket closed. The machine boots.</span>';
+  else if (s.power==='off') html = '<span class="grow">'+(s.note ? esc(s.note) : (s.boots ? 'Machine is off.' : 'The machine is off. Power it on and watch the screen.'))+'</span><button class="btn" data-key="Power">Power on</button>';
+  else if (s.power==='post') html = '<span class="grow">POST… press <b>'+esc(T.setupKey)+'</b> now to enter Setup, or wait.</span><button class="btn secondary" data-key="'+esc(T.setupKey)+'">'+esc(T.setupKey)+' → Setup</button>';
+  else if (s.power==='stop') html = '<span class="grow">'+esc(s.stop.hint||'Stopped.')+'</span>';
+  else if (s.power==='setup') html = '<span class="grow">In Setup. ↑↓ ←→ move · Enter open · +/− change · F9 defaults · F10 save &amp; reboot · Esc exit.</span>';
+  else if (s.power==='windows') {
+    const ok = s.ran.length >= MIN_STEPS;
+    html = '<span class="grow"><b>Windows is up.</b> '+(ok ? 'If the root cause is fixed, close the ticket.' : 'Supervisor policy: log '+MIN_STEPS+' diagnostic steps before closing ('+s.ran.length+' of '+MIN_STEPS+').')+'</span>'+
+      '<button class="btn" id="close-btn" '+(ok?'':'disabled')+'>Close ticket</button><button class="btn secondary" data-key="'+esc(T.setupKey)+'">Restart into Setup</button><button class="btn secondary" id="restart-btn">Restart</button>';
+  }
+  if (s.fb) html += '<div class="feedback temp" style="flex-basis:100%">'+s.fb+'</div>';
+  el.innerHTML = html;
+  const cb = $('close-btn'); if (cb) cb.onclick = closeTicket;
+  const rb = $('restart-btn'); if (rb) rb.onclick = () => { addLog('Restarted from Windows.', 'sys'); powerOn({ from:'restart' }); };
+}
+$('machine').addEventListener('click', e => { const b = e.target.closest('[data-key]'); if (b) key(b.dataset.key); });
+$('keys').addEventListener('click', e => { const b = e.target.closest('[data-key]'); if (b) key(b.dataset.key); });
+
+function addLog(text, kind){ const s = cur(); s.log.push({ m:s.minutes, text, kind:kind||'' }); renderLog(); }
+function renderLog(){
+  const s = cur(), ol = $('log');
+  $('clock').textContent = s.minutes+' min';
+  if(!s.log.length){ ol.innerHTML='<li class="empty">No steps logged yet. Power the machine on, then start in the Diagnose tab.</li>'; return; }
+  ol.innerHTML = s.log.map(e=>'<li class="'+e.kind+'"><time>'+e.m+' min</time><span>'+e.text+'</span></li>').join('');
+  ol.scrollTop = ol.scrollHeight;
+}
+
+/* ---------- diagnose ---------- */
+function renderDiag(){
+  const T = tk(), s = cur(), ul = $('diag'); ul.innerHTML='';
+  T.diags.forEach(d=>{
+    if(!s.unlocked.has(d.id)) return;
+    const li = document.createElement('li');
+    const done = s.ran.includes(d.id);
+    li.className = done ? 'done' : (d.hidden ? 'new' : '');
+    li.innerHTML = '<button type="button" '+(done?'disabled':'')+'><span>'+d.label+'</span><span class="t">'+d.t+' min</span></button>'+(done?'<div class="result">'+(typeof d.r==='function' ? d.r(s.m, s) : d.r)+'</div>':'');
+    if(!done) li.querySelector('button').onclick = ()=>runDiag(d.id);
+    ul.appendChild(li);
+  });
+  $('n-diag').textContent = s.ran.length;
+}
+function runDiag(id){
+  const T = tk(), s = cur(); if(s.done) return;
+  const d = T.diags.find(x=>x.id===id);
+  s.ran.push(id); s.minutes += d.t;
+  HSCT.log('step', { ticket:T.no, step:id, simMinutes:s.minutes });
+  addLog('<b>'+d.label+'</b> — '+(typeof d.r==='function' ? d.r(s.m, s) : d.r));
+  if(d.unlocks && !s.unlocked.has(d.unlocks)){ s.unlocked.add(d.unlocks); const nd=T.diags.find(x=>x.id===d.unlocks); addLog('New step available: '+nd.label,'hint'); }
+  renderDiag(); renderMachine(); renderTop();
+}
+function unlockOn(stopId){
+  const T = tk(), s = cur();
+  T.diags.forEach(d => { if (d.unlockOn===stopId && !s.unlocked.has(d.id)) { s.unlocked.add(d.id); addLog('New step available: '+d.label, 'hint'); } });
+  renderDiag();
+}
+
+/* ---------- bench ---------- */
+function renderBench(){
+  const T = tk(), s = cur(), ul = $('bench'); ul.innerHTML='';
+  T.bench.forEach(b=>{
+    const li = document.createElement('li');
+    const done = s.bench.includes(b.id) && !b.repeat;
+    const v = s.benchLog[b.id];
+    li.className = done ? 'done'+(v==='wrong'?' bad':(v==='wasteful'||v==='temp')?' warn':'') : '';
+    li.innerHTML = '<button type="button" '+(done?'disabled':'')+'><span>'+b.label+'</span><span class="t">'+b.t+' min</span></button>'+(done?'<div class="result">'+b.f+'</div>':'');
+    if(!done) li.querySelector('button').onclick = ()=>runBench(b.id);
+    ul.appendChild(li);
+  });
+  $('n-bench').textContent = s.bench.length;
+}
+function runBench(id){
+  const T = tk(), s = cur(); if(s.done) return;
+  const b = T.bench.find(x=>x.id===id);
+  if (b.when) { const err = b.when(s.m, s); if (err) { $('bench-fb').innerHTML = '<div class="feedback bad">'+esc(err)+'</div>'; return; } }
+  s.bench.push(id); s.benchLog[id] = b.v; s.minutes += b.t;
+  HSCT.log('bench', { ticket:T.no, action:id, verdict:b.v, simMinutes:s.minutes });
+  if (b.needsOff!==false && s.power!=='off') { powerOff(); addLog('Powered off to work on the machine.', 'sys'); }
+  let cls = 'good', pre = '';
+  if (b.v==='wrong') { s.wrong++; s.score = Math.max(0, s.score-WRONG_COST); cls='bad'; pre = '<b>Wrong call (−'+WRONG_COST+').</b> '; }
+  else if (b.v==='wasteful' || b.v==='temp') { s.partial++; s.score = Math.max(0, s.score-PARTIAL_COST); cls='temp'; pre = '<b>'+(b.v==='temp'?'Works for now (−'+PARTIAL_COST+').':'Sledgehammer (−'+PARTIAL_COST+').')+'</b> '; }
+  else if (b.v==='test') cls = 'sys';
+  addLog('<b>'+b.label+'</b> — '+b.f, cls==='good' ? '' : cls==='sys' ? 'sys' : 'bad');
+  $('bench-fb').innerHTML = '<div class="feedback '+(cls==='sys'?'good':cls)+'">'+pre+b.f+'</div>';
+  if (b.apply) b.apply(s.m, s, T);
+  renderBench(); renderTop(); renderMachine();
+  if (b.boot) powerOn({ from:'bench', cold: !!b.cold, test: b.v==='test' });
+}
+
+/* ---------- hints ---------- */
+function renderHints(){
+  const T = tk(), s = cur();
+  $('hintlist').innerHTML = T.hints.slice(0,s.hints).map((h,i)=>'<li><b>'+(i+1)+'/3</b>'+h+'</li>').join('');
+  const left = T.hints.length - s.hints;
+  $('n-hints').textContent = left;
+  $('hint-btn').disabled = left===0 || s.done;
+  $('hint-btn').textContent = left ? 'Reveal a hint (−'+HINT_COST+' pts)' : 'No hints left';
+}
+$('hint-btn').onclick = ()=>{
+  const T = tk(), s = cur(); if(s.hints>=T.hints.length || s.done) return;
+  s.hints++; s.score = Math.max(0, s.score-HINT_COST);
+  HSCT.log('hint', { ticket:T.no, n:s.hints, score:s.score });
+  addLog('Hint '+s.hints+' used (−'+HINT_COST+'): '+T.hints[s.hints-1], 'hint');
+  renderHints(); renderTop();
+};
+
+/* ---------- the machine: power, POST, boot ---------- */
+function powerOff(){
+  const s = cur(); clearTimeout(s.timer);
+  s.power = 'off'; s.cyc = null; s.stop = null; s.ui = null; s.fb = '';
+  if (s.m.hw && 'disabled' in s.m.hw) { s.m.hw.disabled = false; s.m.hw.attempts = 0; }
+  setScreen(SCR.black()); renderMachine();
+}
+function powerOn(opts){
+  opts = opts || {};
+  const T = tk(), s = cur(), m = s.m;
+  clearTimeout(s.timer);
+  const cold = opts.cold || (opts.from!=='save' && opts.from!=='discard' && opts.from!=='restart' && !!m.hw.cold);
+  s.cyc = { unlocked:false, access:null, bypass:false, safe:false, ack:false, reset:false, charged:false, test:!!opts.test, cold };
+  s.boots++; s.minutes += 1; s.fb = ''; s.note = ''; s.stop = null; s.ui = null;
+  if (m.hw.cold) m.hw.cold = false;
+  HSCT.log('boot', { ticket:T.no, from:opts.from||'power', cold, toSetup:!!opts.toSetup, test:!!opts.test, n:s.boots });
+  s.power = 'post';
+  setScreen(SCR.text(T.postLines(m), T.no==='#3104' ? 'center' : ''));
+  if (opts.from!=='bench') addLog((opts.from==='save' ? 'Saved and rebooted.' : opts.from==='discard' ? 'Exited Setup without saving. Rebooting.' : opts.from==='restart' ? 'Restarting'+(opts.toSetup?' into Setup.':'.') : 'Power on.'+(cold?' (cold boot)':'')), 'sys');
+  renderMachine();
+  if (opts.toSetup) { enterSetup(); return; }
+  s.timer = setTimeout(resolveBoot, SPLASH_MS);
+}
+function resolveBoot(){
+  const T = tk(), s = cur(); if (s.power!=='post' && s.power!=='stop') return;
+  const o = T.boot(s.m, s.cyc);
+  if (o.kind==='windows') {
+    s.power = 'windows'; s.stop = null; s.first = false;
+    setScreen(o.screen);
+    addLog(o.log, 'good');
+    HSCT.log('stop', { ticket:T.no, outcome:'windows', warn:o.warn||'' });
+    renderMachine(); renderTop(); renderDiag();
+    return;
+  }
+  showStop(o);
+}
+function showStop(o, quiet){
+  const T = tk(), s = cur();
+  s.power = 'stop'; s.stop = o;
+  setScreen(o.screen);
+  if (!quiet) { addLog(o.log, 'bad'); HSCT.log('stop', { ticket:T.no, outcome:o.id, interim:!!o.interim }); }
+  if (!o.interim) {
+    if (s.first) { s.first = false; }
+    else if (!s.cyc.test && !s.cyc.charged) { s.cyc.charged = true; s.failed++; s.score = Math.max(0, s.score-BOOT_COST); addLog('Boot did not reach Windows (−'+BOOT_COST+').', 'bad'); }
+  }
+  unlockOn(o.id);
+  renderMachine(); renderTop();
+}
+function continueBoot(note){
+  const s = cur(); if (note) addLog(note, 'sys');
+  s.cyc.ack = true; s.power = 'post'; resolveBoot();
+}
+function enterSetup(){
+  const T = tk(), s = cur(); clearTimeout(s.timer);
+  if (T.gate) { const g = T.gate(s.m, s); if (g) { showStop(g); return; } }
+  openSetup();
+}
+function openSetup(){
+  const T = tk(), s = cur();
+  s.power = 'setup';
+  s.ui = { tab:0, item:0, mode:'nav', draft: clone(s.m.cfg), pick:null, dlg:null, sel:0, field:0, msg:'' };
+  s.ui.item = firstSel(currentDef().tabs[0]);
+  HSCT.log('setup-open', { ticket:T.no, access: s.cyc ? s.cyc.access : null });
+  addLog('Entered Setup'+(s.cyc && s.cyc.access ? ' ('+s.cyc.access+'-level)' : '')+'.', 'sys');
+  renderSetup(); renderMachine();
+}
+const currentDef = () => { const s = cur(); return SETUP[tk().no](s.ui.draft, s.m, s); };
+const firstSel = tab => { const i = tab.items.findIndex(it => it.t!=='info' && it.t!=='head'); return i < 0 ? 0 : i; };
+
+/* ---------- setup: rendering ---------- */
+function optLabel(item, v){ const o = item.opts.find(o => (o.v!==undefined ? o.v : o)===v); return o==null ? String(v) : (o.l || o); }
+function lockReason(item){
+  const T = tk(), s = cur();
+  if (item.lock) return item.lock;
+  if (item.sup && T.access && !(s.cyc && s.cyc.access==='sup')) return 'Supervisor password required';
+  return null;
+}
+function itemValue(item, d){
+  if (item.t==='info') return esc(item.v);
+  if (item.t==='enum') return '['+esc(optLabel(item, d[item.k]))+']';
+  if (item.t==='date') return '['+esc(fmtDate(d[item.k]))+']';
+  if (item.t==='order') { const first = orderList(item, d)[0]; return first ? esc(first.label) + ' …' : '(empty)'; }
+  if (item.t==='action') return '›';
+  return '';
+}
+function orderList(item, d){
+  const present = item.entries.filter(e => e.present!==false);
+  return d[item.k].map(id => present.find(e => e.id===id)).filter(Boolean).map(e => ({ id:e.id, label:e.label, excl: !!(d.excl && d.excl[e.id]) }));
+}
+function renderSetup(){
+  const T = tk(), s = cur(), ui = s.ui, def = currentDef(), d = ui.draft;
+  const tab = def.tabs[ui.tab], items = tab.items, sel = items[ui.item];
+  const nav = '<div class="bios-nav">'+def.tabs.map((t,i)=>'<button type="button" data-tab="'+i+'" class="'+(i===ui.tab?'on':'')+'">'+esc(t.title)+'</button>').join('')+'</div>';
+  const rows = items.map((it,i)=>{
+    const lock = (it.t!=='info' && it.t!=='head') ? lockReason(it) : null;
+    const cls = 'bios-row'+(it.t==='info'?' info':'')+(it.t==='head'?' head':'')+(lock?' locked':'')+(i===ui.item?' sel':'');
+    return '<div class="'+cls+'" data-i="'+i+'"><span class="k">'+esc(it.label||it.k)+'</span><span class="v">'+itemValue(it, d)+(lock?' <span class="dim">🔒</span>':'')+'</span></div>';
+  }).join('');
+  let help = '';
+  if (sel) { const lock = lockReason(sel); help = '<b>'+esc(sel.label||sel.k)+'</b>'+(lock ? '<div>'+esc(lock)+'</div>' : '')+(sel.help ? '<div>'+esc(sel.help)+'</div>' : '')+(ui.msg ? '<div class="note">'+esc(ui.msg)+'</div>' : ''); }
+  const body = '<div class="bios-body">'+rows+'</div><div class="bios-help">'+help+'</div>';
+  const main = T.layout==='tree' ? '<div class="bios-main">'+nav+body+'</div>' : nav+'<div class="bios-main">'+body+'</div>';
+  let overlay = '';
+  if (ui.mode==='pick') {
+    overlay = '<div class="overlay"><div class="box"><h5>'+esc(sel.label)+'</h5>'+sel.opts.map((o,i)=>'<div class="opt'+(i===ui.sel?' sel':'')+'" data-o="'+i+'">'+esc(o.l||o)+'</div>').join('')+'<div class="note">↑↓ Enter · Esc cancel</div></div></div>';
+  } else if (ui.mode==='order') {
+    const list = orderList(sel, d);
+    overlay = '<div class="overlay"><div class="box"><h5>'+esc(sel.label)+'</h5>'+list.map((e,i)=>'<div class="opt'+(i===ui.sel?' sel':'')+'" data-o="'+i+'"><span class="'+(e.excl?'excl':'')+'">'+(e.excl?'! ':(i+1)+'. ')+esc(e.label)+'</span><span class="tools"><button type="button" data-act="ord-up" data-o="'+i+'" aria-label="Move up">▲</button><button type="button" data-act="ord-down" data-o="'+i+'" aria-label="Move down">▼</button>'+(sel.excl?'<button type="button" data-act="ord-x" data-o="'+i+'" aria-label="Exclude">x</button>':'')+'</span></div>').join('')+
+      '<div class="note">↑↓ select · + / − move'+(sel.excl?' · x exclude':'')+' · Enter done</div></div></div>';
+  } else if (ui.mode==='date') {
+    const [y,mo,dd] = d[sel.k].split('-');
+    const f = (i,label,val) => '<div class="f'+(i===ui.field?' sel':'')+'" data-f="'+i+'"><button type="button" data-act="date-up" data-f="'+i+'" aria-label="Increase">+</button><span>'+val+'</span><button type="button" data-act="date-down" data-f="'+i+'" aria-label="Decrease">−</button><small>'+label+'</small></div>';
+    overlay = '<div class="overlay"><div class="box"><h5>'+esc(sel.label)+'</h5><div class="datef">'+f(0,'month',mo)+f(1,'day',dd)+f(2,'year',y)+'</div><div class="note">←→ field · ↑↓ or + − change · Enter done</div></div></div>';
+  } else if (ui.mode==='dlg') {
+    overlay = '<div class="overlay"><div class="box"><h5>'+esc(ui.dlg.title)+'</h5>'+(ui.dlg.text?'<div>'+esc(ui.dlg.text)+'</div>':'')+'<div class="actions">'+ui.dlg.opts.map((o,i)=>'<button type="button" data-act="dlg" data-o="'+i+'" class="'+(i===ui.sel?'sel':'')+'">'+esc(o)+'</button>').join('')+'</div></div></div>';
+  }
+  const head = '<div class="bios-head"><span>'+esc(def.title)+'</span><small>'+esc(def.sub)+'</small></div>'+(def.strip ? '<div class="bios-strip">'+def.strip+'</div>' : '');
+  const foot = '<div class="bios-foot">'+def.foot.map(k=>'<span>'+esc(k)+'</span>').join('')+'</div>';
+  setScreen('<div class="bios '+T.style+'">'+head+main+foot+overlay+'</div>');
+  const bodyEl = $('screen').querySelector('.bios-body'), selEl = bodyEl && bodyEl.querySelector('.bios-row.sel');
+  if (selEl) { const top = selEl.offsetTop - bodyEl.offsetTop; if (top < bodyEl.scrollTop) bodyEl.scrollTop = top; else if (top + selEl.offsetHeight > bodyEl.scrollTop + bodyEl.clientHeight) bodyEl.scrollTop = top + selEl.offsetHeight - bodyEl.clientHeight; }
+}
+
+/* ---------- setup: interaction ---------- */
+function moveItem(dir){
+  const ui = cur().ui, items = currentDef().tabs[ui.tab].items;
+  let i = ui.item;
+  for (let n=0; n<items.length; n++) { i = (i + dir + items.length) % items.length; if (items[i].t!=='info' && items[i].t!=='head') break; }
+  ui.item = i; ui.msg = '';
+}
+function setTab(i){ const ui = cur().ui, def = currentDef(); ui.tab = (i + def.tabs.length) % def.tabs.length; ui.item = firstSel(def.tabs[ui.tab]); ui.msg=''; }
+function cycleEnum(item, dir){
+  const ui = cur().ui, d = ui.draft, vals = item.opts.map(o => o.v!==undefined ? o.v : o);
+  let i = vals.indexOf(d[item.k]); i = (i + dir + vals.length) % vals.length;
+  setEnum(item, vals[i]);
+}
+function setEnum(item, v){ const d = cur().ui.draft; d[item.k] = v; if (item.onChange) item.onChange(d, v); }
+function activate(){
+  const s = cur(), ui = s.ui, item = currentDef().tabs[ui.tab].items[ui.item]; if (!item) return;
+  const lock = lockReason(item); if (lock) { ui.msg = lock; return; }
+  if (item.t==='enum') { ui.mode='pick'; ui.sel = Math.max(0, item.opts.findIndex(o => (o.v!==undefined?o.v:o)===ui.draft[item.k])); }
+  else if (item.t==='order') { ui.mode='order'; ui.sel=0; }
+  else if (item.t==='date') { ui.mode='date'; ui.field=0; }
+  else if (item.t==='action') {
+    if (item.note) { dialog(item.label, item.note, ['OK']); return; }
+    if (item.confirm) dialog(item.label, item.confirm, ['Yes','No'], () => runAction(item)); else runAction(item);
+  }
+}
+function dialog(title, text, opts, onYes){ const ui = cur().ui; ui.mode='dlg'; ui.sel = 0; ui.dlg = { title, text, opts, onYes }; }
+function runAction(item){
+  const T = tk(), s = cur(), ui = s.ui;
+  if (item.act==='save') return doSave();
+  if (item.act==='discard') return doDiscard();
+  if (item.act==='defaults') return doDefaults();
+  if (item.run) { const msg = item.run(ui.draft, s.m, s); ui.msg = msg || ''; HSCT.log('setup-action', { ticket:T.no, action:item.label }); addLog('Setup: '+item.label+'.', 'sys'); }
+}
+function diffCfg(a, b){
+  const labels = {}; SETUP[tk().no](b, cur().m, cur()).tabs.forEach(t => t.items.forEach(it => { if (it.k && it.label) labels[it.k] = it.label; }));
+  const out = [];
+  Object.keys(b).forEach(k => {
+    if (JSON.stringify(a[k])===JSON.stringify(b[k])) return;
+    const L = labels[k] || k;
+    if (k==='supPw' || k==='userPw') { out.push(L+': '+(a[k]?'set':'clear')+' → '+(b[k]?'set':'clear')); return; }
+    if (Array.isArray(b[k])) { out.push(L+': '+b[k].join(', ')); return; }
+    if (typeof b[k]==='object') { out.push(L+': excluded '+(Object.keys(b[k]).filter(x=>b[k][x]).join(', ')||'none')); return; }
+    out.push(L+': '+a[k]+' → '+b[k]);
+  });
+  return out;
+}
+function doSave(){
+  const T = tk(), s = cur(), changes = diffCfg(s.m.cfg, s.ui.draft);
+  s.m.cfg = clone(s.ui.draft); s.minutes += 1;
+  s.changes.push({ boot:s.boots, changes });
+  HSCT.log('setup-save', { ticket:T.no, changes });
+  addLog(changes.length ? 'Saved: '+esc(changes.join(' · ')) : 'Saved with no changes.', changes.length ? 'good' : 'sys');
+  powerOn({ from:'save' });
+}
+function doDiscard(){ const T = tk(); HSCT.log('setup-discard', { ticket:T.no }); powerOn({ from:'discard' }); }
+function doDefaults(){
+  const T = tk(), s = cur(); s.ui.draft = T.defaults(s.m); s.ui.msg = 'Defaults loaded. Nothing is written until you save.';
+  HSCT.log('setup-defaults', { ticket:T.no }); addLog('Setup: loaded default settings (not saved yet).', 'sys');
+}
+function setupKey(k){
+  const s = cur(), ui = s.ui, def = currentDef(), items = def.tabs[ui.tab].items, item = items[ui.item];
+  if (ui.mode==='dlg') {
+    if (k==='Left'||k==='Up') ui.sel = Math.max(0, ui.sel-1);
+    else if (k==='Right'||k==='Down') ui.sel = Math.min(ui.dlg.opts.length-1, ui.sel+1);
+    else if (k==='Esc') { ui.mode='nav'; ui.dlg=null; }
+    else if (k==='Enter') dlgChoose(ui.sel);
+    else return;
+  } else if (ui.mode==='pick') {
+    if (k==='Up') ui.sel = Math.max(0, ui.sel-1);
+    else if (k==='Down') ui.sel = Math.min(item.opts.length-1, ui.sel+1);
+    else if (k==='Enter') { const o = item.opts[ui.sel]; setEnum(item, o.v!==undefined?o.v:o); ui.mode='nav'; }
+    else if (k==='Esc') ui.mode='nav';
+    else return;
+  } else if (ui.mode==='order') {
+    const list = orderList(item, ui.draft), d = ui.draft;
+    if (k==='Up') ui.sel = Math.max(0, ui.sel-1);
+    else if (k==='Down') ui.sel = Math.min(list.length-1, ui.sel+1);
+    else if (k==='+' || k==='-') { const to = ui.sel + (k==='+' ? -1 : 1); if (to>=0 && to<list.length) { const ids = list.map(e=>e.id); const t=ids[ui.sel]; ids[ui.sel]=ids[to]; ids[to]=t; const hidden = d[item.k].filter(id => ids.indexOf(id)<0); d[item.k] = ids.concat(hidden); ui.sel = to; } }
+    else if (k==='x' && item.excl) { const id = list[ui.sel].id; d.excl = d.excl || {}; d.excl[id] = !d.excl[id]; }
+    else if (k==='Enter' || k==='Esc') ui.mode='nav';
+    else return;
+  } else if (ui.mode==='date') {
+    if (k==='Left') ui.field = Math.max(0, ui.field-1);
+    else if (k==='Right') ui.field = Math.min(2, ui.field+1);
+    else if (k==='Up'||k==='+') bumpDate(item, 1);
+    else if (k==='Down'||k==='-') bumpDate(item, -1);
+    else if (k==='Enter'||k==='Esc') ui.mode='nav';
+    else return;
+  } else {
+    if (k==='Up') moveItem(-1);
+    else if (k==='Down') moveItem(1);
+    else if (k==='Left') setTab(ui.tab-1);
+    else if (k==='Right') setTab(ui.tab+1);
+    else if (k==='Enter') activate();
+    else if ((k==='+'||k==='-') && item && item.t==='enum') { if (lockReason(item)) ui.msg = lockReason(item); else cycleEnum(item, k==='+'?1:-1); }
+    else if (k==='F10') dialog('Save & Exit', 'Save configuration and exit?', ['Yes','No'], doSave);
+    else if (k==='F9') { const dt = def.tabs.find(t=>t.id==='exit'), di = dt && dt.items.find(i=>i.act==='defaults'); if (di && lockReason(di)) ui.msg = lockReason(di); else dialog('Load Defaults', 'Load default settings? (Nothing is written until you save.)', ['Yes','No'], doDefaults); }
+    else if (k==='Esc') dialog('Exit', 'Exit Setup without saving?', ['Yes','No'], doDiscard);
+    else return;
+  }
+  if (cur().power==='setup') renderSetup();
+}
+function dlgChoose(i){
+  const ui = cur().ui, dlg = ui.dlg; ui.mode='nav'; ui.dlg=null;
+  if (dlg.opts[i]==='Yes' && dlg.onYes) dlg.onYes();
+}
+function bumpDate(item, dir){
+  const ui = cur().ui, d = ui.draft; let [y,mo,dd] = d[item.k].split('-').map(Number);
+  if (ui.field===0) mo = ((mo-1+dir+12)%12)+1; else if (ui.field===1) dd = ((dd-1+dir+31)%31)+1; else y = Math.min(2099, Math.max(2000, y+dir));
+  d[item.k] = y+'-'+String(mo).padStart(2,'0')+'-'+String(dd).padStart(2,'0');
+}
+
+/* ---------- key routing ---------- */
+function key(k){
+  const T = tk(), s = cur(); if (s.done) return;
+  if (k==='Power') { if (s.power==='off') powerOn({ from:'power' }); else { addLog('Held the power button. Off.', 'sys'); powerOff(); } return; }
+  if (s.power==='setup') { setupKey(k); return; }
+  if (s.power==='off') return;
+  if (s.power==='post') { if (k===T.setupKey) { addLog('Pressed '+T.setupKey+' during POST.', 'sys'); enterSetup(); } return; }
+  if (s.power==='stop') {
+    const o = s.stop, act = o.keys && o.keys[k];
+    if (act==='setup') { addLog('Pressed '+k+'.', 'sys'); enterSetup(); return; }
+    if (act==='continue') { continueBoot('Pressed '+k+' to continue.'); return; }
+    if (act==='reboot') { addLog('Pressed '+k+'.', 'sys'); powerOn({ from:'restart' }); return; }
+    if (act==='submit' || act==='submit-setup') { const inp = $('pw'); T.submit(s.m, s, inp ? inp.value : '', act==='submit-setup' ? 'setup' : o.mode); return; }
+    if (typeof act==='function') { addLog('Pressed '+k+'.', 'sys'); act(); return; }
+    if (k===T.setupKey) { addLog('Restarted and pressed '+k+'.', 'sys'); powerOn({ from:'restart', toSetup:true }); return; }
+    return;
+  }
+  if (s.power==='windows') { if (k===T.setupKey) { addLog('Settings → Recovery → Advanced startup → UEFI Firmware Settings.', 'sys'); powerOn({ from:'restart', toSetup:true }); } return; }
+}
+const KEYMAP = { ArrowUp:'Up', ArrowDown:'Down', ArrowLeft:'Left', ArrowRight:'Right', Enter:'Enter', Escape:'Esc', Delete:'Del', F1:'F1', F2:'F2', F9:'F9', F10:'F10', '+':'+', '=':'+', '-':'-', '_':'-', x:'x', X:'x' };
+$('screen').addEventListener('keydown', e => {
+  const k = KEYMAP[e.key]; if (!k) return;
+  if (e.target.tagName==='INPUT' && k!=='Enter' && k!=='F2' && k!=='Esc') return;
+  e.preventDefault(); key(k);
+});
+$('screen').addEventListener('click', e => {
+  const s = cur(); if (s.done) return;
+  const act = e.target.closest('[data-act]');
+  if (act) {
+    const a = act.dataset.act, o = +act.dataset.o, f = +act.dataset.f;
+    if (a==='pw-continue' || a==='pw-setup') { key(a==='pw-setup' ? 'F2' : 'Enter'); return; }
+    if (s.power!=='setup') return;
+    const ui = s.ui;
+    if (a==='dlg') { dlgChoose(o); if (cur().power==='setup') renderSetup(); return; }
+    else if (a==='ord-up') { ui.sel = o; setupKey('+'); return; }
+    else if (a==='ord-down') { ui.sel = o; setupKey('-'); return; }
+    else if (a==='ord-x') { ui.sel = o; setupKey('x'); return; }
+    else if (a==='date-up') { ui.field = f; setupKey('+'); return; }
+    else if (a==='date-down') { ui.field = f; setupKey('-'); return; }
+    renderSetup(); return;
+  }
+  if (s.power!=='setup') { $('screen').focus({ preventScroll:true }); return; }
+  const ui = s.ui;
+  const tab = e.target.closest('[data-tab]'); if (tab) { if (ui.mode==='nav') { setTab(+tab.dataset.tab); renderSetup(); } return; }
+  const opt = e.target.closest('.opt[data-o]');
+  if (opt) { ui.sel = +opt.dataset.o; if (ui.mode==='pick') setupKey('Enter'); else renderSetup(); return; }
+  const fld = e.target.closest('.f[data-f]'); if (fld && ui.mode==='date') { ui.field = +fld.dataset.f; renderSetup(); return; }
+  if (ui.mode!=='nav') return;
+  const row = e.target.closest('.bios-row[data-i]');
+  if (row) { const i = +row.dataset.i, it = currentDef().tabs[ui.tab].items[i]; if (it.t==='info'||it.t==='head') return; if (ui.item===i) activate(); else { ui.item = i; ui.msg=''; } renderSetup(); }
+});
+
+/* ---------- closing a ticket ---------- */
+function closeTicket(){
+  const T = tk(), s = cur(); if (s.done || s.power!=='windows' || s.ran.length < MIN_STEPS) return;
+  const v = T.close(s.m, s);
+  if (v) {
+    s.partial++; s.score = Math.max(0, s.score-PARTIAL_COST);
+    HSCT.log('close-bounced', { ticket:T.no, reason:v.id, score:s.score });
+    addLog('Closed the ticket → bounced back (−'+PARTIAL_COST+'). '+v.msg, 'bad');
+    if (v.apply) v.apply(s.m, s);
+    if (v.off) { powerOff(); s.first = true; s.note = v.note || ''; }
+    s.fb = '<b>Bounced back (−'+PARTIAL_COST+').</b> '+esc(v.msg);
+    renderMachine(); renderTop(); return;
+  }
+  s.done = true; s.minutes += 5; s.fb = '';
+  HSCT.log('ticket-closed', { ticket:T.no, score:s.score, boots:s.boots, failedBoots:s.failed });
+  addLog('Ticket closed. '+T.why, 'good');
+  s.power = 'windows'; setScreen(T.fixedScreen(s.m));
+  renderMachine(); renderHints(); renderBench(); renderTop();
+  const last = state.cur===TICKETS.length-1;
+  $('resolved').innerHTML = '<div class="resolved"><h3>Ticket '+T.no+' closed — <span class="score">'+s.score+' / 100</span></h3><p>'+T.why+'</p>'+
+    '<p class="help" style="color:var(--muted);font-size:.9rem">'+s.boots+' boot'+(s.boots===1?'':'s')+' · '+s.failed+' didn\'t reach Windows · '+s.ran.length+' diagnostic steps · '+s.bench.length+' bench actions · '+s.hints+' hints</p>'+
+    '<div class="actions"><button class="btn" id="next">'+(last?'See your badge':'Next ticket')+'</button></div></div>';
+  $('next').onclick = ()=>{ if(last) renderFinal(); else { state.cur++; renderTicket(); } };
+  $('resolved').scrollIntoView({ behavior: (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) ? 'auto' : 'smooth', block:'nearest' });
+}
+
+/* tabs */
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('active', x===b));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('active', p.id==='pane-'+b.dataset.tab));
+});
+
+/* ---------- badge & results ---------- */
+function tier(tot){ return tot>=340 ? 'gold' : tot>=260 ? 'silver' : 'bronze'; }
+function tierLabel(tt){ return {gold:'Gold — Firmware Tech', silver:'Silver — Bench Tech', bronze:'Bronze — Level 1 Tech'}[tt]; }
+function today(){ return new Date().toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}); }
+function renderFinal(){
+  show('view-final'); renderTop();
+  const tot = total(), tt = tier(tot);
+  $('badge').className = 'badge '+tt;
+  $('badge').innerHTML = '<div class="tier">'+tierLabel(tt)+'</div><div class="title">HSCT Help Desk<br>Shift 3</div>'+
+    '<div class="name">'+esc(state.name)+'</div><div class="pts">'+tot+' / '+(TICKETS.length*100)+'</div><div class="date">'+today()+' · Room 333</div><div class="code" id="badge-code">…</div>';
+  HSCT.endScreen('#hsct-result', {
+    earned: tot, possible: TICKETS.length*100, tier: tierLabel(tt),
+    sections: state.t.map((s,i)=>({ id: TICKETS[i].no, title: TICKETS[i].no+' '+TICKETS[i].title, earned: s.score, possible: 100 })),
+    extra: { tickets: state.t.map((s,i)=>({ no: TICKETS[i].no, score: s.score, steps: s.ran, bench: s.bench, hints: s.hints, wrong: s.wrong, partial: s.partial, boots: s.boots, failedBoots: s.failed, simMinutes: s.minutes, changes: s.changes, finalConfig: s.m.cfg })) },
+  }).then(r=>{ $('badge-code').textContent = r.badge; }).catch(()=>{ $('badge-code').textContent = 'no file'; });
+  const rows = state.t.map((s,i)=>'<tr><td>'+TICKETS[i].no+' '+esc(TICKETS[i].title)+'</td><td class="num">'+s.score+'</td><td class="num">'+s.boots+'</td><td class="num">'+s.failed+'</td><td class="num">'+s.hints+'</td><td class="num">'+(s.wrong+s.partial)+'</td><td class="num">'+s.minutes+'</td></tr>').join('');
+  $('results').innerHTML = '<table><thead><tr><th>Ticket</th><th>Score</th><th>Boots</th><th>Failed</th><th>Hints</th><th>Misses</th><th>Sim min</th></tr></thead><tbody>'+rows+'</tbody>'+
+    '<tfoot><tr><td>Total</td><td class="num">'+tot+'</td><td colspan="5"></td></tr></tfoot></table>';
+}
+$('print').onclick = ()=>window.print();
+
+/* ---------- start ---------- */
+$('start').onclick = ()=>{
+  const n = $('name').value.trim();
+  if(n.length<2){ $('name-err').style.display='block'; $('name').focus(); return; }
+  $('name-err').style.display='none';
+  state.name = n; state.cur = 0; initState();
+  HSCT.start(n);
+  show('view-work'); renderTicket();
+};
+$('name').addEventListener('keydown', e=>{ if(e.key==='Enter') $('start').click(); });
+initState(); renderTop();
+</script>
+</body>
+</html>
