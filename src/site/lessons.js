@@ -46,7 +46,7 @@ export const CATEGORIES = [
           },
           {
             slug: 'set-up-the-room',
-            title: 'Set up the room',
+            title: 'Set up  the room',
             description: 'Room 216 has a new router, a laptop, a printer, a wall jack and a sticky note with the plan. Plug the cables into the right ports, configure the router through its web page, the laptop through Windows, the printer through its front panel — then prove it works by writing six packets by hand: source, destination, protocol, ports.',
             file: 'set-up-the-room.html',
             kind: 'lab',
@@ -143,14 +143,29 @@ export const CATEGORIES = [
       { id: 'communication', title: 'Communication', lessons: [] },
     ],
   },
-  {
+    {
     slug: 'career-and-finance',
     title: 'Career & Finance',
     tone: 'blue',
     blurb: 'Tech jobs and the money that comes with them: what the roles are, what they pay, and what to do with a paycheck.',
     topics: [
       { id: 'tech-careers', title: 'Tech careers', lessons: [] },
-      { id: 'resumes-and-interviews', title: 'Resumes & interviews', lessons: [] },
+      {
+        id: 'resumes-and-interviews',
+        title: 'Resumes & interviews',
+        lessons: [
+          {
+            slug: 'about-me-github-profile',
+            title: 'About me: your GitHub profile',
+            description: 'Four short readings with checks — why an "About Me" earns you anything, the one naming trick that makes a README appear on your profile, what never goes on a public page, and the eight Markdown symbols that do all the work. Then a builder turns your answers into a finished README.md, refuses to let a phone number or an address through, and walks you into GitHub to publish it.',
+            file: 'about-me-github-profile.html',
+            kind: 'lab',
+            minutes: 50,
+            added: '2026-09-22',
+            tags: ['GitHub', 'profile', 'README', 'about me', 'bio', 'Markdown', 'personal brand', 'portfolio', 'privacy', 'digital footprint', 'oversharing', 'resume', 'links', 'headings', 'commit', 'public repository'],
+          },
+        ],
+      },
       { id: 'money-basics', title: 'Money basics', lessons: [] },
     ],
   },

@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>About me: your GitHub profile — HSCT</title>
+<!--
+  HSCT LESSON · Career & Finance · Resumes & interviews
+  Built from lesson-template/lesson-starter.html. Three screens:
+    1. #view-intro   what this is + full name  -> HSCT.start(name)
+    2. #view-work    six parts: four readings with checks, a sort, a builder, the publish steps
+    3. #view-end     wrap-up + the standard result card -> HSCT.endScreen(...)
+  Self-contained: inline CSS and JS, Google Fonts only, no other network requests.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f7fc; --paper:#fff; --ink:#101a3f; --muted:#5b6485; --line:#d3d9ee;
+  --blue:#1f3fae; --blue-soft:#e9edf8; --green:#1f7a3d; --green-soft:#e1f2e6;
+  --red:#b3261e; --red-soft:#fbe3e1; --amber:#8a5a00; --amber-soft:#fdf1da;
+  --hsct-color: var(--blue);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:17px;line-height:1.55}
+h1,h2,h3{margin:0;line-height:1.18}
+p{margin:0 0 .8rem}
+a{color:var(--blue)}
+button{font:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #a9b7ea;outline-offset:2px}
+.view{display:none}.view.active{display:block}
+.wrap{max-width:760px;margin:0 auto;padding:36px 20px 80px}
+.kicker{color:var(--muted);font-size:14px;margin-bottom:6px}
+h1{font-size:2rem;font-weight:700;letter-spacing:-.01em;margin-bottom:.4rem}
+h2{font-size:1.4rem;font-weight:700;margin-bottom:.5rem}
+h3{font-size:1.06rem;font-weight:600}
+.lede{color:var(--muted);font-size:1.1rem;margin-bottom:1.4rem}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin-bottom:16px}
+.card.tight{padding:16px 18px}
+.rules{margin:0;padding-left:1.2rem}.rules li{margin:.32rem 0}
+.name-row{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.name-row input{flex:1;min-width:200px;padding:11px 12px;border:1.5px solid var(--line);border-radius:8px;font:inherit}
+.btn{border:2px solid var(--blue);background:var(--blue);color:#fff;border-radius:8px;padding:11px 18px;font-weight:600}
+.btn:hover{filter:brightness(.92)}
+.btn.ghost{background:transparent;color:var(--blue)}
+.btn.small{padding:8px 13px;font-size:15px}
+.btn:disabled{opacity:.5;cursor:not-allowed;filter:none}
+.err{color:var(--red);margin-top:8px;display:none}
+.err.show{display:block}
+.steps{display:flex;gap:6px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-bottom:14px;align-items:center}
+.pip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--paper)}
+.pip.now{border-color:var(--blue);color:var(--blue);font-weight:600}
+.pip.done{background:var(--green-soft);border-color:#b6dcc3;color:var(--green)}
+.src{display:block;border:1.5px solid var(--line);border-left:5px solid var(--blue);border-radius:10px;padding:13px 15px;margin:0 0 10px;background:var(--paper);text-decoration:none;color:inherit}
+.src:hover{border-color:var(--blue);background:var(--blue-soft)}
+.src .t{font-weight:600;display:block}
+.src .s{font-size:14px;color:var(--muted)}
+.src .n{font-size:14.5px;margin-top:5px;display:block}
+details{border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:var(--paper);margin-bottom:14px}
+details[open]{background:#fbfcff}
+summary{cursor:pointer;font-weight:600;font-size:15px}
+details ul{margin:.6rem 0 .2rem;padding-left:1.15rem;font-size:15.5px}
+details li{margin:.35rem 0}
+.q{font-size:1.1rem;font-weight:600;margin:0 0 12px}
+.qn{font-size:13px;color:var(--muted);font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin-bottom:4px}
+.choices{display:grid;gap:8px;margin-bottom:12px}
+.choice{text-align:left;padding:11px 14px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper);line-height:1.4}
+.choice:hover:not(:disabled){border-color:var(--blue)}
+.choice.right{border-color:var(--green);background:var(--green-soft)}
+.choice.wrong{border-color:var(--red);background:var(--red-soft)}
+.choice:disabled{cursor:default}
+.fb{padding:11px 14px;border-radius:10px;background:var(--blue-soft);margin:0 0 4px;display:none;font-size:15.5px}
+.fb.show{display:block}
+.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:14px}
+.sort-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:11px 0;border-top:1px solid var(--line)}
+.sort-row:first-child{border-top:0}
+.sort-row .it{font-size:16px}
+.sort-btns{display:flex;gap:6px}
+.sb{padding:7px 12px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper);font-size:14.5px;font-weight:600;white-space:nowrap}
+.sb:hover:not(:disabled){border-color:var(--blue)}
+.sb:disabled{cursor:default;opacity:.45}
+.sb.picked-right{background:var(--green-soft);border-color:var(--green);color:var(--green);opacity:1}
+.sb.picked-wrong{background:var(--red-soft);border-color:var(--red);color:var(--red);opacity:1}
+.sort-why{grid-column:1/-1;font-size:14.5px;color:var(--muted);margin-top:-2px;display:none}
+.sort-why.show{display:block}
+label.fld{display:block;margin:0 0 14px}
+label.fld .lb{display:block;font-weight:600;font-size:15.5px;margin-bottom:3px}
+label.fld .hint{display:block;font-size:14px;color:var(--muted);margin-bottom:6px}
+input[type=text],textarea,select{width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:8px;font:inherit;background:var(--paper);color:inherit}
+textarea{min-height:76px;resize:vertical}
+.count{font-size:13px;color:var(--muted);float:right;font-weight:400}
+.tabs{display:flex;gap:6px;margin-bottom:0}
+.tab{padding:8px 14px;border:1.5px solid var(--line);border-bottom:0;border-radius:9px 9px 0 0;background:#eef1f9;font-size:15px;font-weight:600;color:var(--muted)}
+.tab[aria-selected=true]{background:var(--paper);color:var(--ink);border-color:var(--line)}
+.pane{border:1.5px solid var(--line);border-radius:0 10px 10px 10px;background:var(--paper);padding:16px 18px;min-height:150px;overflow-x:auto}
+.pane pre{margin:0;font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;font-size:13.5px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+.md h1{font-size:1.5rem;margin:.2rem 0 .5rem;padding-bottom:.3rem;border-bottom:1px solid var(--line)}
+.md h2{font-size:1.2rem;margin:1.1rem 0 .4rem;padding-bottom:.25rem;border-bottom:1px solid var(--line)}
+.md h3{font-size:1.02rem;margin:.9rem 0 .3rem}
+.md p{margin:0 0 .7rem;font-size:16px}
+.md ul{margin:0 0 .7rem;padding-left:1.3rem}
+.md li{margin:.2rem 0;font-size:16px}
+.md code{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;font-size:14px;background:#eef1f9;padding:2px 6px;border-radius:5px}
+.md .empty{color:var(--muted);font-style:italic}
+.flag{border:1.5px solid #e6c37a;background:var(--amber-soft);color:var(--amber);border-radius:10px;padding:12px 15px;margin:14px 0 0;font-size:15.5px;display:none}
+.flag.show{display:block}
+.flag ul{margin:.5rem 0 0;padding-left:1.2rem}
+.flag b{color:#6b4500}
+.ok-line{color:var(--green);font-weight:600;font-size:15.5px;margin-top:12px;display:none}
+.ok-line.show{display:block}
+.pubsteps{counter-reset:ps;list-style:none;margin:0;padding:0}
+.pubsteps li{counter-increment:ps;position:relative;padding:0 0 14px 40px;font-size:16px}
+.pubsteps li::before{content:counter(ps);position:absolute;left:0;top:0;width:27px;height:27px;border-radius:50%;background:var(--blue);color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.pubsteps b{background:#eef1f9;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:14.5px}
+kbd{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:14px;background:#eef1f9;border:1px solid var(--line);border-radius:5px;padding:1px 6px}
+.chk{display:flex;gap:10px;align-items:flex-start;margin:.45rem 0;font-size:15.5px}
+.chk input{margin-top:5px;width:17px;height:17px;flex:none;accent-color:var(--blue)}
+.score-pill{display:inline-block;background:var(--blue-soft);color:var(--blue);border-radius:999px;padding:3px 11px;font-size:14px;font-weight:600}
+.small{font-size:14.5px;color:var(--muted)}
+.hr{height:1px;background:var(--line);border:0;margin:18px 0}
+@media (max-width:460px){
+  .wrap{padding:26px 14px 70px}
+  h1{font-size:1.65rem}
+  .card{padding:16px 15px}
+  .sort-row{grid-template-columns:1fr}
+  .sort-btns{justify-content:flex-start}
+  .tab{padding:7px 10px;font-size:14px}
+  .pane{padding:13px 13px;border-radius:0 10px 10px 10px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===== 1. INTRO ===== -->
+  <section class="view active" id="view-intro">
+    <p class="kicker">Career &amp; Finance · Resumes &amp; interviews</p>
+    <h1>About me: your GitHub profile</h1>
+    <p class="lede">Everyone who looks you up online is asking the same question: who is this person and what can they do? Today you answer it on purpose — and then publish the answer on your own GitHub profile.</p>
+    <div class="card">
+      <ul class="rules">
+        <li><b>Four short readings</b>, each with three questions. 5 points a question — 60 total.</li>
+        <li><b>One sorting round</b> on what belongs on a public page. 16 points.</li>
+        <li><b>One draft.</b> You fill in the About Me builder and it writes your <code>README.md</code> for you. 24 points.</li>
+        <li>Then the steps to hook it up to your GitHub account. <b>100 points in all.</b></li>
+        <li>The clock starts when you click Start. At the end you download a result file and submit it in Google Classroom.</li>
+      </ul>
+      <p class="small" style="margin:14px 0 0">The readings open in a new tab. If your Chromebook blocks one, open the grey box under it — the parts you need are quoted there.</p>
+      <div class="name-row">
+        <input id="name" type="text" placeholder="Your full name (goes on your result)" autocomplete="off" maxlength="60" aria-label="Your full name">
+        <button class="btn" id="start">Start</button>
+      </div>
+      <div class="err" id="name-err">Enter your name first — it goes on your result file.</div>
+    </div>
+  </section>
+
+  <!-- ===== 2. WORK ===== -->
+  <section class="view" id="view-work">
+    <div class="steps" id="steps" aria-label="Progress"></div>
+    <div id="stage"></div>
+  </section>
+
+  <!-- ===== 3. END ===== -->
+  <section class="view" id="view-end">
+    <h1>Done.</h1>
+    <p class="lede" id="end-lede"></p>
+    <div class="card" id="end-readme"></div>
+    <div id="hsct-result"></div>
+    <div class="actions"><button class="btn ghost" id="again">Try again from the start</button></div>
+  </section>
+
+</div>
+
+<!-- HSCT KIT START — do not edit; copy the whole block from lesson-template/hsct-lesson.js -->
+<script>
+/* ============================================================================
+   HSCT LESSON KIT  v1.0
+   Every lesson on HSCT TechHub inlines this block unchanged (between the
+   <!-- HSCT KIT START --> and <!-- HSCT KIT END --> markers). It gives a
+   lesson three things:
+
+     1. A clock.   HSCT.start(name) when the student begins. The kit records
+                   wall-clock time and "active" time (tab visible).
+     2. A log.     HSCT.log(type, data) for anything worth remembering —
+                   answers, hints, retries. Ends up inside the result file.
+     3. A result.  HSCT.endScreen(el, {...scores}) renders the standard result
+                   card: name, score, time taken, badge code, and a button
+                   that downloads the encrypted result file the student
+                   submits in Google Classroom.
+
+   The file is encrypted with the teacher's PUBLIC key below (RSA-OAEP wrapping
+   an AES-256-GCM key). It can only be opened with the matching private key,
+   on the site's /lessons/verify page. Students can't read or edit it.
+
+   API (all on window.HSCT):
+     HSCT.lesson({ id, title, version, course, possible })   once, at load
+     HSCT.start(name)                                        when work begins
+     HSCT.log(type, data)                                    any time
+     HSCT.elapsed()   -> { seconds, activeSeconds }
+     HSCT.finish({ earned, possible, sections, tier, extra }) -> Promise<result>
+     HSCT.endScreen(el, { earned, possible, sections, tier, extra, note })
+                      -> Promise<result>   (calls finish, renders the card)
+     HSCT.download()  / HSCT.copyCode()                      after finish
+   ========================================================================== */
+(function () {
+  'use strict';
+  var KIT = '1.0';
+
+  /* Mr. Cruz's public key. Replace the whole object if the key pair is ever
+     regenerated on /lessons/verify — and keep the private key out of git. */
+  var PUBLIC_KEY = {"kty":"RSA","n":"rZUBRxn7dUikufJq7z2XVn-on4Of0IyQr_YaPSTgIUaGsYKcrZ4FNROL4A_ZM5JShLf6OVp2ZeAI7XN_7iX0tvd79RqAWRM9an6rx-s6bMYSW1wmtRxZyL-BX56vTtikVRLNO7uyzCb8kevJE71Fi6nlPhdXa-iS4vtIEm2Wjh4cLPinAKhMnkO3BpGHUhtFw7Hyus1w04EdLxowk4UcN7d0w4MQRnBV8ehXQVoLVQ0_QtfrtPTQOpScHuwyaw9nwnTA7h7BEOv1ZkbEyq2N4TFixSSCsneUsc3PlbZOndDzMGMmdMr00ulntRZBfyioFzRcsRUGGwAqpB9SuH7XGQ","e":"AQAB","alg":"RSA-OAEP-256","ext":true};
+
+  var VERIFY_URL = 'hsct.tech/lessons/verify';
+
+  var cfg = null;      // lesson config
+  var ses = null;      // current session
+  var ticker = null;   // active-time interval
+  var result = null;   // { badge, filename, text, envelope, payload }
+
+  /* ---------- small helpers ---------- */
+  var enc = new TextEncoder();
+  function b64(buf) {
+    var bytes = new Uint8Array(buf), s = '';
+    for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return btoa(s);
+  }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function fmtDuration(sec) {
+    sec = Math.max(0, Math.round(sec || 0));
+    var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+    if (h) return h + ' h ' + pad(m) + ' min';
+    if (m) return m + ' min ' + pad(s) + ' s';
+    return s + ' s';
+  }
+  function fmtDate(iso) {
+    try { return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+    catch (e) { return iso; }
+  }
+  function slug(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'student'; }
+  function stamp(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes()); }
+
+  /* Badge code: 8 characters from a SHA-256 of the result, shown on screen
+     so a screenshot can be matched to its file. */
+  var ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ23456789';
+  function badgeFrom(hashBuf) {
+    var bytes = new Uint8Array(hashBuf), out = '';
+    for (var i = 0; i < 8; i++) out += ALPHABET[bytes[i] % ALPHABET.length];
+    return out.slice(0, 4) + '-' + out.slice(4);
+  }
+
+  function needSubtle() {
+    if (!(window.crypto && crypto.subtle)) {
+      throw new Error('Result files need a secure page (https). Open this lesson from the TechHub site and finish again.');
+    }
+  }
+
+  /* ---------- public API ---------- */
+  function lesson(c) {
+    if (!c || !c.id || !c.title) throw new Error('HSCT.lesson needs { id, title }');
+    cfg = { version: '1.0', course: '', possible: 100 };
+    for (var k in c) cfg[k] = c[k];
+    return HSCT;
+  }
+
+  function start(name) {
+    if (!cfg) throw new Error('Call HSCT.lesson({...}) before HSCT.start(name)');
+    name = String(name || '').trim().replace(/\s+/g, ' ');
+    if (name.length < 2) throw new Error('HSCT.start needs the student\'s name');
+    ses = { name: name, started: new Date().toISOString(), t0: Date.now(), active: 0, events: [] };
+    result = null;
+    clearInterval(ticker);
+    ticker = setInterval(function () { if (document.visibilityState === 'visible') ses.active += 1; }, 1000);
+    log('start');
+    return HSCT;
+  }
+
+  function log(type, data) {
+    if (!ses) return HSCT;
+    var e = { t: Math.round((Date.now() - ses.t0) / 100) / 10, type: String(type) };
+    if (data && typeof data === 'object') for (var k in data) if (k !== 't' && k !== 'type') e[k] = data[k];
+    if (ses.events.length < 800) ses.events.push(e);
+    return HSCT;
+  }
+
+  function elapsed() {
+    if (!ses) return { seconds: 0, activeSeconds: 0 };
+    return { seconds: Math.round((Date.now() - ses.t0) / 1000), activeSeconds: ses.active };
+  }
+
+  /* Build, seal, and keep the result. Resolves to { badge, filename, text, payload }. */
+  async function finish(opts) {
+    if (!cfg || !ses) throw new Error('HSCT.start(name) was never called');
+    needSubtle();
+    opts = opts || {};
+    clearInterval(ticker);
+    var finished = new Date();
+    var el = elapsed();
+    var earned = Number(opts.earned || 0), possible = Number(opts.possible || cfg.possible || 0);
+    var payload = {
+      kit: KIT,
+      lesson: { id: cfg.id, title: cfg.title, version: cfg.version, course: cfg.course },
+      student: { name: ses.name },
+      started: ses.started,
+      finished: finished.toISOString(),
+      seconds: el.seconds,
+      activeSeconds: el.activeSeconds,
+      score: { earned: earned, possible: possible, percent: possible ? Math.round(1000 * earned / possible) / 10 : null },
+      tier: opts.tier || null,
+      sections: (opts.sections || []).map(function (s) { return { id: s.id, title: s.title, earned: s.earned, possible: s.possible, status: s.status }; }),
+      extra: opts.extra || null,
+      events: ses.events,
+      env: { tz: Intl.DateTimeFormat().resolvedOptions().timeZone, ua: navigator.userAgent, url: location.href.split('?')[0] },
+    };
+    var hash = await crypto.subtle.digest('SHA-256', enc.encode(JSON.stringify(payload)));
+    var badge = badgeFrom(hash);
+    payload.badge = badge;
+
+    /* header travels in the clear but is authenticated (AES-GCM additional data) */
+    var header = { hsct: 1, kit: KIT, lesson: cfg.id, title: cfg.title, student: ses.name, finished: payload.finished, badge: badge };
+    var pub = await crypto.subtle.importKey('jwk', PUBLIC_KEY, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['wrapKey']);
+    var aes = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt']);
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    var data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv, additionalData: enc.encode(JSON.stringify(header)) }, aes, enc.encode(JSON.stringify(payload)));
+    var wrapped = await crypto.subtle.wrapKey('raw', aes, pub, { name: 'RSA-OAEP' });
+    var envelope = {};
+    for (var k in header) envelope[k] = header[k];
+    envelope.key = b64(wrapped); envelope.iv = b64(iv); envelope.data = b64(data);
+
+    result = {
+      badge: badge,
+      filename: 'HSCT_' + cfg.id + '_' + slug(ses.name) + '_' + stamp(finished) + '.hsct',
+      text: JSON.stringify(envelope),
+      payload: payload,
+    };
+    return result;
+  }
+
+  function download() {
+    if (!result) throw new Error('Nothing to download yet — call HSCT.finish first');
+    var blob = new Blob([result.text], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = result.filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+    return result.filename;
+  }
+
+  async function copyCode() {
+    if (!result) throw new Error('Nothing to copy yet — call HSCT.finish first');
+    try { await navigator.clipboard.writeText(result.text); return true; }
+    catch (e) {
+      var ta = document.createElement('textarea'); ta.value = result.text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      var ok = false; try { ok = document.execCommand('copy'); } catch (e2) {}
+      ta.remove(); return ok;
+    }
+  }
+
+  /* ---------- the standard end screen ---------- */
+  var CSS = '.hsct-card{--hsct-ink:#101a3f;--hsct-mute:#5b6485;--hsct-line:#d3d9ee;--hsct-accent:var(--hsct-color,#1f3fae);--hsct-ok:#1f7a3d;--hsct-bad:#b3261e;'
+    + 'font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;color:var(--hsct-ink);background:#fff;border:1px solid var(--hsct-line);border-left:6px solid var(--hsct-accent);border-radius:12px;padding:20px 22px;margin:20px 0;line-height:1.45}'
+    + '.hsct-card *{box-sizing:border-box}.hsct-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--hsct-mute)}.hsct-head b{color:var(--hsct-accent)}'
+    + '.hsct-name{font-size:22px;font-weight:700;margin:6px 0 2px}.hsct-score{font-size:15px;margin:0 0 12px}.hsct-score b{font-size:28px;font-weight:700}.hsct-score .hsct-tier{display:inline-block;margin-left:8px;padding:2px 10px;border-radius:999px;background:var(--hsct-accent);color:#fff;font-size:13px;font-weight:600;vertical-align:middle}'
+    + '.hsct-facts{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0 0 14px;font-size:14px}.hsct-facts dt{color:var(--hsct-mute)}.hsct-facts dd{margin:0}.hsct-facts code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;letter-spacing:.08em;font-weight:600}'
+    + '.hsct-secs{width:100%;border-collapse:collapse;font-size:14px;margin:0 0 14px}.hsct-secs td{padding:5px 0;border-top:1px solid var(--hsct-line)}.hsct-secs td:last-child{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}'
+    + '.hsct-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.hsct-btn{font:600 15px "IBM Plex Sans","Segoe UI",system-ui,sans-serif;padding:11px 18px;border-radius:8px;border:2px solid var(--hsct-accent);background:var(--hsct-accent);color:#fff;cursor:pointer}.hsct-btn:hover{filter:brightness(.92)}.hsct-btn.hsct-alt{background:transparent;color:var(--hsct-accent)}.hsct-btn:focus-visible{outline:3px solid #a9b7ea;outline-offset:2px}.hsct-btn:disabled{opacity:.55;cursor:wait}'
+    + '.hsct-note{margin:12px 0 0;font-size:13.5px;color:var(--hsct-mute)}.hsct-status{margin:8px 0 0;font-size:14px;min-height:1.4em}.hsct-status.ok{color:var(--hsct-ok)}.hsct-status.bad{color:var(--hsct-bad)}'
+    + '@media print{.hsct-actions,.hsct-note,.hsct-status{display:none}}';
+
+  function injectCss() {
+    if (document.getElementById('hsct-kit-css')) return;
+    var s = document.createElement('style'); s.id = 'hsct-kit-css'; s.textContent = CSS; document.head.appendChild(s);
+  }
+
+  /* Renders the card into `el` and seals the result. Resolves with the result. */
+  async function endScreen(el, opts) {
+    if (typeof el === 'string') el = document.querySelector(el);
+    if (!el) throw new Error('HSCT.endScreen needs an element');
+    injectCss();
+    opts = opts || {};
+    var elp = elapsed();
+    var possible = Number(opts.possible || cfg.possible || 0), earned = Number(opts.earned || 0);
+    var pct = possible ? Math.round(100 * earned / possible) : null;
+    var secs = (opts.sections || []).map(function (s) {
+      var right = s.status != null ? esc(s.status) : (s.possible != null ? esc(s.earned) + ' / ' + esc(s.possible) : esc(s.earned));
+      return '<tr><td>' + esc(s.title) + '</td><td>' + right + '</td></tr>';
+    }).join('');
+    el.innerHTML = '<div class="hsct-card">'
+      + '<div class="hsct-head"><span><b>HSCT TechHub</b> result</span><span>' + esc(cfg.title) + '</span></div>'
+      + '<div class="hsct-name">' + esc(ses ? ses.name : '') + '</div>'
+      + '<div class="hsct-score"><b>' + esc(earned) + '</b> / ' + esc(possible) + (pct != null ? ' <span>(' + pct + '%)</span>' : '') + (opts.tier ? '<span class="hsct-tier">' + esc(opts.tier) + '</span>' : '') + '</div>'
+      + '<dl class="hsct-facts"><dt>Finished</dt><dd>' + esc(fmtDate(new Date().toISOString())) + '</dd>'
+      + '<dt>Time taken</dt><dd>' + esc(fmtDuration(elp.seconds)) + (elp.activeSeconds < elp.seconds - 60 ? ' <span style="color:var(--hsct-mute)">(' + esc(fmtDuration(elp.activeSeconds)) + ' with the tab open)</span>' : '') + '</dd>'
+      + '<dt>Code</dt><dd><code class="hsct-badge">........</code></dd></dl>'
+      + (secs ? '<table class="hsct-secs"><tbody>' + secs + '</tbody></table>' : '')
+      + '<div class="hsct-actions"><button type="button" class="hsct-btn hsct-dl" disabled>Download your result file</button><button type="button" class="hsct-btn hsct-alt hsct-copy" disabled>Copy result code</button></div>'
+      + '<p class="hsct-note">' + esc(opts.note || 'Submit the file in Google Classroom. If downloads are blocked, copy the code and paste it instead. The file is encrypted: only your teacher can open it.') + '</p>'
+      + '<p class="hsct-status" aria-live="polite">Preparing your result file…</p>'
+      + '</div>';
+    var status = el.querySelector('.hsct-status'), dl = el.querySelector('.hsct-dl'), cp = el.querySelector('.hsct-copy');
+    try {
+      var r = await finish(opts);
+      el.querySelector('.hsct-badge').textContent = r.badge;
+      status.textContent = 'Ready: ' + r.filename;
+      dl.disabled = false; cp.disabled = false;
+      dl.onclick = function () { try { download(); status.className = 'hsct-status ok'; status.textContent = 'Downloaded ' + r.filename + ' — now submit it.'; } catch (e) { status.className = 'hsct-status bad'; status.textContent = e.message; } };
+      cp.onclick = async function () { var ok = await copyCode(); status.className = 'hsct-status ' + (ok ? 'ok' : 'bad'); status.textContent = ok ? 'Code copied — paste it into your submission.' : 'Copy failed. Use the download instead.'; };
+      return r;
+    } catch (e) {
+      status.className = 'hsct-status bad';
+      status.textContent = e.message || String(e);
+      throw e;
+    }
+  }
+
+  var HSCT = {
+    kit: KIT, verifyUrl: VERIFY_URL,
+    lesson: lesson, start: start, log: log, elapsed: elapsed,
+    finish: finish, download: download, copyCode: copyCode, endScreen: endScreen,
+    get result() { return result; },
+    get session() { return ses ? { name: ses.name, started: ses.started } : null; },
+    fmtDuration: fmtDuration,
+  };
+  window.HSCT = HSCT;
+})();
+</script>
+<!-- HSCT KIT END -->
+
+<script>
+/* ==========================================================================
+   LESSON DATA
+   ========================================================================== */
+HSCT.lesson({ id: 'about-me-github-profile', title: 'About me: your GitHub profile', version: '1.0', course: 'career-and-finance', possible: 100 });
+
+const PTS_Q = 5, PTS_SORT = 2;
+
+const READINGS = [
+  {
+    key: 'why',
+    title: 'Why anybody needs an "About Me"',
+    lede: 'Two short pieces. The first is a writing guide — it gives you a recipe. The second is GitHub’s own advice for people using a profile to get hired.',
+    sources: [
+      { t: 'How to Write an Online Bio', s: 'Grammarly · Celeste Mora', u: 'https://www.grammarly.com/blog/writing-tips/how-to-write-bio/', n: 'Read "A bio template to use and customize" and the four quick tips at the end.' },
+      { t: 'Using your GitHub profile to enhance your resume', s: 'GitHub Docs', u: 'https://docs.github.com/en/account-and-profile/tutorials/using-your-github-profile-to-enhance-your-resume', n: 'Read Steps 1 through 4. Skip the Copilot parts for now.' },
+    ],
+    quotes: [
+      'Grammarly’s bio recipe, in order: your first and last name · your company or brand · your current function · your "north star" (your overall goal, values, or ethos) · your top three accomplishments · a "cute closer" about who you are outside of work (optional) · your contact info (optional).',
+      'On accomplishments: "Choose the top two or three large milestones from your career (no more)."',
+      'Tip #3, "When in doubt, borrow": "You should never copy a person’s bio—after all, it’s their story, not yours—but you can mimic the structure if you’re feeling stuck."',
+      'GitHub: your bio is "a sentence or two that appears under your profile picture." Your profile README "is more flexible, allowing for more creativity."',
+      'GitHub says a profile README may include: an introduction, skills, professional experience, some of your best projects, and achievements or awards.',
+      'GitHub, Step 3: "Pick 3-5 projects to highlight by ‘pinning’ them on your profile," because pinned repositories "will be prominently displayed, allowing you to direct hiring managers’ attention to the projects you’re most proud of."',
+      'GitHub, Step 4: "Expect that they will only look at your projects for a couple minutes. To give the best impression during this brief time, you should make your projects easy to understand and explore."',
+    ],
+    questions: [
+      { q: 'Grammarly’s bio recipe tells you to list how many accomplishments?',
+        a: ['Every one you can think of', 'Two or three, no more', 'Exactly five', 'None — accomplishments belong on a résumé, not a bio'],
+        right: 1,
+        fb: '"Choose the top two or three large milestones from your career (no more)." A short list of real things beats a long list of small ones.' },
+      { q: 'Grammarly’s Tip #3 says that when you are stuck, you may borrow what from someone else’s bio?',
+        a: ['Their structure — but never their words', 'Their words, as long as you change a few', 'Their accomplishments, if yours are similar', 'Nothing at all; never read other bios'],
+        right: 0,
+        fb: '"You should never copy a person’s bio — after all, it’s their story, not yours — but you can mimic the structure." Steal the shape, write your own content.' },
+      { q: 'GitHub warns: "Expect that they will only look at your projects for a couple minutes." What does it tell you to do about that?',
+        a: ['Apply to more places, so more people see the profile', 'Make your projects easy to understand and explore', 'Hide any project you have not finished', 'Delete older projects every year'],
+        right: 1,
+        fb: '"To give the best impression during this brief time, you should make your projects easy to understand and explore." A couple of minutes is all you get — so a clear README and an honest description are worth more than one more half-built repo. Separately, GitHub says to pin 3–5 projects, so you choose which ones those minutes are spent on.' },
+    ],
+  },
+  {
+    key: 'how',
+    title: 'The trick that makes a README show up on your profile',
+    lede: 'GitHub has one weirdly specific rule here, and if you miss it nothing appears. Read the Prerequisites section slowly.',
+    sources: [
+      { t: 'Managing your profile README', s: 'GitHub Docs', u: 'https://docs.github.com/en/account-and-profile/how-tos/profile-customization/managing-your-profile-readme', n: 'Read Prerequisites, Adding a profile README, and Removing a profile README.' },
+      { t: 'About your profile', s: 'GitHub Docs', u: 'https://docs.github.com/en/account-and-profile/concepts/personal-profile', n: 'Short. Read "Your profile README" and the Important note at the top.' },
+    ],
+    quotes: [
+      'GitHub will display your profile README on your profile page if ALL of these are true: you’ve created a repository with a name that matches your GitHub username; the repository is public; the repository contains a file named README.md in its root; the README.md file contains any content.',
+      'The steps: New repository → type a repository name that matches your username → (optional) a Description → select Public → toggle "Add README" to On → Create repository → above the right sidebar, click "Edit README".',
+      'It disappears again if: the README file is removed or made empty; the repository is made private; the repository name no longer matches your username.',
+      'GitHub’s warning: "Any details you add to your public profile will be visible to all GitHub users."',
+    ],
+    questions: [
+      { q: 'What has to be true of the repository’s <em>name</em>?',
+        a: ['It must be called <code>profile</code>', 'It must be called <code>README</code>', 'It must match your GitHub username exactly', 'It can be anything, as long as it is public'],
+        right: 2,
+        fb: 'Username <code>octocat</code> → repository <code>octocat</code>. That exact match is what tells GitHub "this one is the profile." Change your username later and the README quietly disappears.' },
+      { q: 'Where does the <code>README.md</code> file have to sit?',
+        a: ['In the root of the repository', 'In a folder called <code>profile</code>', 'In the <code>.github</code> folder', 'In a folder named after your username'],
+        right: 0,
+        fb: 'The root — the first thing you see when you open the repository. (The <code>.github/profile/</code> path is the rule for <em>organization</em> profiles, which is a different thing.)' },
+      { q: 'Which one of these makes your README vanish from your profile page?',
+        a: ['Adding more files to the repository', 'Making the repository private', 'Pinning a different repository', 'Editing the README more than once'],
+        right: 1,
+        fb: 'Three ways to lose it: delete or empty the README, make the repository private, or change either name so they no longer match. Your profile README has to be public to work at all — which is exactly why the next reading matters.' },
+    ],
+  },
+  {
+    key: 'private',
+    title: 'The part of you that does not go on the internet',
+    lede: 'Your profile README is public to everybody, forever, and it can be copied after you delete it. So the question is not "what can I say" — it is "what do I want permanently findable".',
+    sources: [
+      { t: 'Internet Safety', s: 'Nemours KidsHealth · reviewed May 2026', u: 'https://kidshealth.org/en/teens/internet-safety.html', n: 'Read "Protect Your Privacy" and "Be Thoughtful About Your Profile".' },
+      { t: 'Online Safety Tips for Teens', s: 'N.C. Department of Information Technology', u: 'https://it.nc.gov/resources/online-safety-privacy/tips-guidance/online-safety-tips-teens', n: 'Read the question list at the top and "Think About What You Share" at the bottom.' },
+    ],
+    quotes: [
+      'KidsHealth, "Be Thoughtful About Your Profile": "Don’t include any personal information like your location, phone number, school name, or last name on your username or bio."',
+      'KidsHealth lists things the public should never see, including: your full name, any type of photograph (even of your pet), your current location, home and school addresses, phone numbers, Social Security number, passwords, names of family members, credit card numbers.',
+      'KidsHealth’s rule of thumb: "Imagine your grandma’s watching."',
+      'NCDIT: "Am I posting sensitive information? This means addresses, phone numbers, your birthdate, Social Security number, driver’s license number or financial information."',
+      'NCDIT: "You can’t always take it back. Anything you post can be easily copied, and even if you delete it, it can live on in the internet. Consider who might see it, such as prospective colleges or employers."',
+    ],
+    questions: [
+      { q: 'KidsHealth names four things specifically to keep out of a username or bio. Which set?',
+        a: ['Your location, phone number, school name, and last name', 'Your hobbies, favorite music, friends, and grades', 'Your email, username, profile photo, and password', 'Your job, city, height, and age'],
+        right: 0,
+        fb: 'Location, phone number, school name, last name. Notice that the school name is on that list — "HSCT, Room 333" tells a stranger exactly where to find you on a Tuesday.' },
+      { q: 'NCDIT says "You can’t always take it back." What is the reasoning?',
+        a: ['Websites legally own anything you post', 'Deleting a post gets you banned from most platforms', 'Anything you post can be copied, so it can live on after you delete it — and colleges or employers may see it', 'Search engines take about a year to remove deleted pages'],
+        right: 2,
+        fb: '"Anything you post can be easily copied, and even if you delete it, it can live on in the internet. Consider who might see it, such as prospective colleges or employers." A GitHub profile is exactly the kind of page they look at.' },
+      { q: 'Which of these is on KidsHealth’s list of things the public should <em>never</em> see?',
+        a: ['The programming languages you are learning', 'Any type of photograph — even one of your pet', 'A project you built and want to show off', 'The name of a book you like'],
+        right: 1,
+        fb: 'Photos are the surprising one: "any type of photograph (even of your pet)." A photo carries more than what is in the frame — a street sign, a uniform, a house number, a location tag.' },
+    ],
+  },
+  {
+    key: 'md',
+    title: 'Markdown, enough of it',
+    lede: 'A README is a plain text file that GitHub turns into a formatted page. About eight symbols do all the work. One of them will bite you — read the Line breaks section.',
+    sources: [
+      { t: 'Basic writing and formatting syntax', s: 'GitHub Docs', u: 'https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax', n: 'Read: Headings, Styling text, Links, Line breaks, Lists, and Hiding content with comments.' },
+    ],
+    quotes: [
+      'Headings: "add one to six # symbols before your heading text."',
+      'Bold is <code>**like this**</code>. Italic is <code>_like this_</code>. Inline code uses single backticks.',
+      'Links: "wrapping link text in brackets [ ], and then wrapping the URL in parentheses ( )" — for example <code>[GitHub Pages](https://pages.github.com/)</code>.',
+      'Lists: "You can make an unordered list by preceding one or more lines of text with -, *, or +."',
+      'Line breaks: in an .md file, two lines written one under the other "would render on one line without a line break." To force one you need two spaces at the end of the first line, a backslash, or <code>&lt;br/&gt;</code>. A blank line between them makes two paragraphs.',
+      'Hiding content with comments: "You can tell GitHub to hide content from the rendered Markdown by placing the content in an HTML comment."',
+    ],
+    questions: [
+      { q: 'In a <code>.md</code> file you type two lines, one under the other, pressing Enter once between them. What does GitHub show?',
+        a: ['Two lines, as you typed them', 'One line — the two run together', 'An error: Markdown needs a list', 'Two lines, but the second one in italics'],
+        right: 1,
+        fb: 'They run together. To actually break the line you need two spaces at the end of the first one, a backslash, or <code>&lt;br/&gt;</code> — or leave a blank line to make two paragraphs. This is the single most common reason a README looks like mush.' },
+      { q: 'Which one of these makes a working link?',
+        a: ['<code>(My project)[https://github.com/me/thing]</code>', '<code>[My project](https://github.com/me/thing)</code>', '<code>&lt;My project&gt;{https://github.com/me/thing}</code>', '<code>link: My project = https://github.com/me/thing</code>'],
+        right: 1,
+        fb: 'Square brackets hold the words you see, round brackets hold the URL. Text first, then the address — the same order as the words "click here for that page".' },
+      { q: 'Your template has notes wrapped in <code>&lt;!--</code> and <code>--&gt;</code>. What happens to them on your published profile?',
+        a: ['They show up in grey italics', 'They show up as normal text', 'Nothing — GitHub hides them', 'GitHub refuses to render the file'],
+        right: 2,
+        fb: 'Hidden. That is why the template can carry instructions to you without showing them to the world — leave them in while you work, delete them when you no longer need them.' },
+    ],
+  },
+];
+
+const SORT_ITEMS = [
+  { it: 'The languages you are learning — Python, JavaScript', ok: true,  why: 'This is the point of the page. "Learning" is a fine word to use.' },
+  { it: 'Your cell phone number',                              ok: false, why: 'On both lists. KidsHealth and NCDIT name phone numbers outright.' },
+  { it: 'A link to a repository you built',                    ok: true,  why: 'GitHub’s own advice: show the projects you are proud of and say what you learned.' },
+  { it: 'Your home street address',                            ok: false, why: 'Never. NCDIT calls addresses sensitive information; KidsHealth says home and school addresses stay private.' },
+  { it: 'What you want to do after graduation',                ok: true,  why: 'Grammarly calls this your "north star" — it tells a reader what to offer you.' },
+  { it: 'Your birthday, with the year',                        ok: false, why: 'NCDIT lists your birthdate as sensitive information. A full date of birth is a building block for identity theft.' },
+  { it: 'A hobby — basketball, drawing, cooking',              ok: true,  why: 'The optional "cute closer." One line. It makes you a person instead of a list of tools.' },
+  { it: 'Your school’s name and your room number',         ok: false, why: 'KidsHealth names the school specifically. Together with a class schedule it says where you physically are.' },
+];
+
+const STAGE_LABELS = ['Why', 'How', 'Private', 'Markdown', 'Sort', 'Draft', 'Publish'];
+
+/* The blank template the student can download. HTML comment markers are built
+   at runtime so the browser never sees them inside this script. */
+const OPEN = '<!' + '--', CLOSE = '--' + '>';
+const cmt = (s) => OPEN + ' ' + s + ' ' + CLOSE;
+const BLANK_TEMPLATE = [
+  cmt('============================================================\n     HSCT · "About Me" template for your GitHub profile README\n\n     Repository name : must match your GitHub username exactly\n     File name       : README.md   (in the root of the repository)\n     Visibility      : Public\n\n     These grey notes are HTML comments. GitHub does not show them\n     when it renders the page, so you can leave them in while you\n     work and delete them when you are done. Replace anything in\n     CAPITALS with your own words.\n     ============================================================'),
+  '', '', '# Hi, I\'m NAME 👋', '',
+  cmt('HEADLINE — one sentence, and the most important line on the page.\n     Who you are, where you are, and what you\'re into.\n     The recipe from the reading: name · what you do · your "north star".'),
+  '', 'ONE SENTENCE ABOUT YOU.', '', '', '## What I\'m working on', '',
+  cmt('Two or three bullets, present tense. Real things, even small ones.\n     "Stuck on" is allowed — it reads as honest, not weak.'),
+  '', '- ', '- ', '', '', '## Skills I\'m building', '',
+  cmt('Honest beats impressive: "learning" next to a skill is a good word.\n     Backticks make `inline code`, which is how most people list tools.'),
+  '', '`TOOL` · `TOOL` · `TOOL`', '', '', '## Projects', '',
+  cmt('One line on what it does, one line on what you learned.\n     The "what I learned" line is the part people remember.\n     Link format: [text](https://the-url)\n\n     The two spaces at the end of the next line are deliberate. They are\n     what makes the line after it start on a new line — without them,\n     GitHub runs the two together.'),
+  '', '### PROJECT NAME', 'WHAT IT DOES — one line.  ', '**What I learned:** ONE THING THAT WENT WRONG AND WHAT YOU DID.', '', '', '## What\'s next', '',
+  cmt('People who read profiles are usually deciding whether to hand you\n     something. Tell them what to hand you.'),
+  '', 'WHAT YOU WANT TO DO NEXT.', '', '', '## Outside of code', '',
+  cmt('Optional. One line. The "cute closer".'),
+  '', 'ONE LINE.', '', '', '## Reach me', '',
+  cmt('This page is public to the entire internet, forever, and it can be\n     copied even after you delete it.\n\n     NEVER here: phone number, home address, your school\'s name or room\n     number, your birthday, anything with a password or account number.'),
+  '', '- GitHub: [@YOUR-USERNAME](https://github.com/YOUR-USERNAME)', '', '',
+  cmt('============================================================\n     BEFORE YOU COMMIT — read it back one more time:\n\n     [ ] No phone number, street address, school name, or birthday\n     [ ] Nothing here you\'d mind a college or an employer reading\n     [ ] Every CAPITALS placeholder is replaced\n     [ ] Blank line between paragraphs — a single Enter does not\n         make a new line in a .md file\n     ============================================================'),
+  '',
+].join('\n');
+
+/* ==========================================================================
+   STATE + HELPERS
+   ========================================================================== */
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let S;
+
+function show(id) { document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === id)); window.scrollTo(0, 0); }
+
+function renderSteps() {
+  $('steps').innerHTML = STAGE_LABELS.map((l, i) =>
+    `<span class="pip ${i === S.stage ? 'now' : i < S.stage ? 'done' : ''}">${i < S.stage ? '✓ ' : ''}${esc(l)}</span>`
+  ).join('') + `<span class="score-pill" style="margin-left:auto">${S.points} pts</span>`;
+}
+
+function award(n, bucket) { S.points += n; S.buckets[bucket] = (S.buckets[bucket] || 0) + n; renderSteps(); }
+
+function goto(n) { S.stage = n; renderSteps(); STAGES[n](); window.scrollTo(0, 0); }
+
+/* ==========================================================================
+   1–4. THE READINGS
+   ========================================================================== */
+function readingStage(idx) {
+  const R = READINGS[idx];
+  const total = R.questions.length * PTS_Q;
+  $('stage').innerHTML = `
+    <p class="kicker">Part ${idx + 1} of 7 · reading</p>
+    <h1>${esc(R.title)}</h1>
+    <p class="lede">${R.lede}</p>
+    <div class="card">
+      <h2 style="font-size:1.05rem;margin-bottom:10px">Read these first</h2>
+      ${R.sources.map((s) => `<a class="src" href="${esc(s.u)}" target="_blank" rel="noopener noreferrer">
+          <span class="t">${esc(s.t)} ↗</span>
+          <span class="s">${esc(s.s)}</span>
+          <span class="n">${esc(s.n)}</span>
+        </a>`).join('')}
+      <details><summary>Link blocked? The parts you need, quoted</summary>
+        <ul>${R.quotes.map((q) => `<li>${q}</li>`).join('')}</ul>
+      </details>
+    </div>
+    <div class="card" id="qcard">
+      <h2 style="font-size:1.05rem;margin-bottom:4px">${R.questions.length} questions · ${total} points</h2>
+      <p class="small" style="margin-bottom:16px">One try each. A wrong answer still moves you on — it just costs the points.</p>
+      <div id="qlist"></div>
+    </div>
+    <div class="actions"><button class="btn" id="nextstage" disabled>Next</button></div>`;
+
+  const list = $('qlist');
+  R.questions.forEach((q, qi) => {
+    const wrap = document.createElement('div');
+    wrap.style.marginBottom = '22px';
+    wrap.innerHTML = `<p class="qn">Question ${qi + 1}</p>
+      <p class="q">${q.q}</p>
+      <div class="choices">${q.a.map((t, k) => `<button type="button" class="choice" data-k="${k}">${t}</button>`).join('')}</div>
+      <div class="fb" role="status"></div>`;
+    list.appendChild(wrap);
+    wrap.querySelector('.choices').addEventListener('click', (e) => {
+      const b = e.target.closest('.choice');
+      if (!b || b.disabled) return;
+      const k = +b.dataset.k, right = k === q.right;
+      wrap.querySelectorAll('.choice').forEach((c, i) => {
+        c.disabled = true;
+        if (i === q.right) c.classList.add('right'); else if (i === k) c.classList.add('wrong');
+      });
+      const fb = wrap.querySelector('.fb');
+      fb.innerHTML = (right ? '<b>Correct.</b> ' : '<b>Not quite.</b> ') + q.fb;
+      fb.classList.add('show');
+      if (right) award(PTS_Q, R.key);
+      S.answers.push({ part: R.key, q: qi, picked: k, right });
+      HSCT.log('answer', { part: R.key, q: qi, picked: k, right });
+      S.pending--;
+      if (S.pending === 0) { $('nextstage').disabled = false; $('nextstage').focus(); }
+    });
+  });
+  S.pending = R.questions.length;
+  $('nextstage').textContent = 'Next';
+  $('nextstage').onclick = () => goto(S.stage + 1);
+}
+
+/* ==========================================================================
+   5. SHARE-SMART SORT
+   ========================================================================== */
+function sortStage() {
+  $('stage').innerHTML = `
+    <p class="kicker">Part 5 of 7 · sort</p>
+    <h1>Public page, or keep it off?</h1>
+    <p class="lede">Eight things a student might put on a profile. Two points each. Use what the privacy reading actually said, not what feels normal on social media — a GitHub profile is read by different people.</p>
+    <div class="card"><div id="sortlist"></div></div>
+    <div class="actions"><button class="btn" id="nextstage" disabled>Next</button></div>`;
+
+  const list = $('sortlist');
+  SORT_ITEMS.forEach((item, i) => {
+    const row = document.createElement('div');
+    row.className = 'sort-row';
+    row.innerHTML = `<div class="it">${esc(item.it)}</div>
+      <div class="sort-btns">
+        <button type="button" class="sb" data-ok="1">Fine to post</button>
+        <button type="button" class="sb" data-ok="0">Keep it off</button>
+      </div>
+      <div class="sort-why"></div>`;
+    list.appendChild(row);
+    row.querySelector('.sort-btns').addEventListener('click', (e) => {
+      const b = e.target.closest('.sb');
+      if (!b || b.disabled) return;
+      const said = b.dataset.ok === '1', right = said === item.ok;
+      row.querySelectorAll('.sb').forEach((x) => { x.disabled = true; });
+      b.classList.add(right ? 'picked-right' : 'picked-wrong');
+      const why = row.querySelector('.sort-why');
+      why.innerHTML = (right ? '' : `<b style="color:var(--red)">${item.ok ? 'This one is fine.' : 'Keep this one off.'}</b> `) + esc(item.why);
+      why.classList.add('show');
+      if (right) award(PTS_SORT, 'sort');
+      S.sorted.push({ i, said, right });
+      HSCT.log('sort', { i, item: item.it, said, right });
+      S.pending--;
+      if (S.pending === 0) { $('nextstage').disabled = false; $('nextstage').focus(); }
+    });
+  });
+  S.pending = SORT_ITEMS.length;
+  $('nextstage').onclick = () => goto(S.stage + 1);
+}
+
+/* ==========================================================================
+   6. THE BUILDER
+   ========================================================================== */
+const FIELDS = [
+  { id: 'display', lb: 'How you want to be known', hint: 'First name is plenty. First name + last initial is common. A handle is fine too — remember the reading on last names.', ph: 'Alex R.', max: 40 },
+  { id: 'headline', lb: 'Your one sentence', hint: 'Who you are, where, and what you’re into. This is the line people actually read. 20 characters minimum.', ph: 'A junior in a NYC tech program, teaching myself game dev one broken build at a time.', max: 180, area: true, need: 20, pts: 6 },
+  { id: 'working', lb: 'What you’re working on right now', hint: 'One per line, two or three lines. Small and real beats big and vague. "Stuck on" counts.', ph: 'A platformer in Godot\nFiguring out why my CSS grid collapses on phones', max: 300, area: true },
+  { id: 'skills', lb: 'Skills you’re building', hint: 'Comma-separated. At least three. Write "learning X" where that’s the truth.', ph: 'HTML, CSS, learning JavaScript, Figma', max: 200, need: 3, pts: 6, isList: true },
+  { id: 'projName', lb: 'One project — what it’s called', hint: 'A class project counts. A game you modded counts.', ph: 'Lunch Line Timer', max: 60 },
+  { id: 'projWhat', lb: 'What it does', hint: 'One line. Plain words — pretend you are telling someone who has never seen it.', ph: 'Times how long the cafeteria line takes and charts it by period.', max: 200, area: true },
+  { id: 'projLearned', lb: 'What you learned building it', hint: 'This is the line people remember, and the one most students skip. Something that went wrong counts double. 20 characters minimum.', ph: 'My first version stored everything in one giant array and I had to rewrite it.', max: 300, area: true, need: 20, pts: 6 },
+  { id: 'projUrl', lb: 'Link to it (optional)', hint: 'Leave blank if it isn’t online yet.', ph: 'https://github.com/username/project', max: 200 },
+  { id: 'next', lb: 'What’s next for you', hint: 'A class, a certification, a job, something you want to build. 15 characters minimum.', ph: 'Looking for a summer internship where I can write real code.', max: 200, area: true, need: 15, pts: 6 },
+  { id: 'outside', lb: 'Outside of code (optional)', hint: 'One line. The "cute closer".', ph: 'Point guard, terrible at chess, learning to cook rice properly.', max: 160 },
+  { id: 'contact', lb: 'How people reach you', hint: 'Notice what is not an option here.', select: ['Open an issue on one of my repos', 'Through my GitHub profile', 'School email (only if Mr. Cruz says so)', 'Don’t list a contact'] },
+];
+
+const PRIVACY_CHECKS = [
+  { re: /(?:\+?1[\s.\-]?)?\(?\d{3}\)?[\s.\-]\d{3}[\s.\-]\d{4}\b/, what: 'something shaped like a phone number' },
+  { re: /\b\d{1,5}\s+(?:[A-Za-z0-9.'\-]+\s+){0,3}(?:street|st|avenue|ave|road|rd|boulevard|blvd|drive|dr|lane|ln|court|ct|place|pl|terrace|parkway|pkwy|highway|hwy)\b/i, what: 'something shaped like a street address' },
+  { re: /\broom\s*#?\s*\d{2,4}\b/i, what: 'a room number' },
+  { re: /\b(?:0?[1-9]|1[0-2])[\/\-](?:0?[1-9]|[12]\d|3[01])[\/\-](?:19|20)\d{2}\b/, what: 'a full date of birth' },
+  { re: /\b\d{3}[\s\-]\d{2}[\s\-]\d{4}\b/, what: 'something shaped like a Social Security number' },
+];
+
+function buildStage() {
+  $('stage').innerHTML = `
+    <p class="kicker">Part 6 of 7 · draft</p>
+    <h1>Write yours</h1>
+    <p class="lede">Fill this in and it writes the Markdown for you — the same template, with your words in it. Watch the preview change as you type. 24 points for a complete draft.</p>
+    <div class="card">
+      <form id="bform" autocomplete="off">
+        ${FIELDS.map((f) => `<label class="fld" for="f-${f.id}">
+          <span class="lb">${esc(f.lb)}${f.pts ? ` <span class="score-pill">${f.pts} pts</span>` : ''}</span>
+          <span class="hint">${esc(f.hint)}</span>
+          ${f.select
+            ? `<select id="f-${f.id}">${f.select.map((o) => `<option>${esc(o)}</option>`).join('')}</select>`
+            : f.area
+              ? `<textarea id="f-${f.id}" maxlength="${f.max}" placeholder="${esc(f.ph)}"></textarea>`
+              : `<input id="f-${f.id}" type="text" maxlength="${f.max}" placeholder="${esc(f.ph)}">`}
+        </label>`).join('')}
+      </form>
+      <div class="flag" id="privflag" role="alert"></div>
+      <div class="ok-line" id="privok">Nothing in here looks like a phone number, an address, a room number, or a birthday. Good.</div>
+    </div>
+
+    <h2 style="margin:26px 0 10px">Your README</h2>
+    <div class="tabs" role="tablist">
+      <button class="tab" id="tab-prev" role="tab" aria-selected="true" aria-controls="pane">How GitHub shows it</button>
+      <button class="tab" id="tab-md" role="tab" aria-selected="false" aria-controls="pane">The Markdown</button>
+    </div>
+    <div class="pane" id="pane" role="tabpanel"></div>
+    <div class="actions">
+      <button class="btn" id="dl-md">Download README.md</button>
+      <button class="btn ghost small" id="copy-md">Copy the Markdown</button>
+      <button class="btn ghost small" id="dl-blank">Download the blank template</button>
+      <span class="small" id="dlnote" aria-live="polite"></span>
+    </div>
+    <hr class="hr">
+    <div class="actions"><button class="btn" id="nextstage">I have my draft — next</button></div>`;
+
+  let tab = 'prev';
+  const paint = () => {
+    const md = buildReadme(readFields());
+    S.readme = md;
+    $('pane').innerHTML = tab === 'md'
+      ? `<pre>${esc(md)}</pre>`
+      : `<div class="md">${mdToHtml(md)}</div>`;
+  };
+  FIELDS.forEach((f) => {
+    const el = $('f-' + f.id);
+    el.addEventListener(f.select ? 'change' : 'input', () => { paint(); scanPrivacy(); });
+  });
+  $('tab-prev').onclick = () => { tab = 'prev'; $('tab-prev').setAttribute('aria-selected', 'true'); $('tab-md').setAttribute('aria-selected', 'false'); paint(); };
+  $('tab-md').onclick = () => { tab = 'md'; $('tab-md').setAttribute('aria-selected', 'true'); $('tab-prev').setAttribute('aria-selected', 'false'); paint(); };
+
+  $('dl-md').onclick = () => {
+    if (!scanPrivacy(true)) { $('dlnote').textContent = 'Fix the flagged lines first.'; return; }
+    saveText(S.readme, 'README.md');
+    HSCT.log('download-readme');
+    $('dlnote').textContent = 'Saved README.md — that is the file that goes in your repository.';
+  };
+  $('copy-md').onclick = async () => {
+    if (!scanPrivacy(true)) { $('dlnote').textContent = 'Fix the flagged lines first.'; return; }
+    let ok = false;
+    try { await navigator.clipboard.writeText(S.readme); ok = true; } catch (e) {
+      const ta = document.createElement('textarea'); ta.value = S.readme; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { ok = document.execCommand('copy'); } catch (e2) {}
+      ta.remove();
+    }
+    HSCT.log('copy-readme', { ok });
+    $('dlnote').textContent = ok ? 'Copied. Paste it into the GitHub editor.' : 'Copy failed — use the download instead.';
+  };
+  $('dl-blank').onclick = () => { saveText(BLANK_TEMPLATE, 'README-template.md'); HSCT.log('download-template'); $('dlnote').textContent = 'Saved the blank template.'; };
+
+  $('nextstage').onclick = () => {
+    const v = readFields();
+    let earned = 0;
+    const wins = [];
+    FIELDS.filter((f) => f.pts).forEach((f) => {
+      const val = (v[f.id] || '').trim();
+      const good = f.isList ? val.split(',').filter((x) => x.trim()).length >= f.need : val.length >= f.need;
+      if (good) { earned += f.pts; wins.push(f.id); }
+    });
+    award(earned, 'draft');
+    S.draftEarned = earned;
+    S.fields = v;
+    S.readme = buildReadme(v);
+    HSCT.log('draft', { earned, complete: wins, chars: S.readme.length });
+    goto(S.stage + 1);
+  };
+
+  paint();
+}
+
+function readFields() {
+  const o = {};
+  FIELDS.forEach((f) => { const el = $('f-' + f.id); o[f.id] = el ? el.value : ''; });
+  return o;
+}
+
+function scanPrivacy(loud) {
+  const v = readFields();
+  const hits = [];
+  Object.keys(v).forEach((k) => {
+    PRIVACY_CHECKS.forEach((c) => {
+      if (c.re.test(String(v[k]))) {
+        const f = FIELDS.find((x) => x.id === k);
+        hits.push(`<b>${esc(f ? f.lb : k)}</b> — ${c.what}`);
+      }
+    });
+  });
+  const flag = $('privflag'), ok = $('privok');
+  if (!flag) return true;
+  const typed = Object.keys(v).some((k) => k !== 'contact' && String(v[k]).trim().length > 0);
+  if (hits.length) {
+    flag.innerHTML = `<b>Hold on.</b> This page will be public to everyone, forever. Two of the four readings said to keep these off it:<ul>${hits.map((h) => `<li>${h}</li>`).join('')}</ul>Edit those lines and the download unlocks.`;
+    flag.classList.add('show'); ok.classList.remove('show');
+    if (loud) { flag.scrollIntoView({ block: 'center' }); HSCT.log('privacy-block', { count: hits.length }); }
+    return false;
+  }
+  flag.classList.remove('show');
+  ok.classList.toggle('show', typed);
+  return true;
+}
+
+function buildReadme(v) {
+  const name = (v.display || '').trim() || 'NAME';
+  const L = [];
+  L.push(`# Hi, I'm ${name} 👋`, '');
+  if ((v.headline || '').trim()) L.push(v.headline.trim(), '');
+
+  const working = (v.working || '').split('\n').map((x) => x.trim()).filter(Boolean);
+  if (working.length) { L.push("## What I'm working on", ''); working.forEach((w) => L.push('- ' + w)); L.push(''); }
+
+  const skills = (v.skills || '').split(',').map((x) => x.trim()).filter(Boolean);
+  if (skills.length) { L.push("## Skills I'm building", '', skills.map((s) => '`' + s + '`').join(' · '), ''); }
+
+  const pn = (v.projName || '').trim(), pw = (v.projWhat || '').trim(),
+        pl = (v.projLearned || '').trim(), pu = (v.projUrl || '').trim();
+  if (pn || pw || pl) {
+    L.push('## Projects', '');
+    if (pn) L.push('### ' + pn);
+    /* two trailing spaces = a real line break inside one paragraph (reading 4) */
+    const body = [];
+    if (pw) body.push(pw.replace(/\s*\n\s*/g, ' '));
+    if (pl) body.push('**What I learned:** ' + pl.replace(/\s*\n\s*/g, ' '));
+    body.forEach((ln, i) => L.push(ln + (i < body.length - 1 ? '  ' : '')));
+    if (pu) L.push('', `[See the code](${pu})`);
+    L.push('');
+  }
+
+  if ((v.next || '').trim()) L.push("## What's next", '', v.next.trim(), '');
+  if ((v.outside || '').trim()) L.push('## Outside of code', '', v.outside.trim(), '');
+
+  const c = v.contact || '';
+  if (c && c.indexOf("Don't") !== 0 && c.indexOf('Don’t') !== 0) {
+    L.push('## Reach me', '');
+    if (c.indexOf('issue') > -1) L.push('Open an issue on any of my repositories — I read them.');
+    else if (c.indexOf('profile') > -1) L.push('Message me through my GitHub profile.');
+    else L.push('School email — ask me for it.');
+    L.push('');
+  }
+  while (L.length && L[L.length - 1] === '') L.pop();
+  return L.join('\n') + '\n';
+}
+
+/* A small Markdown renderer — enough for what this template uses. */
+function mdToHtml(md) {
+  const src = md.replace(/<!--[\s\S]*?-->/g, '');
+  const out = [];
+  let list = null;
+  const inline = (s) => esc(s)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, t, u) => /^https?:\/\//i.test(u) ? `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${t}</a>` : t)
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[\s(])_([^_]+)_/g, '$1<em>$2</em>');
+  let para = [], lastHard = false;
+  const closeList = () => { if (list) { out.push('</ul>'); list = null; } };
+  /* consecutive lines make ONE paragraph; two trailing spaces force a <br> */
+  const closePara = () => { if (para.length) { out.push('<p>' + para.join('') + '</p>'); para = []; } lastHard = false; };
+  const flush = () => { closePara(); closeList(); };
+  src.split('\n').forEach((raw) => {
+    const hard = / {2,}$/.test(raw);
+    const line = raw.trim();
+    if (!line) { flush(); return; }
+    let m;
+    if ((m = line.match(/^(#{1,6})\s+(.*)$/))) { flush(); const h = Math.min(m[1].length, 6); out.push(`<h${h}>${inline(m[2])}</h${h}>`); return; }
+    if ((m = line.match(/^[-*+]\s+(.*)$/))) { closePara(); if (!list) { out.push('<ul>'); list = true; } out.push(`<li>${inline(m[1])}</li>`); return; }
+    closeList();
+    if (para.length && !lastHard) para.push(' ');
+    para.push(inline(line) + (hard ? '<br>' : ''));
+    lastHard = hard;
+  });
+  flush();
+  const html = out.join('\n');
+  return html.trim() ? html : '<p class="empty">Start typing above and your page appears here.</p>';
+}
+
+function saveText(text, filename) {
+  const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
+/* ==========================================================================
+   7. PUBLISH
+   ========================================================================== */
+function publishStage() {
+  $('stage').innerHTML = `
+    <p class="kicker">Part 7 of 7 · publish</p>
+    <h1>Hook it up to your account</h1>
+    <p class="lede">Straight from GitHub’s own instructions. The button names below are exactly what you will see on screen. No points here — just do it, and tick them off as you go.</p>
+    <div class="card">
+      <ol class="pubsteps">
+        <li>Sign in to GitHub. In the upper-right corner of any page, click the <b>+</b> (GitHub calls it "Create something new"), then <b>New repository</b>.</li>
+        <li>Under <b>Repository name</b>, type <b>your username, exactly</b>. If you are <kbd>octocat</kbd>, the repository is <kbd>octocat</kbd>. This is the whole trick — get it wrong and nothing shows up. You can leave <b>Description</b> blank.</li>
+        <li>Select <b>Public</b>. A private one will not appear on your profile.</li>
+        <li>Toggle <b>Add README</b> to <b>On</b>.</li>
+        <li>Click <b>Create repository</b>.</li>
+        <li>Above the right sidebar, click <b>Edit README</b>. GitHub gives you a starter file — select all of it and delete it.</li>
+        <li>Paste your Markdown in. Click the <b>Preview</b> tab to see it the way visitors will.</li>
+        <li>Click <b>Commit changes…</b>, then <b>Commit changes</b> again in the box that appears.</li>
+        <li>Go to <kbd>github.com/your-username</kbd>. Your About Me is sitting at the top of your profile.</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h2 style="font-size:1.05rem;margin-bottom:10px">Before you walk away</h2>
+      <label class="chk"><input type="checkbox" class="pc"><span>I read the whole page back on my actual profile, not in the editor.</span></label>
+      <label class="chk"><input type="checkbox" class="pc"><span>No phone number, street address, school name or room, or birthday anywhere on it.</span></label>
+      <label class="chk"><input type="checkbox" class="pc"><span>Every link works — I clicked them.</span></label>
+      <label class="chk"><input type="checkbox" class="pc"><span>Nothing on it I would mind a college or an employer reading in four years.</span></label>
+      <p class="small" style="margin:14px 0 0">Changed your mind about something later? Edit the README and commit again. Made the repository private by accident? The page disappears from your profile until you make it public again.</p>
+    </div>
+    <div class="actions"><button class="btn" id="nextstage">Finish and get my result file</button></div>`;
+
+  document.querySelectorAll('.pc').forEach((c, i) => c.addEventListener('change', () => HSCT.log('checklist', { i, on: c.checked })));
+  $('nextstage').onclick = () => {
+    S.checked = Array.from(document.querySelectorAll('.pc')).filter((c) => c.checked).length;
+    HSCT.log('publish-done', { checked: S.checked });
+    renderEnd();
+  };
+}
+
+const STAGES = [
+  () => readingStage(0), () => readingStage(1), () => readingStage(2), () => readingStage(3),
+  sortStage, buildStage, publishStage,
+];
+
+/* ==========================================================================
+   INTRO + END
+   ========================================================================== */
+$('start').onclick = () => {
+  const name = $('name').value.trim();
+  if (name.length < 2) { $('name-err').classList.add('show'); $('name').focus(); return; }
+  $('name-err').classList.remove('show');
+  S = { stage: 0, points: 0, buckets: {}, answers: [], sorted: [], pending: 0, readme: '', fields: {}, draftEarned: 0, checked: 0 };
+  HSCT.start(name);
+  show('view-work');
+  goto(0);
+};
+$('name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('start').click(); });
+
+function renderEnd() {
+  show('view-end');
+  const b = S.buckets, g = (k) => b[k] || 0;
+  const earned = S.points, possible = 100;
+  const tier = earned >= 90 ? 'Gold' : earned >= 75 ? 'Solid' : earned >= 60 ? 'Pass' : 'Needs another look';
+
+  $('end-lede').textContent = earned >= 75
+    ? 'You have a page that says something true about you, and you know why every line is on it.'
+    : 'Your draft is saved in your result file either way. Read back the feedback you missed — then fix the page on GitHub, because that part is not graded on the first try.';
+
+  const md = S.readme || '';
+  $('end-readme').innerHTML = `<h2 style="font-size:1.05rem;margin-bottom:8px">Your README, one more time</h2>
+    <p class="small" style="margin-bottom:12px">This goes inside your result file, so Mr. Cruz reads exactly what you wrote. Download it again here if you need it.</p>
+    <div class="pane" style="border-radius:10px"><div class="md">${mdToHtml(md)}</div></div>
+    <div class="actions"><button class="btn ghost small" id="dl-md2">Download README.md</button></div>`;
+  $('dl-md2').onclick = () => saveText(md, 'README.md');
+
+  HSCT.endScreen('#hsct-result', {
+    earned, possible, tier,
+    sections: [
+      { id: 'why', title: '1. Why anybody needs an "About Me"', earned: g('why'), possible: 15 },
+      { id: 'how', title: '2. How a profile README works', earned: g('how'), possible: 15 },
+      { id: 'private', title: '3. What stays private', earned: g('private'), possible: 15 },
+      { id: 'md', title: '4. Markdown basics', earned: g('md'), possible: 15 },
+      { id: 'sort', title: '5. Public page, or keep it off', earned: g('sort'), possible: 16 },
+      { id: 'draft', title: '6. Your About Me draft', earned: g('draft'), possible: 24 },
+      { id: 'publish', title: '7. Publish checklist ticked', status: S.checked + ' of 4' },
+    ],
+    extra: { readme: md, fields: S.fields, answers: S.answers, sorted: S.sorted, checklist: S.checked },
+    note: 'Submit this file in Google Classroom — your README is inside it. Then make sure the real page is live at github.com/your-username.',
+  });
+}
+
+$('again').onclick = () => { show('view-intro'); $('name').focus(); };
+</script>
+</body>
+</html>
