@@ -114,6 +114,12 @@ textarea{min-height:76px;resize:vertical}
 .pubsteps li::before{content:counter(ps);position:absolute;left:0;top:0;width:27px;height:27px;border-radius:50%;background:var(--blue);color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center}
 .pubsteps b{background:#eef1f9;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:14.5px}
 kbd{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:14px;background:#eef1f9;border:1px solid var(--line);border-radius:5px;padding:1px 6px}
+.callout{border:1.5px solid #c3cdec;background:var(--blue-soft);border-radius:10px;padding:14px 16px;margin:14px 0 0;font-size:15.5px}
+.callout h3{margin:0 0 6px;font-size:1rem}
+.callout p:last-child{margin-bottom:0}
+.eg{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:14.5px;background:#fff;border:1px solid var(--line);border-radius:5px;padding:1px 7px;overflow-wrap:anywhere;word-break:break-word}
+kbd{overflow-wrap:anywhere}
+.yes{color:var(--green);font-weight:600}.no{color:var(--red);font-weight:600}
 .chk{display:flex;gap:10px;align-items:flex-start;margin:.45rem 0;font-size:15.5px}
 .chk input{margin-top:5px;width:17px;height:17px;flex:none;accent-color:var(--blue)}
 .score-pill{display:inline-block;background:var(--blue-soft);color:var(--blue);border-radius:999px;padding:3px 11px;font-size:14px;font-weight:600}
@@ -144,7 +150,7 @@ kbd{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:14px;background
         <li><b>Four short readings</b>, each with three questions. 5 points a question — 60 total.</li>
         <li><b>One sorting round</b> on what belongs on a public page. 16 points.</li>
         <li><b>One draft.</b> You fill in the About Me builder and it writes your <code>README.md</code> for you. 24 points.</li>
-        <li>Then the steps to hook it up to your GitHub account. <b>100 points in all.</b></li>
+        <li>Then the steps to hook it up to your GitHub account — including making one, if you don’t have one yet. <b>100 points in all.</b></li>
         <li>The clock starts when you click Start. At the end you download a result file and submit it in Google Classroom.</li>
       </ul>
       <p class="small" style="margin:14px 0 0">The readings open in a new tab. If your Chromebook blocks one, open the grey box under it — the parts you need are quoted there.</p>
@@ -956,9 +962,45 @@ function publishStage() {
     <p class="kicker">Part 7 of 7 · publish</p>
     <h1>Hook it up to your account</h1>
     <p class="lede">Straight from GitHub’s own instructions. The button names below are exactly what you will see on screen. No points here — just do it, and tick them off as you go.</p>
+
     <div class="card">
-      <ol class="pubsteps">
-        <li>Sign in to GitHub. In the upper-right corner of any page, click the <b>+</b> (GitHub calls it "Create something new"), then <b>New repository</b>.</li>
+      <h2 style="font-size:1.15rem;margin-bottom:8px">Step 0 · the account</h2>
+      <p>You need a GitHub account, and it has to be yours. GitHub’s terms: <b>13 or older</b>, one person per account, one free account per person. You also need an email you can actually open — GitHub is blunt about this: "Without a verified email address, you won’t be able to complete some basic GitHub tasks, such as creating a repository."</p>
+
+      <div class="callout">
+        <h3>Your username is a decision, not a paperwork field</h3>
+        <p>Whatever you type becomes <span class="eg">github.com/that-name</span>, becomes the name of the repository you are about to create, and gets stamped on every piece of code you ever push. Read that list again with Part 3 in mind — the one that said to keep your last name and your school out of a username.</p>
+        <p>You can change it later, but it breaks links to your gists and any <span class="eg">@mention</span> of you, and your profile README vanishes until you rename the repository to match the new username. So pick one now that you would not mind saying out loud in an interview.</p>
+        <p><span class="yes">Works:</span> <span class="eg">alexbuildsthings</span> <span class="eg">jaz-codes</span> <span class="eg">mrivera-dev</span><br>
+        <span class="no">Don’t:</span> <span class="eg">jazmin-ortiz-reyes-hsct-2027</span> (full name, school, graduation year) or anything you would be embarrassed to put on a résumé.</p>
+      </div>
+
+      <details style="margin-top:14px">
+        <summary>No account yet? Make one — about five minutes</summary>
+        <ol class="pubsteps" style="margin-top:12px">
+          <li>Go to <kbd>github.com/signup</kbd>. (There is a <b>Continue with Google</b> option too, if you would rather not make another password.)</li>
+          <li>Use your school email — <span class="eg">yourname@nycstudents.net</span>. Keep that tab open; a code is coming to it in a minute. If nothing shows up, check the spam folder, then tell Mr. Cruz.</li>
+          <li>Pick a password. Not the one you use for everything else — Part 3 was clear about passwords.</li>
+          <li>Pick your username. Read the blue box above before you type anything.</li>
+          <li>Solve the little puzzle, then enter the code GitHub emails you. <b>Do not skip this</b> — an unverified account cannot create a repository, which is the whole point of today.</li>
+          <li>Choose the <b>Free</b> plan. You do not need anything else.</li>
+          <li>You are in. Come back here.</li>
+        </ol>
+      </details>
+
+      <div class="callout" style="border-color:#e6c37a;background:var(--amber-soft)">
+        <h3>Two things to fix before you write any code</h3>
+        <p>Both live on the same page: <b>your profile picture</b> (upper right) → <b>Settings</b> → <b>Emails</b>, under "Access" in the sidebar. Go there once and do both.</p>
+        <p><b>1. Tick "Keep my email addresses private."</b> Otherwise your <span class="eg">@nycstudents.net</span> address gets attached, in public, to every commit you ever make. With it ticked, GitHub uses a stand-in that looks like <span class="eg">1234567+yourname@users.noreply.github.com</span> and your real address stays yours.</p>
+        <p><b>2. Add a personal email and make it your backup.</b> Under "Add email address" add one you will still have in five years, verify it, then choose it under "Backup email address" and click <b>Save</b>.</p>
+        <p>That second one is not busywork. Your <span class="eg">@nycstudents.net</span> account goes away when you graduate — and GitHub says a backup address is how you "securely reset your password if you can no longer access your primary email address." Skip it and this profile, the one you are building to show employers, stops being reachable the summer you leave.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:1.15rem;margin-bottom:10px">Then · the profile repository</h2>
+      <ol class="pubsteps" id="repo-steps">
+        <li>Signed in? In the upper-right corner of any page, click the <b>+</b> (GitHub calls it "Create something new"), then <b>New repository</b>.</li>
         <li>Under <b>Repository name</b>, type <b>your username, exactly</b>. If you are <kbd>octocat</kbd>, the repository is <kbd>octocat</kbd>. This is the whole trick — get it wrong and nothing shows up. You can leave <b>Description</b> blank.</li>
         <li>Select <b>Public</b>. A private one will not appear on your profile.</li>
         <li>Toggle <b>Add README</b> to <b>On</b>.</li>
@@ -972,6 +1014,8 @@ function publishStage() {
     <div class="card">
       <h2 style="font-size:1.05rem;margin-bottom:10px">Before you walk away</h2>
       <label class="chk"><input type="checkbox" class="pc"><span>I read the whole page back on my actual profile, not in the editor.</span></label>
+      <label class="chk"><input type="checkbox" class="pc"><span><b>Keep my email addresses private</b> is ticked in Settings → Emails.</span></label>
+      <label class="chk"><input type="checkbox" class="pc"><span>A personal email is added and set as my <b>backup</b>, so I keep this account after graduation.</span></label>
       <label class="chk"><input type="checkbox" class="pc"><span>No phone number, street address, school name or room, or birthday anywhere on it.</span></label>
       <label class="chk"><input type="checkbox" class="pc"><span>Every link works — I clicked them.</span></label>
       <label class="chk"><input type="checkbox" class="pc"><span>Nothing on it I would mind a college or an employer reading in four years.</span></label>
@@ -981,8 +1025,10 @@ function publishStage() {
 
   document.querySelectorAll('.pc').forEach((c, i) => c.addEventListener('change', () => HSCT.log('checklist', { i, on: c.checked })));
   $('nextstage').onclick = () => {
-    S.checked = Array.from(document.querySelectorAll('.pc')).filter((c) => c.checked).length;
-    HSCT.log('publish-done', { checked: S.checked });
+    const boxes = Array.from(document.querySelectorAll('.pc'));
+    S.checked = boxes.filter((c) => c.checked).length;
+    S.checkTotal = boxes.length;
+    HSCT.log('publish-done', { checked: S.checked, of: S.checkTotal });
     renderEnd();
   };
 }
@@ -999,7 +1045,7 @@ $('start').onclick = () => {
   const name = $('name').value.trim();
   if (name.length < 2) { $('name-err').classList.add('show'); $('name').focus(); return; }
   $('name-err').classList.remove('show');
-  S = { stage: 0, points: 0, buckets: {}, answers: [], sorted: [], pending: 0, readme: '', fields: {}, draftEarned: 0, checked: 0 };
+  S = { stage: 0, points: 0, buckets: {}, answers: [], sorted: [], pending: 0, readme: '', fields: {}, draftEarned: 0, checked: 0, checkTotal: 0 };
   HSCT.start(name);
   show('view-work');
   goto(0);
@@ -1032,7 +1078,7 @@ function renderEnd() {
       { id: 'md', title: '4. Markdown basics', earned: g('md'), possible: 15 },
       { id: 'sort', title: '5. Public page, or keep it off', earned: g('sort'), possible: 16 },
       { id: 'draft', title: '6. Your About Me draft', earned: g('draft'), possible: 24 },
-      { id: 'publish', title: '7. Publish checklist ticked', status: S.checked + ' of 4' },
+      { id: 'publish', title: '7. Publish checklist ticked', status: S.checked + ' of ' + (S.checkTotal || 0) },
     ],
     extra: { readme: md, fields: S.fields, answers: S.answers, sorted: S.sorted, checklist: S.checked },
     note: 'Submit this file in Google Classroom — your README is inside it. Then make sure the real page is live at github.com/your-username.',
