@@ -1,0 +1,2828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Packet Run: get it there, keep it secret — HSCT</title>
+<!--
+  HSCT LESSON: Packet Run (it-network / network security)
+  Three screens, in the template's order:
+    1. #view-intro   what the lesson is, the rules, the student's name   -> HSCT.start(name)
+    2. #view-work    six stops (packet anatomy, build, routes, send, help-desk tickets, explain)
+    3. #view-end     wrap-up + the standard result card                   -> HSCT.endScreen(...)
+  Scripts after the kit, in order: sprites, network model + packet simulator, built-in networks,
+  SVG board (drag and drop, packet animation), panels (packet builder, notebook, log, routes), the stops.
+  No code is shown to students; everything is drag and drop.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f7fc; --paper:#fff; --ink:#101a3f; --muted:#5b6485; --line:#d3d9ee; --line-2:#e6eaf5;
+  --blue:#1f3fae; --blue-soft:#e9edf8; --green:#1f7a3d; --green-soft:#e1f2e6; --red:#b3261e; --red-soft:#fbe3e1;
+  --maroon:#7a1f3d; --maroon-soft:#f6e6ec; --amber:#8a5a00; --amber-soft:#fff4d6;
+  --screen:#100d22; --code-bg:#0f1530; --code-ink:#dfe6ff; --code-mute:#7d88b3;
+  --hsct-color: var(--blue);
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:17px;line-height:1.55}
+h1,h2,h3,h4{margin:0;line-height:1.15}
+p{margin:0 0 .8rem}
+button{font:inherit;cursor:pointer;color:inherit}
+input,select,textarea{font:inherit;color:inherit}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,canvas:focus-visible,[tabindex]:focus-visible,summary:focus-visible{outline:3px solid #a9b7ea;outline-offset:2px}
+code,kbd,pre{font-family:var(--mono)}
+code{font-size:.92em;background:var(--blue-soft);padding:.05em .35em;border-radius:5px}
+kbd{font-size:.82em;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:.05em .4em;background:#fff}
+[hidden]{display:none !important}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.view{display:none}.view.active{display:block}
+.wrap{max-width:760px;margin:0 auto;padding:40px 20px 80px}
+.wrap.wide{max-width:1220px;padding-top:0}
+.kicker{color:var(--muted);font-size:14px;margin-bottom:6px}
+h1{font-size:2.1rem;font-weight:700;letter-spacing:-.015em;margin-bottom:.45rem}
+h2{font-size:1.6rem;font-weight:700;letter-spacing:-.01em;margin-bottom:.4rem}
+h3{font-size:1.1rem;font-weight:700;margin-bottom:.5rem}
+.lede{color:var(--muted);font-size:1.08rem;margin-bottom:1.2rem;max-width:62ch}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-bottom:16px}
+.card.tight{padding:14px 16px}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+.btn{border:2px solid var(--blue);background:var(--blue);color:#fff;border-radius:8px;padding:10px 16px;font-weight:600;line-height:1.2}
+.btn:hover{filter:brightness(.93)}
+.btn.ghost{background:transparent;color:var(--blue)}
+.btn.small{padding:6px 11px;font-size:14px;border-width:1.5px}
+.btn.maroon{border-color:var(--maroon);background:var(--maroon)}
+.btn.maroon.ghost{background:transparent;color:var(--maroon)}
+.btn.green{border-color:var(--green);background:var(--green)}
+.btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.err{color:var(--red);margin-top:8px}
+.rules{margin:0;padding-left:1.2rem}.rules li{margin:.3rem 0}
+.name-row{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.name-row input{flex:1;min-width:220px;padding:11px 12px;border:1.5px solid var(--line);border-radius:8px}
+.stoplist{list-style:none;margin:0 0 4px;padding:0;display:grid;gap:8px}
+.stoplist li{display:grid;grid-template-columns:30px 1fr auto;gap:10px;align-items:baseline}
+.stoplist .n{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--blue-soft);color:var(--blue);font-weight:700;font-size:14px}
+.stoplist .pts{color:var(--muted);font-size:14px;white-space:nowrap}
+.hero-art{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 18px}
+.hero-art img{width:40px;height:40px;image-rendering:pixelated}
+img.spr{image-rendering:pixelated;image-rendering:crisp-edges;width:24px;height:24px;vertical-align:middle}
+
+/* ---------- stepper ---------- */
+.stepper{position:sticky;top:0;z-index:30;background:rgba(245,247,252,.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);margin:0 -20px 22px;padding:10px 20px}
+.stepper-in{display:flex;gap:6px;align-items:center;overflow-x:auto;scrollbar-width:thin}
+.step{flex:0 0 auto;display:flex;align-items:center;gap:7px;border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:5px 12px 5px 6px;font-size:14px;font-weight:600;color:var(--muted);white-space:nowrap}
+.step .num{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--line-2);color:var(--muted);font-size:12.5px}
+.step.current{border-color:var(--blue);color:var(--ink)}
+.step.current .num{background:var(--blue);color:#fff}
+.step.done .num{background:var(--green);color:#fff}
+.step:disabled{opacity:.55;cursor:not-allowed}
+.step .spts{font-weight:500;color:var(--muted);font-size:12.5px}
+.points{margin-left:auto;flex:0 0 auto;font-size:14px;color:var(--muted);padding-left:10px;white-space:nowrap}
+.points b{color:var(--ink);font-size:16px}
+
+.stop{animation:fadein .25s ease}
+@keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.stop-head{margin-bottom:14px}
+.stop-foot{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:22px;padding-top:16px;border-top:1px solid var(--line)}
+.grid2{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:18px;align-items:start}
+.grid-ed{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:900px){.grid2,.grid-ed{grid-template-columns:minmax(0,1fr)}}
+
+/* ---------- task checklist ---------- */
+.tasks{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.tasks li{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:start;font-size:15px}
+.tasks .box{width:20px;height:20px;border-radius:6px;border:2px solid var(--line);display:inline-grid;place-items:center;margin-top:2px;font-size:13px;color:#fff;transition:background .2s}
+.tasks li.ok .box{background:var(--green);border-color:var(--green)}
+.tasks li.ok .box::after{content:"✓";font-weight:700}
+.tasks li.bad .box{background:var(--red);border-color:var(--red)}
+.tasks li.bad .box::after{content:"✕";font-weight:700}
+.tasks .tp{color:var(--muted);font-size:13.5px;white-space:nowrap}
+
+/* ---------- anatomy diagram ---------- */
+.anat{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:10px}
+.anat .part{background:#fff;border:1px solid var(--line);border-top:4px solid var(--c,var(--blue));border-radius:10px;padding:10px 12px}
+.anat .part h4{font-family:var(--mono);font-size:15px;margin-bottom:4px;color:var(--c,var(--blue))}
+.anat .part p{font-size:14px;margin:0;color:var(--muted)}
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:14px;margin:0 0 16px;color:var(--muted)}
+.flow span.f{background:#fff;border:1px solid var(--line);border-radius:999px;padding:3px 10px;color:var(--ink)}
+.flow span.a{color:var(--muted)}
+@media (max-width:700px){.anat{grid-template-columns:1fr 1fr}}
+
+/* ---------- questions ---------- */
+.q{margin-bottom:14px}
+.q .qt{font-weight:600;margin-bottom:8px}
+.choices{display:grid;gap:7px}
+.choice{text-align:left;padding:10px 13px;border:1.5px solid var(--line);border-radius:10px;background:#fff;font-size:15.5px}
+.choice:hover:not(:disabled){border-color:var(--blue)}
+.choice.right{border-color:var(--green);background:var(--green-soft)}
+.choice.wrong{border-color:var(--red);background:var(--red-soft)}
+.choice:disabled{cursor:default;color:var(--ink)}
+.fb{padding:10px 13px;border-radius:10px;background:var(--blue-soft);margin-top:8px;font-size:15px}
+.fb.good{background:var(--green-soft)}
+.fb.bad{background:var(--red-soft)}
+.fb.warn{background:var(--amber-soft)}
+.checks{display:grid;gap:6px}
+.checks label{display:flex;gap:10px;align-items:flex-start;padding:8px 11px;border:1.5px solid var(--line);border-radius:10px;background:#fff;font-size:15px;cursor:pointer}
+.checks label.right{border-color:var(--green);background:var(--green-soft)}
+.checks label.wrong{border-color:var(--red);background:var(--red-soft)}
+.checks input{margin-top:4px;width:17px;height:17px;flex:0 0 auto}
+.checks .why{display:block;font-size:13.5px;color:var(--muted);margin-top:2px}
+
+.callout{border-left:4px solid var(--maroon);background:var(--maroon-soft);padding:10px 13px;border-radius:0 10px 10px 0;font-size:15px;margin:10px 0}
+.callout.blue{border-color:var(--blue);background:var(--blue-soft)}
+.callout.green{border-color:var(--green);background:var(--green-soft)}
+.callout.amber{border-color:#c98a10;background:var(--amber-soft)}
+.field{display:grid;gap:4px;margin-bottom:12px}
+.field label{font-weight:600;font-size:15px}
+.field .help{font-size:13px;color:var(--muted)}
+.field input,.field textarea{border:1.5px solid var(--line);border-radius:8px;padding:9px 11px;background:#fff}
+.field textarea{min-height:64px;resize:vertical}
+.status-pill{display:inline-block;font-size:12.5px;font-weight:700;border-radius:999px;padding:2px 10px;background:var(--line-2);color:var(--muted)}
+.status-pill.ok{background:var(--green-soft);color:var(--green)}
+.endgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+.endgrid canvas{width:100%;display:block;border-radius:8px;image-rendering:pixelated}
+.breakdown{width:100%;border-collapse:collapse;font-size:14.5px}
+.breakdown td{padding:5px 0;border-top:1px solid var(--line)}
+.breakdown td:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.confirm{border:1.5px solid var(--amber);background:var(--amber-soft);border-radius:12px;padding:12px 14px;margin-top:10px}
+.shake{animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.hint{font-size:14.5px;background:var(--amber-soft);border-radius:10px;padding:9px 12px;margin-top:8px}
+.game-q{margin-bottom:18px}
+.game-q h4{font-size:1.02rem;margin-bottom:6px}
+.lab-head{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px}
+.lab-head .badge{font-size:12.5px;font-weight:700;border-radius:999px;padding:2px 10px;background:var(--line-2);color:var(--muted)}
+.lab-head .badge.pass{background:var(--green-soft);color:var(--green)}
+.recipe{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:15px;margin:0}
+.recipe dt{font-family:var(--mono);font-weight:700;color:var(--blue)}
+.recipe dd{margin:0;color:var(--ink)}
+
+/* ---------- Packet Run: board ---------- */
+:root{--board:#100d22}
+.board-wrap{background:var(--board);border-radius:14px;padding:8px;box-shadow:0 10px 30px -18px rgba(16,26,63,.6)}
+.board-scroll{overflow-x:auto;border-radius:8px}
+svg.board{display:block;width:100%;min-width:560px;height:auto;max-height:calc(100vh - 110px);}
+svg.board:not(.editable){min-width:0}
+svg.board{touch-action:manipulation;user-select:none;-webkit-user-select:none}
+svg.board .dot{fill:#2a2548}
+svg.board .hovercell{fill:rgba(255,224,102,.12);stroke:#ffe066;stroke-width:2;stroke-dasharray:5 4}
+svg.board .link .ln{stroke:#8a93ad;stroke-width:4;stroke-linecap:round}
+svg.board .link.air .ln{stroke:#2cc0ff;stroke-width:3;stroke-dasharray:3 7}
+svg.board .link .hit{stroke:transparent;stroke-width:18}
+svg.board.editable .link{cursor:pointer}
+svg.board .link.sel .ln{stroke:#ffe066}
+svg.board .link.lit .ln{stroke:#ffffff;filter:drop-shadow(0 0 5px #fff)}
+svg.board .tapring{fill:#2a1030;stroke:#ef3b4f;stroke-width:3}
+svg.board .tap{cursor:pointer}
+svg.board .tile{fill:#1d1938;stroke-width:3}
+svg.board .node image{image-rendering:pixelated}
+svg.board .node .nm{fill:#e8e6ff;font:600 13.5px "IBM Plex Sans",system-ui,sans-serif;text-anchor:middle;paint-order:stroke;stroke:#100d22;stroke-width:3px}
+svg.board .node .ip{font:600 12.5px "IBM Plex Mono",ui-monospace,monospace;text-anchor:middle;paint-order:stroke;stroke:#100d22;stroke-width:3px}
+svg.board .node.sel .tile{stroke:#ffe066 !important;stroke-width:4}
+svg.board .node.cablefrom .tile{stroke:#ffe066 !important;stroke-dasharray:6 4}
+svg.board .node.loose .tile{stroke-dasharray:4 4}
+svg.board .node:focus{outline:none}
+svg.board .node:focus-visible .tile{stroke:#a9b7ea !important;stroke-width:5}
+svg.board.editable .node{cursor:grab}
+svg.board.cable-tool .node{cursor:crosshair}
+svg.board .rubber{stroke:#ffe066;stroke-width:3;stroke-dasharray:6 5;pointer-events:none}
+svg.board .env{image-rendering:pixelated;pointer-events:none;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6))}
+svg.board .caught{fill:rgba(239,59,79,.25);stroke:#ef3b4f;stroke-width:3}
+svg.board .caught.locked{fill:rgba(242,194,48,.18);stroke:#f2c230}
+svg.board .endring{fill:none;stroke-width:4}
+svg.board .endring.good{stroke:#35e07a}
+svg.board .endring.bad{stroke:#ef3b4f}
+svg.board .bubble rect{fill:#fff;stroke:#1b1530;stroke-width:1.5}
+svg.board .bubble text{font:600 13px "IBM Plex Sans",system-ui,sans-serif;text-anchor:middle;fill:#101a3f}
+svg.board .bubble.b-bad rect{fill:#ffe1e4;stroke:#b3261e}
+svg.board .bubble.b-ok rect{fill:#e1f7e8;stroke:#1f7a3d}
+svg.board .bubble.b-info rect{fill:#eef2ff;stroke:#1f3fae}
+svg.board .bubble{pointer-events:none}
+@media (prefers-reduced-motion:no-preference){svg.board .caught{animation:pulse .7s ease-out}}
+@keyframes pulse{from{r:8;opacity:1}}
+.dragghost{position:fixed;z-index:1000;pointer-events:none;transform:rotate(-3deg);filter:drop-shadow(0 8px 14px rgba(0,0,0,.35))}
+.dragghost .gsp{width:44px;height:44px}
+body.dragging{user-select:none;-webkit-user-select:none;cursor:grabbing}
+img.spr{image-rendering:pixelated;width:24px;height:24px;vertical-align:middle}
+
+/* ---------- builder ---------- */
+.pal{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.pc{display:flex;flex-direction:column;align-items:center;gap:2px;width:74px;padding:6px 4px;border:1.5px solid var(--line);border-radius:10px;background:#fff;font-size:12.5px;font-weight:600;color:var(--muted);touch-action:none;user-select:none;cursor:grab}
+.pc img{width:34px;height:34px;pointer-events:none}
+.pc:hover{border-color:var(--blue);color:var(--ink)}
+.tools{margin-bottom:8px}
+.tools .toolhint{flex-basis:100%}
+.say{min-height:1.6em;font-size:14.5px;color:var(--green);margin:6px 0}
+.say.bad{color:var(--red)}
+.selcard{background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:6px}
+.selcard .row{gap:8px}
+.selcard input{border:1.5px solid var(--line);border-radius:8px;padding:5px 8px;width:11em}
+.selcard select{border:1.5px solid var(--line);border-radius:8px;padding:5px 8px}
+.selcard p{margin:6px 0 0}
+.addrbook{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:14px}
+.addrbook li{display:flex;gap:4px 8px;align-items:center;flex-wrap:wrap}
+.addrbook .sw{width:12px;height:12px;border-radius:3px;flex:0 0 auto}
+
+/* ---------- packet builder ---------- */
+.sp.fixed .cards .addr,.sp.fixed .cards .ports,.sp.fixed .cards .typed,.sp.fixed .cards h4.h-addr,.sp.fixed .cards h4.h-port{display:none}
+.sp.fixed .slot .x{display:none}
+.sp{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:14px;align-items:start}
+@media (max-width:1000px){.sp{grid-template-columns:minmax(0,1fr)}}
+.envelope{background:#fffdf5;border:2px solid #d9c89a;border-radius:12px;padding:12px 14px;position:relative}
+.envelope.locked{background:#fff8dc;border-color:#c98a10;box-shadow:0 0 0 3px rgba(242,194,48,.25)}
+.env-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.env-top img{width:28px;height:28px}
+.env-row{display:grid;grid-template-columns:52px 1fr auto;gap:8px;align-items:center;margin:6px 0}
+.env-row .lbl{font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:#8a6d1a}
+.env-row select{border:1.5px solid var(--line);border-radius:8px;padding:5px 8px;min-width:0}
+.env-row.msgrow{grid-template-columns:1fr auto}
+.env-row.msgrow input{border:1.5px solid var(--line);border-radius:8px;padding:7px 9px;min-width:0;font-family:var(--mono);font-size:14px}
+.env-sep{border-top:2px dashed #d9c89a;margin:10px 0 4px;padding-top:4px;font-size:12px;font-weight:700;color:#8a6d1a;text-transform:uppercase;letter-spacing:.04em}
+.slot{min-height:38px;border:2px dashed #cdbd8d;border-radius:9px;padding:4px 8px;display:flex;align-items:center;gap:6px;background:#fff;grid-column:2 / 4;min-width:0}
+.env-row.msgrow .slot{grid-column:auto}
+.slot.over{border-color:var(--blue);background:var(--blue-soft)}
+.slot .ph{font-size:13.5px;color:#9a8a5c}
+.slot.lockslot.on{border-style:solid;border-color:#c98a10;background:#fff4d6}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:14px;flex-wrap:wrap;min-width:0}
+.chip img{width:20px;height:20px}
+.chip .x,.rent .x{border:1px solid var(--line);background:#fff;border-radius:6px;width:24px;height:24px;padding:0;font-size:12px;color:var(--muted)}
+.sp-out{margin-top:10px;font-size:14.5px;border-radius:10px;padding:0}
+.sp-out.good,.sp-out.bad{padding:9px 12px}
+.sp-out.good{background:var(--green-soft)}
+.sp-out.bad{background:var(--red-soft)}
+.sp-out .bad{color:var(--red);font-weight:600}
+.sp-out .good{color:var(--green);font-weight:600}
+.cards h4{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:0 0 6px}
+.cards h4 .muted{text-transform:none;letter-spacing:0;font-weight:500}
+.cardlist{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.pcard{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--line);border-left:5px solid var(--nc,var(--blue));background:#fff;border-radius:9px;padding:5px 9px;font-size:13.5px;text-align:left;touch-action:none;user-select:none;cursor:grab;line-height:1.25}
+.pcard:hover{border-color:var(--blue)}
+.pcard.addr span{display:flex;flex-direction:column}
+.pcard.addr code{background:none;padding:0;font-size:12.5px}
+.pcard.port{border-left-color:#7a4fd6}
+.pcard.lockcard{border-left-color:#c98a10;background:#fff8dc;font-weight:600}
+.typed{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:-4px 0 12px}
+.typed input{border:1.5px solid var(--line);border-radius:8px;padding:5px 8px;font-family:var(--mono);width:9.5em}
+
+/* ---------- notebook + log ---------- */
+.notebook,.plog{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.notebook{border-color:#e6b7bf;background:#fff8f9}
+.nb-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.nb-head img{width:26px;height:26px}
+.notebook ul,.plog ul{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:6px;max-height:300px;overflow:auto}
+.notebook li{border-radius:8px;padding:6px 9px;font-size:13.5px}
+.notebook li.rd{background:#ffe8eb}
+.notebook li.rd .msg{color:var(--red);font-weight:700;font-family:var(--mono)}
+.notebook li.lk{background:#fff6dc}
+.notebook li.lk code{background:none}
+.logbtn{display:flex;gap:8px;align-items:flex-start;width:100%;text-align:left;border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 8px;font-size:13.5px}
+.logbtn .ic{font-weight:700;width:1.4em;flex:0 0 auto}
+.logbtn .ic.good{color:var(--green)}
+.logbtn .ic.bad{color:var(--red)}
+.plog .trace{display:none;font-size:13px;margin:4px 0 4px 12px;padding-left:18px;color:var(--ink)}
+.plog li.open .trace{display:block}
+.plog .trace .bad{color:var(--red)}
+.plog .trace .good{color:var(--green)}
+.split{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px;align-items:start}
+.split>.pin{position:sticky;top:64px;z-index:5}
+.split>div{min-width:0}
+.col{display:grid;gap:12px;min-width:0}
+.col .sp{grid-template-columns:minmax(0,1fr)}
+.buildgrid{display:grid;grid-template-columns:250px minmax(0,1fr);gap:16px;align-items:start}
+.reqcard{margin:10px 0 0}
+.reqcard .tasks li{font-size:13.5px}
+.reqcard .tasks img.spr{width:18px;height:18px}
+.buildgrid>.pin{position:sticky;top:64px}
+.buildgrid .pal{display:grid;grid-template-columns:repeat(3,1fr)}
+.buildgrid .pc{width:auto}
+@media (max-width:1000px){.split,.buildgrid{grid-template-columns:minmax(0,1fr)}.split>.pin,.buildgrid>.pin{position:static}.buildgrid .pal{display:flex}.buildgrid .pc{width:70px}}
+.side{display:grid;gap:12px}
+
+/* ---------- routes ---------- */
+.netcards{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:12px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 10px}
+.ncard{border:0;background:none;padding:0;touch-action:none;cursor:grab;border-radius:999px}
+.ncard.on .nchip{outline:3px solid var(--blue);outline-offset:1px}
+.nchip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 11px 4px 9px;font-size:13.5px;font-weight:600;background:#fff;border:2px solid var(--nc,#8a93ad);white-space:nowrap}
+.nchip::before{content:"";width:10px;height:10px;border-radius:3px;background:var(--nc,#8a93ad)}
+.nchip code{background:none;padding:0;font-size:12.5px}
+.nchip.def{--nc:#5b6485;border-style:dashed}
+.nchip.gone{--nc:#b3261e;opacity:.7}
+.rtables{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.rcard2{background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:10px 12px}
+.rhead{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.rhead img{width:28px;height:28px}
+.rrow{border-top:1px solid var(--line-2);padding-top:8px;margin-top:8px}
+.rto{font-size:14px;display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.rto img{width:22px;height:22px}
+.rdrop{min-height:42px;border:2px dashed var(--line);border-radius:10px;padding:6px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.rdrop.over{border-color:var(--blue);background:var(--blue-soft)}
+.rdrop .ph{font-size:13px;color:var(--muted)}
+.rent{display:inline-flex;align-items:center;gap:4px}
+.matrix{border-collapse:collapse;font-size:13.5px;margin-top:10px}
+.matrix th,.matrix td{border:1px solid var(--line);padding:5px 8px;text-align:center}
+.matrix th{background:var(--line-2);font-weight:600}
+.matrix td button{border:0;background:none;font:inherit;cursor:pointer;padding:2px 4px;border-radius:6px}
+.matrix td.ok{background:var(--green-soft);color:var(--green)}
+.matrix td.no{background:var(--red-soft);color:var(--red)}
+.matrix td.self{background:#f3f4f8;color:var(--muted)}
+
+/* ---------- tickets ---------- */
+.ticket{margin-bottom:22px}
+.ticket .tk-head{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px}
+.ticket .badge{font-size:12.5px;font-weight:700;border-radius:999px;padding:2px 10px;background:var(--line-2);color:var(--muted)}
+.ticket .badge.pass{background:var(--green-soft);color:var(--green)}
+.ticket .story{font-size:15.5px}
+
+/* ---------- misc ---------- */
+.concepts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.concepts .part{background:#fff;border:1px solid var(--line);border-top:4px solid var(--c,var(--blue));border-radius:10px;padding:10px 12px}
+.concepts .part h4{font-size:15px;margin-bottom:4px;color:var(--c,var(--blue))}
+.concepts .part p{font-size:14px;margin:0;color:var(--muted)}
+@media (max-width:760px){.concepts{grid-template-columns:1fr 1fr}}
+.sharebox textarea{width:100%;font-family:var(--mono);font-size:12px;border:1.5px solid var(--line);border-radius:8px;padding:8px;min-height:74px;word-break:break-all;resize:vertical}
+@media (max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:28px 16px 70px}
+  h1{font-size:1.7rem}
+  h2{font-size:1.35rem}
+  .stepper{margin:0 -16px 18px;padding:8px 16px}
+  .step .sname{display:none}
+  .step{padding:4px 8px 4px 5px}
+  .points{font-size:13px}
+  .card{padding:14px 14px}
+  .pc{width:62px}
+  .hero-art img{width:30px;height:30px}
+  .rtables{grid-template-columns:minmax(0,1fr)}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ===== 1. INTRO ===== -->
+  <section class="view active" id="view-intro">
+    <div class="wrap">
+      <p class="kicker">IT Network · Network security</p>
+      <h1>Packet Run: get it there, keep it secret</h1>
+      <div class="hero-art" id="intro-art" aria-hidden="true"></div>
+      <p class="lede">Everything you do online travels as packets: small envelopes that hop from device to device until they reach the right address. You'll build a network, teach its routers where to send things, and send packets through it while a hacker listens in. Your job: get every packet to the right place, and keep the secret ones secret.</p>
+      <div class="card">
+        <h3>Six stops</h3>
+        <ol class="stoplist" id="intro-stops"></ol>
+      </div>
+      <div class="card">
+        <ul class="rules">
+          <li>100 points across six stops. Everything is drag and drop. There's no code to write.</li>
+          <li>The clock starts when you click Start and stops when you finish.</li>
+          <li>Refreshing the page wipes your work. Finish in one sitting.</li>
+          <li>At the end you download a result file and submit it in Google Classroom.</li>
+        </ul>
+        <div class="name-row">
+          <input id="name" type="text" placeholder="Your full name (goes on your result)" autocomplete="off" maxlength="60" aria-label="Your full name">
+          <button class="btn" id="start">Start</button>
+        </div>
+        <div class="err" id="name-err" hidden>Enter your name first. It goes on your result file.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 2. WORK ===== -->
+  <section class="view" id="view-work">
+    <div class="wrap wide">
+      <nav class="stepper" aria-label="Lesson stops"><div class="stepper-in" id="stepper"></div></nav>
+
+      <!-- STOP 1 -->
+      <div class="stop" id="stop-1" hidden>
+        <div class="stop-head">
+          <p class="kicker">Stop 1 of 6 · 10 points</p>
+          <h2>Anatomy of a packet</h2>
+          <p class="lede">Maya is at the library, logging in to the school's grades website. Her login travels as a packet. Build it, send it, and watch every hop. Someone else on the library Wi-Fi is watching too.</p>
+        </div>
+        <div class="concepts">
+          <div class="part" style="--c:#8a6d1a"><h4>Header</h4><p>From, To, Port, TTL. Every device along the way reads it, so it can't be hidden.</p></div>
+          <div class="part" style="--c:#1f3fae"><h4>Payload</h4><p>The message itself. This is the part encryption can scramble.</p></div>
+          <div class="part" style="--c:#b3172d"><h4>Hops</h4><p>Each router reads the To address and passes the packet one step closer. Each router it passes uses up 1 TTL.</p></div>
+          <div class="part" style="--c:#1789c7"><h4>Wi-Fi</h4><p>Radio waves. On open Wi-Fi (no password, like most libraries and airports) any device in range can pick up every packet.</p></div>
+        </div>
+        <div class="split">
+          <div class="pin" id="s1-board"></div>
+          <div class="col"><div class="card tight" style="margin:0"><h3>Try it</h3><ul class="tasks" id="s1-tasks"></ul></div><div id="s1-send"></div><div id="s1-notebook"></div><div id="s1-log"></div></div>
+        </div>
+        <div class="card" id="s1-questions" style="margin-top:18px"></div>
+        <div class="stop-foot"><span></span><button class="btn" data-go="2" id="s1-next">Next: build a network →</button></div>
+      </div>
+
+      <!-- STOP 2 -->
+      <div class="stop" id="stop-2" hidden>
+        <div class="stop-head">
+          <p class="kicker">Stop 2 of 6 · 15 points</p>
+          <h2>Build a network</h2>
+          <p class="lede">Drag pieces onto the board, then use the <b>Cable</b> tool to connect them. A switch or a Wi-Fi access point, plus everything plugged into it, is one <em>network</em>. Its router is the network's way out. Devices get their addresses automatically (that's DHCP): everyone in Network A gets <code>10.0.1.something</code>, Network B gets <code>10.0.2.something</code>, and so on.</p>
+        </div>
+        <div class="buildgrid">
+          <div class="pin"><div id="s2-builder"></div><div class="card tight reqcard"><h3>Your network needs</h3><ul class="tasks" id="s2-reqs"></ul></div></div>
+          <div>
+            <div class="row" style="margin-bottom:10px">
+              <button class="btn small" id="s2-starter">Start from the starter campus</button>
+              <button class="btn small ghost" id="s2-clear">Clear the board</button>
+              <button class="btn small ghost" id="s2-undo">Undo</button>
+            </div>
+            <div id="s2-board"></div>
+            <div id="s2-selinfo"></div>
+            <div class="card tight" style="margin-top:12px"><h3>Address book <span class="small muted">(handed out by DHCP)</span></h3><ul class="addrbook" id="s2-addr"></ul></div>
+          </div>
+        </div>
+        <div class="stop-foot"><button class="btn ghost" data-go="1">← Back</button><button class="btn" data-go="3" id="s2-next">Next: teach the routers →</button></div>
+      </div>
+
+      <!-- STOP 3 -->
+      <div class="stop" id="stop-3" hidden>
+        <div class="stop-head">
+          <p class="kicker">Stop 3 of 6 · 15 points</p>
+          <h2>Teach the routers</h2>
+          <p class="lede">A router only knows the networks plugged straight into it. For every other network it needs a <b>route</b>: "packets for Network C go to Router 2." Drag network cards onto each router's arrows. <b>Anything else</b> is the default route: the router's best guess, usually toward the internet.</p>
+        </div>
+        <div class="split">
+          <div class="pin" id="s3-board"></div>
+          <div class="col">
+            <div class="card tight" style="margin:0"><h3>To earn the points</h3><ul class="tasks" id="s3-tasks"></ul></div>
+            <div class="card tight" style="margin:0"><h3>Test every path</h3><p class="small muted" style="margin-top:0">Sends a test packet from each network to every other one. Click a result to watch that packet.</p><button class="btn small" id="s3-test">Test every path</button><div id="s3-matrix"></div><div class="say" id="s3-say" aria-live="polite"></div></div>
+            <div id="s3-routes"></div>
+          </div>
+        </div>
+        <p class="small muted">Real routers fill in these tables by themselves, using routing protocols (OSPF inside a school, BGP between internet providers). The Internet piece here already does that. Doing it by hand is how you learn what they're doing.</p>
+        <div class="stop-foot"><button class="btn ghost" data-go="2">← Back</button><button class="btn" data-go="4" id="s3-next">Next: send packets →</button></div>
+      </div>
+
+      <!-- STOP 4 -->
+      <div class="stop" id="stop-4" hidden>
+        <div class="stop-head">
+          <p class="kicker">Stop 4 of 6 · 20 points</p>
+          <h2>Send packets</h2>
+          <p class="lede">Now play your network. Build a packet (drag an address, a service and maybe the lock), send it, and see where it ends up and who saw it. Try to break things on purpose: that's how you'll recognize the problems later.</p>
+        </div>
+        <div class="split">
+          <div class="pin" id="s4-board"></div>
+          <div class="col"><div id="s4-send"></div><div id="s4-notebook"></div><div id="s4-log"></div></div>
+        </div>
+        <div class="card" style="margin-top:16px"><h3>To earn the points</h3><ul class="tasks" id="s4-tasks"></ul></div>
+        <div class="stop-foot"><button class="btn ghost" data-go="3">← Back</button><button class="btn" data-go="5" id="s4-next">Next: help desk tickets →</button></div>
+      </div>
+
+      <!-- STOP 5 -->
+      <div class="stop" id="stop-5" hidden>
+        <div class="stop-head">
+          <p class="kicker">Stop 5 of 6 · 20 points</p>
+          <h2>Help desk: three network tickets</h2>
+          <p class="lede">Three people have a network problem. For each one: send their packet, watch what happens, find the cause, fix it, then click <b>Check my fix</b>. Sending is free. Each check that isn't fixed yet costs 2 points (you never drop below half).</p>
+        </div>
+        <div id="tickets"></div>
+        <div class="stop-foot"><button class="btn ghost" data-go="4">← Back</button><button class="btn" data-go="6" id="s5-next">Next: explain it →</button></div>
+      </div>
+
+      <!-- STOP 6 -->
+      <div class="stop" id="stop-6" hidden>
+        <div class="stop-head">
+          <p class="kicker">Stop 6 of 6 · 20 points</p>
+          <h2>Explain it</h2>
+          <p class="lede">Turn your network into a challenge for a classmate, then show what you know about who can see your packets in real life.</p>
+        </div>
+        <div class="grid2">
+          <div>
+            <div class="card" id="share-card"></div>
+            <div class="card" id="explain-card"></div>
+          </div>
+          <div>
+            <div class="card" id="see-card"></div>
+          </div>
+        </div>
+        <div class="card" id="play-card"></div>
+        <div class="stop-foot"><button class="btn ghost" data-go="5">← Back</button><button class="btn maroon" id="finish">Finish and get my result</button></div>
+        <div id="finish-confirm"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 3. END ===== -->
+  <section class="view" id="view-end">
+    <div class="wrap">
+      <p class="kicker">Packet Run · complete</p>
+      <h1>Packet delivered.</h1>
+      <p class="lede" id="end-lede"></p>
+      <div class="card">
+        <table class="breakdown"><tbody id="end-breakdown"></tbody></table>
+      </div>
+      <!-- The kit renders the standard result card (score, time, code, download) into this element. -->
+      <div id="hsct-result"></div>
+      <div class="row"><button class="btn ghost" id="again">Try again</button></div>
+      <div id="again-confirm"></div>
+    </div>
+  </section>
+</div>
+
+<!-- HSCT KIT START — do not edit; copy the whole block from lesson-template/hsct-lesson.js -->
+<script>
+/* ============================================================================
+   HSCT LESSON KIT  v1.0
+   Every lesson on HSCT TechHub inlines this block unchanged (between the
+   <!-- HSCT KIT START --> and <!-- HSCT KIT END --> markers). It gives a
+   lesson three things:
+
+     1. A clock.   HSCT.start(name) when the student begins. The kit records
+                   wall-clock time and "active" time (tab visible).
+     2. A log.     HSCT.log(type, data) for anything worth remembering —
+                   answers, hints, retries. Ends up inside the result file.
+     3. A result.  HSCT.endScreen(el, {...scores}) renders the standard result
+                   card: name, score, time taken, badge code, and a button
+                   that downloads the encrypted result file the student
+                   submits in Google Classroom.
+
+   The file is encrypted with the teacher's PUBLIC key below (RSA-OAEP wrapping
+   an AES-256-GCM key). It can only be opened with the matching private key,
+   on the site's /lessons/verify page. Students can't read or edit it.
+
+   API (all on window.HSCT):
+     HSCT.lesson({ id, title, version, course, possible })   once, at load
+     HSCT.start(name)                                        when work begins
+     HSCT.log(type, data)                                    any time
+     HSCT.elapsed()   -> { seconds, activeSeconds }
+     HSCT.finish({ earned, possible, sections, tier, extra }) -> Promise<result>
+     HSCT.endScreen(el, { earned, possible, sections, tier, extra, note })
+                      -> Promise<result>   (calls finish, renders the card)
+     HSCT.download()  / HSCT.copyCode()                      after finish
+   ========================================================================== */
+(function () {
+  'use strict';
+  var KIT = '1.0';
+
+  /* Mr. Cruz's public key. Replace the whole object if the key pair is ever
+     regenerated on /lessons/verify — and keep the private key out of git. */
+  var PUBLIC_KEY = {"kty":"RSA","n":"rZUBRxn7dUikufJq7z2XVn-on4Of0IyQr_YaPSTgIUaGsYKcrZ4FNROL4A_ZM5JShLf6OVp2ZeAI7XN_7iX0tvd79RqAWRM9an6rx-s6bMYSW1wmtRxZyL-BX56vTtikVRLNO7uyzCb8kevJE71Fi6nlPhdXa-iS4vtIEm2Wjh4cLPinAKhMnkO3BpGHUhtFw7Hyus1w04EdLxowk4UcN7d0w4MQRnBV8ehXQVoLVQ0_QtfrtPTQOpScHuwyaw9nwnTA7h7BEOv1ZkbEyq2N4TFixSSCsneUsc3PlbZOndDzMGMmdMr00ulntRZBfyioFzRcsRUGGwAqpB9SuH7XGQ","e":"AQAB","alg":"RSA-OAEP-256","ext":true};
+
+  var VERIFY_URL = 'hsct.tech/lessons/verify';
+
+  var cfg = null;      // lesson config
+  var ses = null;      // current session
+  var ticker = null;   // active-time interval
+  var result = null;   // { badge, filename, text, envelope, payload }
+
+  /* ---------- small helpers ---------- */
+  var enc = new TextEncoder();
+  function b64(buf) {
+    var bytes = new Uint8Array(buf), s = '';
+    for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return btoa(s);
+  }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function fmtDuration(sec) {
+    sec = Math.max(0, Math.round(sec || 0));
+    var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+    if (h) return h + ' h ' + pad(m) + ' min';
+    if (m) return m + ' min ' + pad(s) + ' s';
+    return s + ' s';
+  }
+  function fmtDate(iso) {
+    try { return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+    catch (e) { return iso; }
+  }
+  function slug(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'student'; }
+  function stamp(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes()); }
+
+  /* Badge code: 8 characters from a SHA-256 of the result, shown on screen
+     so a screenshot can be matched to its file. */
+  var ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ23456789';
+  function badgeFrom(hashBuf) {
+    var bytes = new Uint8Array(hashBuf), out = '';
+    for (var i = 0; i < 8; i++) out += ALPHABET[bytes[i] % ALPHABET.length];
+    return out.slice(0, 4) + '-' + out.slice(4);
+  }
+
+  function needSubtle() {
+    if (!(window.crypto && crypto.subtle)) {
+      throw new Error('Result files need a secure page (https). Open this lesson from the TechHub site and finish again.');
+    }
+  }
+
+  /* ---------- public API ---------- */
+  function lesson(c) {
+    if (!c || !c.id || !c.title) throw new Error('HSCT.lesson needs { id, title }');
+    cfg = { version: '1.0', course: '', possible: 100 };
+    for (var k in c) cfg[k] = c[k];
+    return HSCT;
+  }
+
+  function start(name) {
+    if (!cfg) throw new Error('Call HSCT.lesson({...}) before HSCT.start(name)');
+    name = String(name || '').trim().replace(/\s+/g, ' ');
+    if (name.length < 2) throw new Error('HSCT.start needs the student\'s name');
+    ses = { name: name, started: new Date().toISOString(), t0: Date.now(), active: 0, events: [] };
+    result = null;
+    clearInterval(ticker);
+    ticker = setInterval(function () { if (document.visibilityState === 'visible') ses.active += 1; }, 1000);
+    log('start');
+    return HSCT;
+  }
+
+  function log(type, data) {
+    if (!ses) return HSCT;
+    var e = { t: Math.round((Date.now() - ses.t0) / 100) / 10, type: String(type) };
+    if (data && typeof data === 'object') for (var k in data) if (k !== 't' && k !== 'type') e[k] = data[k];
+    if (ses.events.length < 800) ses.events.push(e);
+    return HSCT;
+  }
+
+  function elapsed() {
+    if (!ses) return { seconds: 0, activeSeconds: 0 };
+    return { seconds: Math.round((Date.now() - ses.t0) / 1000), activeSeconds: ses.active };
+  }
+
+  /* Build, seal, and keep the result. Resolves to { badge, filename, text, payload }. */
+  async function finish(opts) {
+    if (!cfg || !ses) throw new Error('HSCT.start(name) was never called');
+    needSubtle();
+    opts = opts || {};
+    clearInterval(ticker);
+    var finished = new Date();
+    var el = elapsed();
+    var earned = Number(opts.earned || 0), possible = Number(opts.possible || cfg.possible || 0);
+    var payload = {
+      kit: KIT,
+      lesson: { id: cfg.id, title: cfg.title, version: cfg.version, course: cfg.course },
+      student: { name: ses.name },
+      started: ses.started,
+      finished: finished.toISOString(),
+      seconds: el.seconds,
+      activeSeconds: el.activeSeconds,
+      score: { earned: earned, possible: possible, percent: possible ? Math.round(1000 * earned / possible) / 10 : null },
+      tier: opts.tier || null,
+      sections: (opts.sections || []).map(function (s) { return { id: s.id, title: s.title, earned: s.earned, possible: s.possible, status: s.status }; }),
+      extra: opts.extra || null,
+      events: ses.events,
+      env: { tz: Intl.DateTimeFormat().resolvedOptions().timeZone, ua: navigator.userAgent, url: location.href.split('?')[0] },
+    };
+    var hash = await crypto.subtle.digest('SHA-256', enc.encode(JSON.stringify(payload)));
+    var badge = badgeFrom(hash);
+    payload.badge = badge;
+
+    /* header travels in the clear but is authenticated (AES-GCM additional data) */
+    var header = { hsct: 1, kit: KIT, lesson: cfg.id, title: cfg.title, student: ses.name, finished: payload.finished, badge: badge };
+    var pub = await crypto.subtle.importKey('jwk', PUBLIC_KEY, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['wrapKey']);
+    var aes = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt']);
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    var data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv, additionalData: enc.encode(JSON.stringify(header)) }, aes, enc.encode(JSON.stringify(payload)));
+    var wrapped = await crypto.subtle.wrapKey('raw', aes, pub, { name: 'RSA-OAEP' });
+    var envelope = {};
+    for (var k in header) envelope[k] = header[k];
+    envelope.key = b64(wrapped); envelope.iv = b64(iv); envelope.data = b64(data);
+
+    result = {
+      badge: badge,
+      filename: 'HSCT_' + cfg.id + '_' + slug(ses.name) + '_' + stamp(finished) + '.hsct',
+      text: JSON.stringify(envelope),
+      payload: payload,
+    };
+    return result;
+  }
+
+  function download() {
+    if (!result) throw new Error('Nothing to download yet — call HSCT.finish first');
+    var blob = new Blob([result.text], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = result.filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+    return result.filename;
+  }
+
+  async function copyCode() {
+    if (!result) throw new Error('Nothing to copy yet — call HSCT.finish first');
+    try { await navigator.clipboard.writeText(result.text); return true; }
+    catch (e) {
+      var ta = document.createElement('textarea'); ta.value = result.text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      var ok = false; try { ok = document.execCommand('copy'); } catch (e2) {}
+      ta.remove(); return ok;
+    }
+  }
+
+  /* ---------- the standard end screen ---------- */
+  var CSS = '.hsct-card{--hsct-ink:#101a3f;--hsct-mute:#5b6485;--hsct-line:#d3d9ee;--hsct-accent:var(--hsct-color,#1f3fae);--hsct-ok:#1f7a3d;--hsct-bad:#b3261e;'
+    + 'font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;color:var(--hsct-ink);background:#fff;border:1px solid var(--hsct-line);border-left:6px solid var(--hsct-accent);border-radius:12px;padding:20px 22px;margin:20px 0;line-height:1.45}'
+    + '.hsct-card *{box-sizing:border-box}.hsct-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--hsct-mute)}.hsct-head b{color:var(--hsct-accent)}'
+    + '.hsct-name{font-size:22px;font-weight:700;margin:6px 0 2px}.hsct-score{font-size:15px;margin:0 0 12px}.hsct-score b{font-size:28px;font-weight:700}.hsct-score .hsct-tier{display:inline-block;margin-left:8px;padding:2px 10px;border-radius:999px;background:var(--hsct-accent);color:#fff;font-size:13px;font-weight:600;vertical-align:middle}'
+    + '.hsct-facts{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0 0 14px;font-size:14px}.hsct-facts dt{color:var(--hsct-mute)}.hsct-facts dd{margin:0}.hsct-facts code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;letter-spacing:.08em;font-weight:600}'
+    + '.hsct-secs{width:100%;border-collapse:collapse;font-size:14px;margin:0 0 14px}.hsct-secs td{padding:5px 0;border-top:1px solid var(--hsct-line)}.hsct-secs td:last-child{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}'
+    + '.hsct-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.hsct-btn{font:600 15px "IBM Plex Sans","Segoe UI",system-ui,sans-serif;padding:11px 18px;border-radius:8px;border:2px solid var(--hsct-accent);background:var(--hsct-accent);color:#fff;cursor:pointer}.hsct-btn:hover{filter:brightness(.92)}.hsct-btn.hsct-alt{background:transparent;color:var(--hsct-accent)}.hsct-btn:focus-visible{outline:3px solid #a9b7ea;outline-offset:2px}.hsct-btn:disabled{opacity:.55;cursor:wait}'
+    + '.hsct-note{margin:12px 0 0;font-size:13.5px;color:var(--hsct-mute)}.hsct-status{margin:8px 0 0;font-size:14px;min-height:1.4em}.hsct-status.ok{color:var(--hsct-ok)}.hsct-status.bad{color:var(--hsct-bad)}'
+    + '@media print{.hsct-actions,.hsct-note,.hsct-status{display:none}}';
+
+  function injectCss() {
+    if (document.getElementById('hsct-kit-css')) return;
+    var s = document.createElement('style'); s.id = 'hsct-kit-css'; s.textContent = CSS; document.head.appendChild(s);
+  }
+
+  /* Renders the card into `el` and seals the result. Resolves with the result. */
+  async function endScreen(el, opts) {
+    if (typeof el === 'string') el = document.querySelector(el);
+    if (!el) throw new Error('HSCT.endScreen needs an element');
+    injectCss();
+    opts = opts || {};
+    var elp = elapsed();
+    var possible = Number(opts.possible || cfg.possible || 0), earned = Number(opts.earned || 0);
+    var pct = possible ? Math.round(100 * earned / possible) : null;
+    var secs = (opts.sections || []).map(function (s) {
+      var right = s.status != null ? esc(s.status) : (s.possible != null ? esc(s.earned) + ' / ' + esc(s.possible) : esc(s.earned));
+      return '<tr><td>' + esc(s.title) + '</td><td>' + right + '</td></tr>';
+    }).join('');
+    el.innerHTML = '<div class="hsct-card">'
+      + '<div class="hsct-head"><span><b>HSCT TechHub</b> result</span><span>' + esc(cfg.title) + '</span></div>'
+      + '<div class="hsct-name">' + esc(ses ? ses.name : '') + '</div>'
+      + '<div class="hsct-score"><b>' + esc(earned) + '</b> / ' + esc(possible) + (pct != null ? ' <span>(' + pct + '%)</span>' : '') + (opts.tier ? '<span class="hsct-tier">' + esc(opts.tier) + '</span>' : '') + '</div>'
+      + '<dl class="hsct-facts"><dt>Finished</dt><dd>' + esc(fmtDate(new Date().toISOString())) + '</dd>'
+      + '<dt>Time taken</dt><dd>' + esc(fmtDuration(elp.seconds)) + (elp.activeSeconds < elp.seconds - 60 ? ' <span style="color:var(--hsct-mute)">(' + esc(fmtDuration(elp.activeSeconds)) + ' with the tab open)</span>' : '') + '</dd>'
+      + '<dt>Code</dt><dd><code class="hsct-badge">........</code></dd></dl>'
+      + (secs ? '<table class="hsct-secs"><tbody>' + secs + '</tbody></table>' : '')
+      + '<div class="hsct-actions"><button type="button" class="hsct-btn hsct-dl" disabled>Download your result file</button><button type="button" class="hsct-btn hsct-alt hsct-copy" disabled>Copy result code</button></div>'
+      + '<p class="hsct-note">' + esc(opts.note || 'Submit the file in Google Classroom. If downloads are blocked, copy the code and paste it instead. The file is encrypted: only your teacher can open it.') + '</p>'
+      + '<p class="hsct-status" aria-live="polite">Preparing your result file…</p>'
+      + '</div>';
+    var status = el.querySelector('.hsct-status'), dl = el.querySelector('.hsct-dl'), cp = el.querySelector('.hsct-copy');
+    try {
+      var r = await finish(opts);
+      el.querySelector('.hsct-badge').textContent = r.badge;
+      status.textContent = 'Ready: ' + r.filename;
+      dl.disabled = false; cp.disabled = false;
+      dl.onclick = function () { try { download(); status.className = 'hsct-status ok'; status.textContent = 'Downloaded ' + r.filename + ' — now submit it.'; } catch (e) { status.className = 'hsct-status bad'; status.textContent = e.message; } };
+      cp.onclick = async function () { var ok = await copyCode(); status.className = 'hsct-status ' + (ok ? 'ok' : 'bad'); status.textContent = ok ? 'Code copied — paste it into your submission.' : 'Copy failed. Use the download instead.'; };
+      return r;
+    } catch (e) {
+      status.className = 'hsct-status bad';
+      status.textContent = e.message || String(e);
+      throw e;
+    }
+  }
+
+  var HSCT = {
+    kit: KIT, verifyUrl: VERIFY_URL,
+    lesson: lesson, start: start, log: log, elapsed: elapsed,
+    finish: finish, download: download, copyCode: copyCode, endScreen: endScreen,
+    get result() { return result; },
+    get session() { return ses ? { name: ses.name, started: ses.started } : null; },
+    fmtDuration: fmtDuration,
+  };
+  window.HSCT = HSCT;
+})();
+</script>
+<!-- HSCT KIT END -->
+
+<script>
+/* ---------- pixel sprites (12 x 12). Each letter is a color; '.' is empty. ---------- */
+const PAL = {
+  k: '#1b1530', w: '#ffffff', a: '#c9d1e6', A: '#8a93ad', z: '#4a5270', h: '#2c3350',
+  B: '#3f7cff', N: '#1d45b8', f: '#2cc0ff', F: '#1789c7', g: '#35e07a', G: '#1f8f4a',
+  y: '#f2c230', Y: '#c98a10', r: '#ef3b4f', R: '#b3172d', p: '#6d5a8c', P: '#3b2f52', e: '#7dff9b',
+  s: '#f5c7a0', o: '#ff9f43', c: '#e8ecf7',
+};
+const SPRITES = {
+  laptop: [
+    '............',
+    '.kkkkkkkkkk.',
+    '.kBBBBBBBBk.',
+    '.kBfBBBBBBk.',
+    '.kBBfBBBBBk.',
+    '.kBBBBBBBBk.',
+    '.kBBBBBBBBk.',
+    '.kkkkkkkkkk.',
+    'kaaaaaaaaaak',
+    'kaAAzzzzAAak',
+    '.kkkkkkkkkk.',
+    '............',
+  ],
+  phone: [
+    '...kkkkkk...',
+    '...khhhhk...',
+    '...kBBBBk...',
+    '...kBfBBk...',
+    '...kBBfBk...',
+    '...kBBBBk...',
+    '...kBBBBk...',
+    '...kBBBBk...',
+    '...kBBBBk...',
+    '...khaahk...',
+    '...khhhhk...',
+    '...kkkkkk...',
+  ],
+  server: [
+    '..kkkkkkkk..',
+    '..khhhhhhk..',
+    '..khgGhzhk..',
+    '..kkkkkkkk..',
+    '..khhhhhhk..',
+    '..khgGhzhk..',
+    '..kkkkkkkk..',
+    '..khhhhhhk..',
+    '..khgGhzhk..',
+    '..kkkkkkkk..',
+    '..kz....zk..',
+    '..kk....kk..',
+  ],
+  printer: [
+    '............',
+    '...kkkkkk...',
+    '...kwwwwk...',
+    '...kwAAwk...',
+    '.kkkkkkkkkk.',
+    '.kaaaaaaaak.',
+    '.kaaaaagyak.',
+    '.kAAAAAAAAk.',
+    '.kkwwwwwwkk.',
+    '...kwAAwk...',
+    '...kwwwwk...',
+    '...kkkkkk...',
+  ],
+  switch: [
+    '............',
+    '............',
+    '............',
+    'kkkkkkkkkkkk',
+    'khhhhhhhhhhk',
+    'khkgkgkgkgGk',
+    'khkzkzkzkzhk',
+    'khhhhhhhhhhk',
+    'kkkkkkkkkkkk',
+    '.kk......kk.',
+    '............',
+    '............',
+  ],
+  wifi: [
+    '............',
+    '..ffffffff..',
+    '.f........f.',
+    'f..ffffff..f',
+    '..f......f..',
+    '....ffff....',
+    '.....kk.....',
+    '.....ak.....',
+    '.kkkkkkkkkk.',
+    '.kaaaaaaaak.',
+    '.kagaaaaaak.',
+    '.kkkkkkkkkk.',
+  ],
+  router: [
+    '...kkkkkk...',
+    '..kRRRRRRk..',
+    '.kRRRwRRRRk.',
+    'kRRRwwwRRRRk',
+    'kRwRRwRRwRRk',
+    'kwwwRRRRwwwk',
+    'kRwRRwRRwRRk',
+    'kRRRRwRRRRRk',
+    '.kRRwwwRRRk.',
+    '..kRRwRRRk..',
+    '...kkkkkk...',
+    '............',
+  ],
+  internet: [
+    '............',
+    '....kkkk....',
+    '...kccccck..',
+    '..kcccccccck',
+    '.kkcccfccccck'.slice(0, 12),
+    'kcccccccccck',
+    'kccfccccfcck',
+    'kcccccccccck',
+    '.kccccccccck'.slice(0, 12),
+    '..kkkkkkkkk.',
+    '............',
+    '............',
+  ],
+  hacker: [
+    '....kkkk....',
+    '...kPPPPk...',
+    '..kPPPPPPk..',
+    '..kPkkkkPk..',
+    '..kPkekePk..',
+    '..kPkkkkPk..',
+    '..kPPPPPPk..',
+    '.kPPPPPPPPk.',
+    'kPPkkkkkkPPk',
+    'kPkaaaaaakPk',
+    'kPkaAAAAakPk',
+    'kkkkkkkkkkkk',
+  ],
+  lock: [
+    '....kkkk....',
+    '...kaaaak...',
+    '..kak..kak..',
+    '..kak..kak..',
+    '..kak..kak..',
+    '.kkkkkkkkkk.',
+    '.kyyyyyyyyk.',
+    '.kyyykkyyyk.',
+    '.kyyykkyyyk.',
+    '.kyyyykyyyk.',
+    '.kYYYYYYYYk.',
+    '.kkkkkkkkkk.',
+  ],
+  packet: [
+    '............',
+    '............',
+    'kkkkkkkkkkkk',
+    'kwkwwwwwwkwk',
+    'kwwkwwwwkwwk',
+    'kwwwkwwkwwwk',
+    'kwwwwkkwwwwk',
+    'kwwwwwwwwwwk',
+    'kwwwwwwwwwwk',
+    'kkkkkkkkkkkk',
+    '............',
+    '............',
+  ],
+  lockedpacket: [
+    '............',
+    '............',
+    'kkkkkkkkkkkk',
+    'kykyyyyyykyk',
+    'kyykyyyykyyk',
+    'kyyykkkkyyyk',
+    'kyyyykkyyyyk',
+    'kyyyykkyyyyk',
+    'kyyyyyyyyyyk',
+    'kkkkkkkkkkkk',
+    '............',
+    '............',
+  ],
+};
+
+/* =====================================================================
+   NETWORK MODEL + PACKET SIMULATOR
+   A network is { nodes, links, taps, tables }:
+     nodes:  { id, type, x, y, name, service? }
+     links:  { id, a, b, air }            air = wireless (Wi-Fi)
+     taps:   [linkId, ...]                a hacker clipped onto that cable
+     tables: { routerId: [{ net, via }] } net = network key or 'default'
+   Everything else (addresses, networks, gateways) is worked out by analyze().
+   ===================================================================== */
+const DEV = {
+  laptop:   { label: 'Laptop',   host: true, ports: [5000], air: 'can', max: 1 },
+  phone:    { label: 'Phone',    host: true, ports: [5000], air: 'only', max: 1 },
+  printer:  { label: 'Printer',  host: true, ports: [9100], air: 'no', max: 1 },
+  server:   { label: 'Server',   host: true, ports: null, air: 'no', max: 1 },
+  switch:   { label: 'Switch',   hub: true, max: 8 },
+  wifi:     { label: 'Wi-Fi',    hub: true, max: 8 },
+  router:   { label: 'Router',   router: true, max: 6 },
+  internet: { label: 'Internet', router: true, auto: true, max: 8 },
+  hacker:   { label: 'Hacker',   spy: true, max: 1 },
+};
+const SERVICES = {
+  web:  { port: 443,  ports: [80, 443], label: 'Web server (ports 80 and 443)' },
+  dns:  { port: 53,   label: 'DNS server (port 53)' },
+  game: { port: 7777, label: 'Game server (port 7777)' },
+};
+const PORTS = [
+  { port: 80, name: 'Web (HTTP)', desc: 'plain websites: not encrypted' },
+  { port: 443, name: 'Web (HTTPS)', desc: 'secure websites: always encrypted' },
+  { port: 53, name: 'DNS', desc: 'looking up names' },
+  { port: 9100, name: 'Printing', desc: 'print jobs' },
+  { port: 5000, name: 'Chat', desc: 'the class chat app' },
+  { port: 7777, name: 'Game', desc: 'game servers' },
+];
+const PORT_NAME = Object.fromEntries(PORTS.map((p) => [p.port, p.name]));
+const NET_COLORS = ['#4f8cff', '#2fbf71', '#ff9f43', '#b98cff', '#ff6b9a', '#2dd4bf', '#f5c542', '#9aa7c7'];
+const LETTERS = 'ABCDEFGH';
+const START_TTL = 8;
+
+const idNum = (id) => parseInt(String(id).replace(/\D+/g, ''), 10) || 0;
+const cmpId = (a, b) => idNum(a) - idNum(b);
+const routerish = (n) => !!(n && DEV[n.type] && DEV[n.type].router);
+const isHost = (n) => !!(n && DEV[n.type] && DEV[n.type].host);
+const isHub = (n) => !!(n && DEV[n.type] && DEV[n.type].hub);
+
+function cloneNet(net) { return JSON.parse(JSON.stringify(net)); }
+function emptyNet() { return { nodes: [], links: [], taps: [], tables: {}, seq: 1 }; }
+function nextId(net, p) { net.seq = (net.seq || 1); let id; do { id = p + net.seq++; } while (net.nodes.some((n) => n.id === id) || net.links.some((l) => l.id === id)); return id; }
+function portsOf(n) {
+  if (!n) return [];
+  if (n.type === 'server') { const sv = SERVICES[n.service] || SERVICES.web; return sv.ports || [sv.port]; }
+  if (n.type === 'hacker') return 'all';
+  return (DEV[n.type] && DEV[n.type].ports) || [];
+}
+function defaultName(net, type) {
+  const base = DEV[type].label;
+  if (type === 'internet') return 'Internet';
+  let k = 1;
+  const names = new Set(net.nodes.map((n) => n.name));
+  while (names.has(base + ' ' + k)) k++;
+  return base + ' ' + k;
+}
+
+/* ---------------------------------------------------------------- analyze */
+function analyze(net) {
+  const byId = new Map(net.nodes.map((n) => [n.id, n]));
+  const adj = new Map(net.nodes.map((n) => [n.id, []]));
+  const links = net.links.filter((l) => byId.has(l.a) && byId.has(l.b));
+  for (const l of links) { adj.get(l.a).push({ to: l.b, link: l }); adj.get(l.b).push({ to: l.a, link: l }); }
+  const compOf = new Map();
+  const comps = [];
+  for (const n of [...net.nodes].sort((a, b) => cmpId(a.id, b.id))) {
+    if (routerish(n) || compOf.has(n.id)) continue;
+    const ci = comps.length, members = [], q = [n.id];
+    compOf.set(n.id, ci);
+    while (q.length) {
+      const id = q.shift(); members.push(id);
+      for (const e of adj.get(id)) { const m = byId.get(e.to); if (!routerish(m) && !compOf.has(m.id)) { compOf.set(m.id, ci); q.push(m.id); } }
+    }
+    const routers = new Set();
+    for (const id of members) for (const e of adj.get(id)) if (routerish(byId.get(e.to))) routers.add(e.to);
+    comps.push({ members, routers: [...routers].sort(cmpId) });
+  }
+  const networks = [];
+  comps.forEach((c) => {
+    if (!(c.members.length > 1 || c.routers.length)) return;
+    const hubs = c.members.filter((id) => isHub(byId.get(id)));
+    const anchor = (hubs.length ? hubs : c.members).slice().sort(cmpId)[0];
+    networks.push({ key: 'net:' + anchor, anchor, members: c.members, routers: c.routers, gateway: c.routers[0] || null });
+  });
+  networks.sort((a, b) => cmpId(a.anchor, b.anchor));
+  const ip = new Map(), netOfNode = new Map(), netByKey = new Map(), netByPrefix = new Map();
+  networks.forEach((nw, i) => {
+    nw.index = i; nw.letter = LETTERS[i] || String(i + 1); nw.prefix = '10.0.' + (i + 1); nw.color = NET_COLORS[i % NET_COLORS.length];
+    nw.name = 'Network ' + nw.letter;
+    const hosts = nw.members.filter((id) => isHost(byId.get(id))).sort(cmpId);
+    hosts.forEach((id, k) => ip.set(id, nw.prefix + '.' + (10 + k)));
+    nw.members.filter((id) => byId.get(id).type === 'hacker').sort(cmpId).forEach((id, k) => ip.set(id, nw.prefix + '.' + (66 + k)));
+    nw.members.forEach((id) => netOfNode.set(id, nw));
+    nw.hosts = hosts;
+    netByKey.set(nw.key, nw); netByPrefix.set(nw.prefix, nw);
+  });
+  const routerNeighbors = (rid) => adj.get(rid).map((e) => e.to).filter((id) => routerish(byId.get(id)));
+  const hostByIp = new Map();
+  for (const [id, a] of ip) hostByIp.set(a, id);
+  return { byId, adj, links, networks, netByKey, netByPrefix, netOfNode, ip, hostByIp, routerNeighbors };
+}
+
+function linkBetween(A, a, b) { const e = A.adj.get(a).find((x) => x.to === b); return e ? e.link : null; }
+
+/* can a cable go between a and b?  -> { ok, air, why } */
+function canLink(net, aId, bId) {
+  const A = analyze(net);
+  const a = A.byId.get(aId), b = A.byId.get(bId);
+  if (!a || !b) return { ok: false, why: 'Pick two pieces.' };
+  if (aId === bId) return { ok: false, why: 'A cable needs two different ends.' };
+  if (linkBetween(A, aId, bId)) return { ok: false, why: 'Those two are already connected.' };
+  const deg = (n) => A.adj.get(n.id).length;
+  for (const n of [a, b]) if (deg(n) >= DEV[n.type].max) return { ok: false, why: `${n.name} has no free ports (${DEV[n.type].max === 1 ? 'it takes one connection' : 'max ' + DEV[n.type].max}).` };
+  const t = [a.type, b.type].sort().join('+');
+  const other = (type) => (a.type === type ? b : a);
+  let air = false, ok = false, why = '';
+  const has = (type) => a.type === type || b.type === type;
+  if (has('hacker')) {
+    const o = other('hacker');
+    if (o.type === 'wifi') { ok = true; air = true; }
+    else if (o.type === 'switch') { ok = true; }
+    else why = 'A hacker gets in by joining a Wi-Fi or plugging into a switch. To tap a cable, drop the hacker right on the cable.';
+  } else if (has('phone')) {
+    if (other('phone').type === 'wifi') { ok = true; air = true; } else why = 'Phones connect over Wi-Fi only. Connect it to a Wi-Fi access point.';
+  } else if (t === 'laptop+wifi') { ok = true; air = true; }
+  else if (isHost(a) && isHost(b)) why = 'Two devices need a switch or a router between them.';
+  else if (has('wifi') && (has('printer') || has('server'))) why = 'In this game, printers and servers plug in with a cable (a switch or a router).';
+  else if (t === 'wifi+wifi') why = 'Connect access points through a switch or a router.';
+  else if (has('internet')) {
+    const o = other('internet');
+    if (o.type === 'router' || o.type === 'server') ok = true;
+    else if (o.type === 'internet') why = 'There is only one internet here.';
+    else why = 'Put a router between a network and the internet. The router is the network\'s way out.';
+  } else ok = true;
+  if (!ok) return { ok: false, why };
+  // one router (gateway) per network
+  const test = cloneNet(net);
+  test.links.push({ id: '_t', a: aId, b: bId, air });
+  const T = analyze(test);
+  const bad = T.networks.find((nw) => nw.routers.length > 1);
+  if (bad) return { ok: false, why: 'That would give one network two routers. In this game each network has exactly one way out: its router (the default gateway).' };
+  return { ok: true, air };
+}
+
+/* ---------------------------------------------------------------- routing */
+function routeFor(net, A, rid, destKey) {
+  const r = A.byId.get(rid);
+  if (!r) return null;
+  if (r.type === 'internet') {
+    const dest = A.netByKey.get(destKey);
+    if (!dest || !dest.gateway) return null;
+    // the internet already knows every network: shortest path through routers
+    const prev = new Map([[rid, null]]), q = [rid];
+    while (q.length) {
+      const cur = q.shift();
+      if (cur === dest.gateway) break;
+      for (const nb of A.routerNeighbors(cur)) if (!prev.has(nb)) { prev.set(nb, cur); q.push(nb); }
+    }
+    if (!prev.has(dest.gateway)) return null;
+    let step = dest.gateway;
+    while (prev.get(step) !== rid) step = prev.get(step);
+    return { via: step, how: 'auto' };
+  }
+  const nbs = A.routerNeighbors(rid);
+  const table = (net.tables[rid] || []).filter((e) => nbs.includes(e.via) && (e.net === 'default' || A.netByKey.has(e.net)));
+  const hit = table.find((e) => e.net === destKey);
+  if (hit) return { via: hit.via, how: 'table' };
+  const def = table.find((e) => e.net === 'default');
+  if (def) return { via: def.via, how: 'default' };
+  return null;
+}
+
+function bfsPath(A, allowed, start, goal) {
+  const prev = new Map([[start, null]]), q = [start];
+  while (q.length) {
+    const cur = q.shift();
+    if (cur === goal) break;
+    for (const e of A.adj.get(cur)) {
+      if (!allowed.has(e.to) || prev.has(e.to)) continue;
+      // don't pass THROUGH hosts or hackers (they are leaves)
+      const n = A.byId.get(e.to);
+      if (e.to !== goal && !isHub(n)) continue;
+      prev.set(e.to, cur); q.push(e.to);
+    }
+  }
+  if (!prev.has(goal)) return null;
+  const path = [];
+  for (let s = goal; s !== null; s = prev.get(s)) path.unshift(s);
+  return path;
+}
+
+/* ---------------------------------------------------------------- simulate
+   pkt = { from: nodeId, to: 'a.b.c.d', port, locked, msg, ttl }
+   -> { steps, outcome: 'delivered'|'refused'|'dropped', reason, at, deliveredTo, captures } */
+function simulate(net, pkt) {
+  const A = analyze(net);
+  const steps = [], captures = [];
+  const seenBy = new Set();
+  const res = { steps, captures, outcome: null, reason: null, at: null, deliveredTo: null, fromIp: A.ip.get(pkt.from) || null, ttlLeft: null, port: pkt.port, to: pkt.to };
+  const end = (outcome, reason, at, extra) => { Object.assign(res, { outcome, reason, at }, extra || {}); steps.push({ k: 'end', outcome, reason, node: at }); return res; };
+  const tapped = new Set(net.taps || []);
+  const spyOn = (link) => {
+    const found = [];
+    if (tapped.has(link.id)) found.push({ hacker: 'tap:' + link.id, how: 'wiretap' });
+    if (link.air) {
+      const ap = A.byId.get(link.a).type === 'wifi' ? link.a : link.b;
+      for (const e of A.adj.get(ap)) if (e.link.air && A.byId.get(e.to).type === 'hacker' && e.to !== link.a && e.to !== link.b) found.push({ hacker: e.to, how: 'wifi' });
+    }
+    return found;
+  };
+  const hop = (a, b) => {
+    const link = linkBetween(A, a, b);
+    steps.push({ k: 'hop', from: a, to: b, link: link.id, air: !!link.air });
+    for (const s of spyOn(link)) {
+      if (seenBy.has(s.hacker)) continue;
+      seenBy.add(s.hacker);
+      const cap = { hacker: s.hacker, how: s.how, link: link.id, from: res.fromIp, to: pkt.to, port: pkt.port, locked: !!pkt.locked, msg: pkt.locked ? null : pkt.msg };
+      captures.push(cap);
+      steps.push(Object.assign({ k: 'capture' }, cap));
+    }
+  };
+  const walk = (path) => { for (let i = 0; i + 1 < path.length; i++) hop(path[i], path[i + 1]); };
+  const src = A.byId.get(pkt.from);
+  if (!src || !isHost(src)) return end('dropped', 'nosender', pkt.from);
+  const srcNet = A.netOfNode.get(src.id);
+  if (!srcNet) return end('dropped', 'unplugged', src.id);
+  if (!/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.test(String(pkt.to || '')) || String(pkt.to).split('.').some((x) => +x > 255)) return end('dropped', 'badaddr', src.id);
+  const prefix = String(pkt.to).split('.').slice(0, 3).join('.');
+  const destNet = A.netByPrefix.get(prefix) || null;
+  const destHost = A.hostByIp.get(pkt.to) || null;
+  const gwTarget = destNet && destNet.gateway && pkt.to === destNet.prefix + '.1' ? destNet.gateway : null;
+  const atGateway = (rid) => end('refused', 'router', rid, { deliveredTo: rid });
+  const arrive = (hid) => {
+    const h = A.byId.get(hid);
+    const ports = portsOf(h);
+    if (ports !== 'all' && !ports.includes(pkt.port)) return end('refused', 'port', hid, { deliveredTo: hid });
+    if (pkt.port === 443 && !pkt.locked && ports !== 'all') return end('refused', 'tls', hid, { deliveredTo: hid });
+    if (pkt.port === 80 && pkt.locked && ports !== 'all') return end('refused', 'tls80', hid, { deliveredTo: hid });
+    return end('delivered', h.type === 'hacker' ? 'tohacker' : 'ok', hid, { deliveredTo: hid });
+  };
+  const inside = (nw, extra) => { const s = new Set(nw.members); if (extra) s.add(extra); return s; };
+  let ttl = pkt.ttl || START_TTL;
+  if (destNet && destNet.key === srcNet.key) {
+    if (gwTarget) {
+      const pg = bfsPath(A, inside(srcNet, gwTarget), src.id, gwTarget);
+      if (pg) { walk(pg); return atGateway(gwTarget); }
+    }
+    if (!destHost || destHost === src.id) {
+      const firstHub = (A.adj.get(src.id)[0] || {}).to;
+      if (firstHub) hop(src.id, firstHub);
+      return end('dropped', destHost === src.id ? 'self' : 'nohost', firstHub || src.id);
+    }
+    const path = bfsPath(A, inside(srcNet), src.id, destHost);
+    if (!path) return end('dropped', 'nopath', src.id);
+    walk(path);
+    return arrive(destHost);
+  }
+  if (!srcNet.gateway) {
+    const firstHub = (A.adj.get(src.id)[0] || {}).to;
+    if (firstHub) hop(src.id, firstHub);
+    return end('dropped', 'nogateway', firstHub || src.id);
+  }
+  const p0 = bfsPath(A, inside(srcNet, srcNet.gateway), src.id, srcNet.gateway);
+  if (!p0) return end('dropped', 'nopath', src.id);
+  walk(p0);
+  let cur = srcNet.gateway;
+  for (let guard = 0; guard < 40; guard++) {
+    ttl -= 1;
+    res.ttlLeft = ttl;
+    if (destNet && destNet.gateway === cur) {
+      steps.push({ k: 'router', node: cur, ttl, how: 'direct', dest: destNet.key });
+      if (gwTarget === cur) return atGateway(cur);
+      if (!destHost) return end('dropped', 'nohost', cur);
+      const p = bfsPath(A, inside(destNet, cur), cur, destHost);
+      if (!p) return end('dropped', 'nopath', cur);
+      walk(p);
+      return arrive(destHost);
+    }
+    if (ttl <= 0) { steps.push({ k: 'router', node: cur, ttl, how: 'ttl' }); return end('dropped', 'ttl', cur); }
+    const r = destNet ? routeFor(net, A, cur, destNet.key) : routeFor(net, A, cur, '__nowhere__');
+    steps.push({ k: 'router', node: cur, ttl, how: r ? r.how : 'none', via: r ? r.via : null, dest: destNet ? destNet.key : null });
+    if (!r) return end('dropped', A.byId.get(cur).type === 'internet' ? 'nonet' : 'noroute', cur);
+    hop(cur, r.via);
+    cur = r.via;
+  }
+  return end('dropped', 'ttl', cur);
+}
+
+/* plain-English reason for an outcome */
+function explainOutcome(net, res, A) {
+  A = A || analyze(net);
+  const nm = (id) => { const n = A.byId.get(id); return n ? n.name : 'the network'; };
+  switch (res.reason) {
+    case 'ok': return `Delivered to ${nm(res.deliveredTo)}.`;
+    case 'tohacker': return `Delivered… straight to the hacker. That address belongs to ${nm(res.deliveredTo)}.`;
+    case 'port': return `It reached ${nm(res.deliveredTo)}, but nothing there listens on port ${res.port || ''}. The device refused it.`;
+    case 'tls': return `It reached ${nm(res.deliveredTo)}, but port 443 is HTTPS: the server only accepts encrypted (TLS) connections there. Refused.`;
+    case 'tls80': return `It reached ${nm(res.deliveredTo)}, but port 80 is plain HTTP. Encrypted web traffic goes to port 443 (HTTPS). Refused.`;
+    case 'router': return `It reached ${nm(res.deliveredTo)} (that's its address on this network: the default gateway). Routers here don't run any service, so it refused the packet.`;
+    case 'nosender': return 'Pick a device to send from.';
+    case 'unplugged': return `${nm(res.at)} isn't connected to anything, so the packet never left.`;
+    case 'badaddr': return 'That isn\'t an IP address. An IPv4 address is four numbers from 0 to 255 with dots, like 10.0.1.10.';
+    case 'self': return 'That\'s the sender\'s own address.';
+    case 'nohost': return `The packet reached the right network, but no device there has that address. It was dropped at ${nm(res.at)}.`;
+    case 'nogateway': return 'The address is on a different network, and this network has no router to get there. Dropped.';
+    case 'noroute': return `${nm(res.at)} has no route for that network and no default route, so it dropped the packet.`;
+    case 'nonet': return `The Internet has no route to ${res.to}: no network it knows about uses that address. Dropped.`;
+    case 'ttl': return `The packet ran out of hops (TTL hit 0) at ${nm(res.at)}. The routers were passing it in a circle.`;
+    case 'nopath': return 'There\'s no cable path to get there.';
+    default: return '';
+  }
+}
+
+/* test every network against every other network */
+function testMatrix(net) {
+  const A = analyze(net);
+  const nets = A.networks.filter((nw) => nw.hosts.length);
+  const rows = [];
+  for (const a of nets) {
+    const row = [];
+    for (const b of nets) {
+      if (a === b) { row.push(null); continue; }
+      const from = a.hosts[0], toHost = b.hosts[0];
+      const res = simulate(net, { from, to: A.ip.get(toHost), port: portsOf(A.byId.get(toHost)) === 'all' ? 5000 : portsOf(A.byId.get(toHost))[0], locked: false, msg: 'test' });
+      row.push({ from, to: toHost, res });
+    }
+    rows.push({ net: a, cells: row });
+  }
+  return { nets, rows, allOk: rows.every((r) => r.cells.every((c) => !c || c.res.outcome === 'delivered')) };
+}
+
+/* share codes: a network as a short copy/paste string */
+function encodeNet(net, mission) {
+  const slim = {
+    n: net.nodes.map((n) => [n.id, n.type, n.x, n.y, n.name, n.service || '']),
+    l: net.links.map((l) => [l.id, l.a, l.b, l.air ? 1 : 0]),
+    t: net.taps || [], r: net.tables || {}, m: mission || null, v: 1,
+  };
+  const json = JSON.stringify(slim);
+  const b64 = btoa(unescape(encodeURIComponent(json)));
+  return 'PKT1-' + b64;
+}
+function decodeNet(code) {
+  const s = String(code || '').trim().replace(/\s+/g, '');
+  if (!s.startsWith('PKT1-')) throw new Error('That isn\'t a Packet Run code. Codes start with PKT1-');
+  let o;
+  try { o = JSON.parse(decodeURIComponent(escape(atob(s.slice(5))))); } catch (e) { throw new Error('That code is damaged. Copy the whole thing again.'); }
+  if (!o || !Array.isArray(o.n) || !Array.isArray(o.l)) throw new Error('That code is damaged.');
+  const net = emptyNet();
+  const NID = /^n\d{1,4}$/, LID = /^l\d{1,4}$/;
+  const used = new Set();
+  for (const row of o.n.slice(0, 40)) {
+    if (!Array.isArray(row)) continue;
+    const [id, type, x, y, name, service] = row;
+    if (typeof id !== 'string' || !NID.test(id) || !Object.prototype.hasOwnProperty.call(DEV, type)) continue;
+    const cx = Math.max(0, Math.min(11, x | 0)), cy = Math.max(0, Math.min(6, y | 0));
+    if (used.has(cx + ',' + cy) || net.nodes.some((n) => n.id === id)) continue;
+    used.add(cx + ',' + cy);
+    net.nodes.push({ id, type, x: cx, y: cy, name: String(name || DEV[type].label).replace(/[\u0000-\u001f]/g, '').slice(0, 18) || DEV[type].label, service: type === 'server' && Object.prototype.hasOwnProperty.call(SERVICES, service) ? service : type === 'server' ? 'web' : undefined });
+  }
+  const ids = new Set(net.nodes.map((n) => n.id));
+  for (const row of o.l.slice(0, 80)) {
+    if (!Array.isArray(row)) continue;
+    const [id, a, b, air] = row;
+    if (typeof id !== 'string' || !LID.test(id) || !ids.has(a) || !ids.has(b) || a === b || net.links.some((l) => l.id === id)) continue;
+    net.links.push({ id, a, b, air: !!air });
+  }
+  const lids = new Set(net.links.map((l) => l.id));
+  net.taps = (Array.isArray(o.t) ? o.t : []).filter((t) => typeof t === 'string' && lids.has(t));
+  net.tables = {};
+  for (const [rid, rows] of Object.entries(o.r && typeof o.r === 'object' ? o.r : {})) {
+    if (!ids.has(rid) || !Array.isArray(rows)) continue;
+    net.tables[rid] = rows.filter((e) => e && typeof e.net === 'string' && (e.net === 'default' || /^net:n\d{1,4}$/.test(e.net)) && ids.has(e.via)).map((e) => ({ net: e.net, via: e.via })).slice(0, 20);
+  }
+  if (o.m && typeof o.m === 'object') o.m = { text: String(o.m.text || '').slice(0, 300) }; else o.m = null;
+  net.seq = 1 + Math.max(0, ...net.nodes.map((n) => idNum(n.id)), ...net.links.map((l) => idNum(l.id)));
+  return { net, mission: o.m || null };
+}
+
+if (typeof module !== 'undefined') module.exports = { DEV, SERVICES, PORTS, START_TTL, analyze, canLink, simulate, routeFor, testMatrix, explainOutcome, encodeNet, decodeNet, emptyNet, cloneNet, nextId, portsOf, defaultName };
+
+/* =====================================================================
+   BUILT-IN NETWORKS: the Stop 1 sample, the Stop 2 starter, the tickets
+   ===================================================================== */
+function mkNet(spec) {
+  const net = emptyNet();
+  for (const [id, type, x, y, name, service] of spec.nodes) net.nodes.push({ id, type, x, y, name: name || DEV[type].label, service: service || undefined });
+  const typeOf = (id) => net.nodes.find((n) => n.id === id).type;
+  let li = 1;
+  const wl = (a, b) => { const t = [typeOf(a), typeOf(b)]; return t.includes('wifi') && (t.includes('laptop') || t.includes('phone') || t.includes('hacker')); };
+  for (const [a, b] of spec.links) net.links.push({ id: 'l' + li++, a, b, air: wl(a, b) });
+  net.taps = (spec.taps || []).map(([a, b]) => net.links.find((l) => (l.a === a && l.b === b) || (l.a === b && l.b === a)).id);
+  net.tables = JSON.parse(JSON.stringify(spec.tables || {}));
+  net.seq = 100;
+  return net;
+}
+
+/* Stop 1: Maya at the library logs in to the grades server */
+const SAMPLE_SPEC = {
+  nodes: [
+    ['n1', 'wifi', 2, 3, 'Library Wi-Fi'],
+    ['n2', 'laptop', 0, 1, 'Maya\'s laptop'],
+    ['n3', 'phone', 0, 5, 'Jay\'s phone'],
+    ['n4', 'hacker', 3, 5, 'Hacker'],
+    ['n5', 'router', 4, 3, 'Library router'],
+    ['n6', 'internet', 6, 3, 'Internet'],
+    ['n7', 'router', 8, 3, 'School router'],
+    ['n8', 'switch', 10, 3, 'School switch'],
+    ['n9', 'server', 11, 1, 'Grades server', 'web'],
+    ['n10', 'printer', 11, 5, 'Office printer'],
+  ],
+  links: [['n2', 'n1'], ['n3', 'n1'], ['n4', 'n1'], ['n1', 'n5'], ['n5', 'n6'], ['n6', 'n7'], ['n7', 'n8'], ['n8', 'n9'], ['n8', 'n10']],
+  tables: { n5: [{ net: 'default', via: 'n6' }], n7: [{ net: 'default', via: 'n6' }] },
+};
+
+/* Stop 2 starter campus */
+const STARTER_SPEC = {
+  nodes: [
+    ['n1', 'switch', 2, 3, 'Room 333 switch'],
+    ['n2', 'laptop', 0, 1, 'Laptop 1'],
+    ['n3', 'laptop', 0, 3, 'Laptop 2'],
+    ['n4', 'printer', 0, 5, 'Printer 1'],
+    ['n5', 'router', 4, 3, 'Router 1'],
+    ['n6', 'wifi', 6, 1, 'Library Wi-Fi'],
+    ['n7', 'phone', 8, 0, 'Phone 1'],
+    ['n8', 'router', 7, 3, 'Router 2'],
+    ['n9', 'internet', 9, 3, 'Internet'],
+    ['n10', 'server', 11, 3, 'Web server', 'web'],
+    ['n11', 'hacker', 5, 0, 'Hacker'],
+  ],
+  links: [['n2', 'n1'], ['n3', 'n1'], ['n4', 'n1'], ['n1', 'n5'], ['n5', 'n8'], ['n6', 'n8'], ['n7', 'n6'], ['n8', 'n9'], ['n9', 'n10'], ['n11', 'n6']],
+  tables: {},
+};
+
+/* Stop 5 tickets */
+const TICKETS = [
+  {
+    id: 'A', pts: 6, title: 'Ticket 1: "The printer never prints"',
+    story: 'Ms. Rivera sends a print job from the library laptop to the office printer. Nothing comes out. The printer is on and plugged in.',
+    spec: {
+      nodes: [
+        ['n1', 'wifi', 2, 3, 'Library Wi-Fi'], ['n2', 'laptop', 0, 2, 'Library laptop'], ['n3', 'router', 4, 3, 'Router 1'],
+        ['n4', 'router', 7, 3, 'Router 2'], ['n5', 'switch', 9, 3, 'Office switch'], ['n6', 'printer', 11, 2, 'Office printer'], ['n7', 'laptop', 11, 5, 'Office laptop'],
+      ],
+      links: [['n2', 'n1'], ['n1', 'n3'], ['n3', 'n4'], ['n4', 'n5'], ['n5', 'n6'], ['n5', 'n7']],
+      tables: { n3: [], n4: [{ net: 'default', via: 'n3' }] },
+    },
+    mission: { from: 'n2', toHost: 'n6', port: 9100, msg: 'PRINT: field trip permission slips', secret: false },
+    fix: 'routes', editable: ['n3', 'n4'],
+    hint: 'Send the print job and watch where it stops. Then look at that router\'s table: does it know where the office network is?',
+  },
+  {
+    id: 'B', pts: 7, title: 'Ticket 2: "My scores vanish into thin air"',
+    story: 'The gym scoreboard server never gets the scores from the front office. The network team says every router "has a route". Something is still wrong.',
+    spec: {
+      nodes: [
+        ['n1', 'switch', 1, 3, 'Front office switch'], ['n2', 'laptop', 0, 1, 'Office laptop'], ['n3', 'router', 3, 3, 'Router 1'],
+        ['n4', 'router', 5, 3, 'Router 2'], ['n5', 'router', 7, 3, 'Router 3'], ['n6', 'router', 9, 3, 'Router 4'],
+        ['n7', 'switch', 10, 5, 'Gym switch'], ['n8', 'server', 11, 3, 'Scoreboard', 'game'],
+      ],
+      links: [['n2', 'n1'], ['n1', 'n3'], ['n3', 'n4'], ['n4', 'n5'], ['n5', 'n6'], ['n6', 'n7'], ['n7', 'n8']],
+      tables: { n3: [{ net: 'default', via: 'n4' }], n4: [{ net: 'net:n7', via: 'n5' }], n5: [{ net: 'net:n7', via: 'n4' }], n6: [{ net: 'default', via: 'n5' }] },
+    },
+    mission: { from: 'n2', toHost: 'n8', port: 7777, msg: 'SCORE: Hawks 42, Jets 38', secret: false },
+    fix: 'routes', editable: ['n3', 'n4', 'n5', 'n6'],
+    hint: 'Send the score and count the hops. Watch the TTL number go down. Which two routers keep handing the packet back and forth?',
+  },
+  {
+    id: 'C', pts: 7, title: 'Ticket 3: "Somebody logged in as me"',
+    story: 'Coach Daniels logged in to the grades website from the airport on his phone, using the site\'s old plain-HTTP address. The next day someone changed grades using his password. Make his login safe, then answer his question.',
+    spec: {
+      nodes: [
+        ['n1', 'wifi', 2, 3, 'Airport Free WiFi'], ['n2', 'phone', 0, 2, 'Coach\'s phone'], ['n3', 'hacker', 2, 5, 'Hacker at gate 12'],
+        ['n4', 'router', 4, 3, 'Airport router'], ['n5', 'internet', 6, 3, 'Internet'], ['n6', 'router', 8, 3, 'School router'],
+        ['n7', 'switch', 10, 3, 'School switch'], ['n8', 'server', 11, 1, 'Grades server', 'web'],
+      ],
+      links: [['n2', 'n1'], ['n3', 'n1'], ['n1', 'n4'], ['n4', 'n5'], ['n5', 'n6'], ['n6', 'n7'], ['n7', 'n8']],
+      taps: [['n5', 'n6']],
+      tables: { n4: [{ net: 'default', via: 'n5' }], n6: [{ net: 'default', via: 'n5' }] },
+    },
+    mission: { from: 'n2', toHost: 'n8', port: 80, msg: 'user: coach_d  password: GoHawks!', secret: true },
+    fix: 'lock',
+    hint: 'Send the login and open the hacker\'s notebook. How many hackers saw it? The login goes to port 80, plain HTTP. Only one change protects it on every hop: drag the lock onto the packet (that makes it HTTPS on port 443).',
+  },
+];
+
+/* =====================================================================
+   BOARD: draws a network as SVG, lets students build it, animates packets
+   ===================================================================== */
+const COLS = 12, ROWS = 7, CELL = 80, TILE = 54;
+const SVGNS = 'http://www.w3.org/2000/svg';
+const escHTML = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+const SPRITE_URL = {};
+function spriteURL(kind) {
+  if (SPRITE_URL[kind]) return SPRITE_URL[kind];
+  const rows = SPRITES[kind];
+  const c = document.createElement('canvas');
+  c.width = 48; c.height = 48;
+  const g = c.getContext('2d');
+  rows.forEach((row, y) => { for (let x = 0; x < 12; x++) { const ch = row[x]; if (ch && ch !== '.') { g.fillStyle = PAL[ch]; g.fillRect(x * 4, y * 4, 4, 4); } } });
+  SPRITE_URL[kind] = c.toDataURL();
+  return SPRITE_URL[kind];
+}
+function spriteImg(kind, cls, alt) { return `<img class="spr ${cls || ''}" src="${spriteURL(kind)}" alt="${escHTML(alt || '')}" draggable="false">`; }
+const center = (n) => ({ x: n.x * CELL + CELL / 2, y: n.y * CELL + CELL / 2 - 6 });
+const reduceMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function fakeCipher(text) {
+  let h = 2166136261 >>> 0; const out = [];
+  const s = String(text || '') + '#';
+  for (let i = 0; i < Math.max(12, s.length); i++) { h ^= s.charCodeAt(i % s.length) + i; h = Math.imul(h, 16777619) >>> 0; out.push((h >>> 8).toString(16).slice(-4).padStart(4, '0')); if (out.length >= Math.min(8, Math.ceil(s.length / 3) + 2)) break; }
+  return out.join(' ');
+}
+function distToSeg(p, a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy || 1)));
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+}
+
+/* a generic pointer drag with a floating ghost (mouse, pen and touch) */
+function startGhostDrag(e, { html, onMove, onDrop, onCancel, threshold }) {
+  const sx = e.clientX, sy = e.clientY, pid = e.pointerId;
+  let dragging = false, ghost = null;
+  const mv = (ev) => {
+    if (ev.pointerId !== pid) return;
+    if (!dragging && Math.hypot(ev.clientX - sx, ev.clientY - sy) > (threshold || 6)) {
+      dragging = true;
+      ghost = document.createElement('div');
+      ghost.className = 'dragghost';
+      ghost.innerHTML = html;
+      document.body.appendChild(ghost);
+      document.body.classList.add('dragging');
+    }
+    if (dragging) {
+      ev.preventDefault();
+      ghost.style.left = ev.clientX + 10 + 'px'; ghost.style.top = ev.clientY - 18 + 'px';
+      if (onMove) onMove(ev);
+    }
+  };
+  const up = (ev) => {
+    if (ev.pointerId !== pid) return;
+    window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
+    document.body.classList.remove('dragging');
+    if (ghost) ghost.remove();
+    if (dragging && ev.type === 'pointerup') onDrop(ev);
+    else if (onCancel) onCancel(dragging);
+  };
+  window.addEventListener('pointermove', mv, { passive: false }); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+}
+
+class Board {
+  /* opts: { editable, label, onChange(net, what), onSelect(sel), onSay(text, bad), showIPs } */
+  constructor(host, net, opts) {
+    this.host = host; this.net = net; this.opts = opts || {};
+    this.sel = null;          // {kind:'node'|'link', id}
+    this.tool = 'move';       // 'move' | 'cable'
+    this.cableFrom = null;
+    this.hoverCell = null;
+    this.placing = null;      // piece type chosen by click, waiting for a cell
+    this.busy = false;
+    host.classList.add('board-wrap');
+    host.innerHTML = `<div class="board-scroll"><svg class="board" viewBox="0 0 ${COLS * CELL} ${ROWS * CELL}" role="group" aria-label="${escHTML(this.opts.label || 'Network')}"></svg></div>`;
+    this.svg = host.querySelector('svg');
+    this.bindEvents();
+    this.render();
+  }
+  setNet(net) { this.net = net; if (this.sel && !this.exists(this.sel)) this.sel = null; this.render(); }
+  exists(sel) { return sel.kind === 'node' ? this.net.nodes.some((n) => n.id === sel.id) : this.net.links.some((l) => l.id === sel.id); }
+  say(t, bad) { if (this.opts.onSay) this.opts.onSay(t, bad); }
+  commit(what) { if (this.opts.onChange) this.opts.onChange(this.net, what); this.render(); }
+  nodeAt(x, y) { return this.net.nodes.find((n) => n.x === x && n.y === y) || null; }
+  svgPoint(ev) {
+    const r = this.svg.getBoundingClientRect();
+    const vb = this.svg.viewBox.baseVal;
+    return { x: vb.x + (ev.clientX - r.left) * vb.width / r.width, y: vb.y + (ev.clientY - r.top) * vb.height / r.height };
+  }
+  cellFromEvent(ev) {
+    const p = this.svgPoint(ev);
+    const x = Math.floor(p.x / CELL), y = Math.floor(p.y / CELL);
+    if (x < 0 || y < 0 || x >= COLS || y >= ROWS) return null;
+    return { x, y };
+  }
+  linkNear(p, onlyWired) {
+    const byId = new Map(this.net.nodes.map((n) => [n.id, n]));
+    let best = null, bd = 16;
+    for (const l of this.net.links) {
+      if (onlyWired && l.air) continue;
+      const a = byId.get(l.a), b = byId.get(l.b);
+      if (!a || !b) continue;
+      const d = distToSeg(p, center(a), center(b));
+      if (d < bd) { bd = d; best = l; }
+    }
+    return best;
+  }
+
+  /* ---------------- rendering ---------------- */
+  render() {
+    const A = analyze(this.net);
+    this.A = A;
+    const byId = A.byId;
+    let h = '';
+    h += '<g class="b-grid">';
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) h += `<circle cx="${x * CELL + CELL / 2}" cy="${y * CELL + CELL / 2 - 6}" r="2" class="dot"/>`;
+    if (this.hoverCell && this.opts.editable) h += `<rect x="${this.hoverCell.x * CELL + 4}" y="${this.hoverCell.y * CELL + 4}" width="${CELL - 8}" height="${CELL - 8}" rx="10" class="hovercell"/>`;
+    h += '</g><g class="b-links">';
+    const taps = new Set(this.net.taps || []);
+    for (const l of A.links) {
+      const a = center(byId.get(l.a)), b = center(byId.get(l.b));
+      const selc = this.sel && this.sel.kind === 'link' && this.sel.id === l.id ? ' sel' : '';
+      const ln = `${byId.get(l.a).name} to ${byId.get(l.b).name}`;
+      h += `<g class="link${l.air ? ' air' : ''}${selc}" data-link="${escHTML(l.id)}"${this.opts.editable ? ` tabindex="0" role="button" aria-label="${escHTML((l.air ? 'Wi-Fi connection: ' : 'Cable: ') + ln + (taps.has(l.id) ? ', wiretapped' : ''))}"` : ''}><line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" class="hit"/><line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" class="ln"/></g>`;
+    }
+    h += '</g><g class="b-taps">';
+    for (const l of A.links) {
+      if (!taps.has(l.id)) continue;
+      const a = center(byId.get(l.a)), b = center(byId.get(l.b));
+      const m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      h += `<g class="tap" data-link="${escHTML(l.id)}" transform="translate(${m.x},${m.y})"><circle r="17" class="tapring"/><image href="${spriteURL('hacker')}" x="-12" y="-12" width="24" height="24"/></g>`;
+    }
+    h += '</g><g class="b-nodes">';
+    for (const n of this.net.nodes) {
+      const c = center(n);
+      const nw = A.netOfNode.get(n.id);
+      const color = n.type === 'hacker' ? '#ef3b4f' : nw ? nw.color : (routerish(n) ? '#c9d1e6' : '#5b6485');
+      const ip = A.ip.get(n.id);
+      const selc = this.sel && this.sel.kind === 'node' && this.sel.id === n.id ? ' sel' : '';
+      const cab = this.cableFrom === n.id ? ' cablefrom' : '';
+      const loose = !nw && !routerish(n) && !(n.type === 'hacker' && false) ? ' loose' : '';
+      const lab = `${n.name}${ip ? ', address ' + ip : ''}${nw ? ', ' + nw.name : routerish(n) ? '' : ', not connected'}`;
+      h += `<g class="node${selc}${cab}${loose} t-${n.type}" data-node="${escHTML(n.id)}" transform="translate(${c.x},${c.y})" tabindex="0" role="button" aria-label="${escHTML(lab)}">`
+        + `<rect x="${-TILE / 2}" y="${-TILE / 2}" width="${TILE}" height="${TILE}" rx="12" class="tile" style="stroke:${color}"/>`
+        + `<image href="${spriteURL(n.type)}" x="-19" y="-19" width="38" height="38" class="sp"/>`
+        + `<text y="${TILE / 2 + 15}" class="nm">${escHTML(n.name.length > 16 ? n.name.slice(0, 15) + '…' : n.name)}</text>`
+        + (ip && this.opts.showIPs !== false ? `<text y="${TILE / 2 + 29}" class="ip" style="fill:${color}">${ip}</text>` : '')
+        + '</g>';
+    }
+    h += '</g><g class="b-fx"></g>';
+    if (this.cableFrom && this.rubber) h += `<line class="rubber" x1="${this.rubber.x1}" y1="${this.rubber.y1}" x2="${this.rubber.x2}" y2="${this.rubber.y2}"/>`;
+    this.svg.innerHTML = h;
+    if (!this.opts.editable && this.net.nodes.length) {
+      const xs = this.net.nodes.map((n) => n.x), ys = this.net.nodes.map((n) => n.y);
+      const x0 = Math.min(...xs) * CELL - 30, x1 = (Math.max(...xs) + 1) * CELL + 30, y0 = Math.min(...ys) * CELL - 34, y1 = (Math.max(...ys) + 1) * CELL + 16;
+      this.svg.setAttribute('viewBox', `${x0} ${y0} ${x1 - x0} ${y1 - y0}`);
+    } else this.svg.setAttribute('viewBox', `-26 0 ${COLS * CELL + 52} ${ROWS * CELL + 18}`);
+    this.svg.classList.toggle('editable', !!this.opts.editable);
+    this.svg.classList.toggle('cable-tool', this.tool === 'cable');
+    this.fx = this.svg.querySelector('.b-fx');
+  }
+
+  /* ---------------- editing ---------------- */
+  addPiece(type, cell, pointForTap) {
+    if (type === 'hacker' && pointForTap) {
+      const l = this.linkNear(pointForTap, false);
+      if (l) {
+        if (l.air) { this.say('Wi-Fi has no cable to clip onto. Put the hacker on an empty square and connect it to the Wi-Fi instead.', true); return false; }
+        this.net.taps = this.net.taps || [];
+        if (this.net.taps.includes(l.id)) { this.say('That cable is already tapped.', true); return false; }
+        this.net.taps.push(l.id);
+        this.sel = { kind: 'link', id: l.id };
+        this.say('The hacker clipped a wiretap onto that cable. Every packet that crosses it gets copied.');
+        this.commit('tap');
+        return true;
+      }
+    }
+    if (!cell) return false;
+    if (this.nodeAt(cell.x, cell.y)) { this.say('That square is taken. Pick an empty one.', true); return false; }
+    if (type === 'internet' && this.net.nodes.some((n) => n.type === 'internet')) { this.say('There is only one internet. You already have it on the board.', true); return false; }
+    if (this.net.nodes.length >= 30) { this.say('That\'s plenty of pieces (30 max).', true); return false; }
+    const n = { id: nextId(this.net, 'n'), type, x: cell.x, y: cell.y, name: defaultName(this.net, type) };
+    if (type === 'server') n.service = 'web';
+    this.net.nodes.push(n);
+    this.sel = { kind: 'node', id: n.id };
+    this.say(`Placed ${n.name}. ${type === 'router' || type === 'internet' ? 'Now connect it with the Cable tool.' : 'Now connect it with the Cable tool.'}`);
+    this.commit('add');
+    return true;
+  }
+  removeSel() {
+    const s = this.sel; if (!s) return;
+    if (s.kind === 'node') {
+      const n = this.net.nodes.find((x) => x.id === s.id);
+      const gone = new Set(this.net.links.filter((l) => l.a === s.id || l.b === s.id).map((l) => l.id));
+      this.net.links = this.net.links.filter((l) => !gone.has(l.id));
+      this.net.taps = (this.net.taps || []).filter((t) => !gone.has(t));
+      this.net.nodes = this.net.nodes.filter((x) => x.id !== s.id);
+      delete this.net.tables[s.id];
+      for (const r of Object.keys(this.net.tables)) this.net.tables[r] = this.net.tables[r].filter((e) => e.via !== s.id);
+      this.say(`Removed ${n ? n.name : 'it'}${gone.size ? ' and its cables' : ''}.`);
+    } else {
+      const tapped = (this.net.taps || []).includes(s.id);
+      if (tapped) { this.net.taps = this.net.taps.filter((t) => t !== s.id); this.say('Removed the wiretap. The cable stays.'); }
+      else {
+        const l = this.net.links.find((x) => x.id === s.id);
+        this.net.links = this.net.links.filter((x) => x.id !== s.id);
+        if (l) for (const r of Object.keys(this.net.tables)) this.net.tables[r] = this.net.tables[r].filter((e) => !((r === l.a && e.via === l.b) || (r === l.b && e.via === l.a)));
+        this.say('Removed the cable.');
+      }
+    }
+    this.sel = null;
+    this.commit('remove');
+    if (this.opts.onSelect) this.opts.onSelect(null);
+  }
+  moveNode(id, cell) {
+    const n = this.net.nodes.find((x) => x.id === id);
+    if (!n || !cell) return;
+    const other = this.nodeAt(cell.x, cell.y);
+    if (other && other.id !== id) { this.say('That square is taken.', true); this.render(); return; }
+    if (n.x === cell.x && n.y === cell.y) { this.render(); return; }
+    n.x = cell.x; n.y = cell.y;
+    this.commit('move');
+  }
+  tryCable(a, b) {
+    const r = canLink(this.net, a, b);
+    if (!r.ok) { this.say(r.why, true); return false; }
+    const l = { id: nextId(this.net, 'l'), a, b, air: !!r.air };
+    this.net.links.push(l);
+    const na = this.net.nodes.find((n) => n.id === a), nb = this.net.nodes.find((n) => n.id === b);
+    this.say(`${r.air ? 'Joined' : 'Cabled'} ${na.name} ${r.air ? 'to' : '↔'} ${nb.name}${r.air ? ' over Wi-Fi (radio, not a cable)' : ''}.`);
+    this.commit('link');
+    return true;
+  }
+  select(sel) {
+    this.sel = sel;
+    this.render();
+    if (this.opts.onSelect) this.opts.onSelect(sel);
+  }
+  setTool(t) { this.tool = t; this.cableFrom = null; this.rubber = null; this.render(); }
+  bindEvents() {
+    const svg = this.svg;
+    svg.addEventListener('pointerdown', (e) => {
+      if (this.busy) return;
+      const nodeEl = e.target.closest('[data-node]');
+      const linkEl = e.target.closest('[data-link]');
+      if (!this.opts.editable) {
+        if (nodeEl && this.opts.onNodeClick) this.opts.onNodeClick(nodeEl.dataset.node);
+        return;
+      }
+      if (this.placing && !nodeEl) {
+        const c = this.cellFromEvent(e);
+        const t = this.placing;
+        if (this.addPiece(t, c, t === 'hacker' ? this.svgPoint(e) : null)) { this.placing = null; if (this.opts.onPlaced) this.opts.onPlaced(); }
+        return;
+      }
+      if (nodeEl) {
+        const id = nodeEl.dataset.node;
+        if (this.tool === 'cable') {
+          e.preventDefault();
+          if (this.cableFrom && this.cableFrom !== id) { const from = this.cableFrom; this.cableFrom = null; this.rubber = null; this.tryCable(from, id); return; }
+          this.cableFrom = id;
+          const c0 = center(this.net.nodes.find((n) => n.id === id));
+          this.rubber = { x1: c0.x, y1: c0.y, x2: c0.x, y2: c0.y };
+          this.render();
+          const mv = (ev) => { const p = this.svgPoint(ev); this.rubber.x2 = p.x; this.rubber.y2 = p.y; const r = svg.querySelector('.rubber'); if (r) { r.setAttribute('x2', p.x); r.setAttribute('y2', p.y); } };
+          const up = (ev) => {
+            window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up);
+            const over = document.elementFromPoint(ev.clientX, ev.clientY);
+            const tgt = over && over.closest && over.closest('[data-node]');
+            if (tgt && tgt.dataset.node !== id) { this.cableFrom = null; this.rubber = null; this.tryCable(id, tgt.dataset.node); }
+            else { this.rubber = null; this.render(); this.say(`Cable started at ${this.net.nodes.find((n) => n.id === id).name}. Click (or drag to) the other end.`); }
+          };
+          window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
+          return;
+        }
+        this.select({ kind: 'node', id });
+        const n = this.net.nodes.find((x) => x.id === id);
+        startGhostDrag(e, {
+          html: spriteImg(n.type, 'gsp'),
+          onMove: (ev) => { const c = this.cellFromEvent(ev); if (JSON.stringify(c) !== JSON.stringify(this.hoverCell)) { this.hoverCell = c; this.render(); } },
+          onDrop: (ev) => { this.hoverCell = null; this.moveNode(id, this.cellFromEvent(ev)); },
+          onCancel: () => { this.hoverCell = null; this.render(); },
+        });
+        return;
+      }
+      if (linkEl) { this.select({ kind: 'link', id: linkEl.dataset.link }); return; }
+      this.cableFrom = null;
+      this.select(null);
+    });
+    svg.addEventListener('keydown', (e) => {
+      const linkEl = this.opts.editable && e.target.closest && e.target.closest('g.link[data-link]');
+      if (linkEl) {
+        const lid = linkEl.dataset.link;
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.select({ kind: 'link', id: lid }); const again = this.svg.querySelector(`g.link[data-link="${CSS.escape(lid)}"]`); if (again) again.focus(); }
+        else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); this.select({ kind: 'link', id: lid }); this.removeSel(); this.focusSomething(); }
+        return;
+      }
+      const nodeEl = e.target.closest && e.target.closest('[data-node]');
+      if (!nodeEl) return;
+      const id = nodeEl.dataset.node;
+      if (!this.opts.editable) { if ((e.key === 'Enter' || e.key === ' ') && this.opts.onNodeClick) { e.preventDefault(); this.opts.onNodeClick(id); } return; }
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        if (this.tool === 'cable') {
+          if (this.cableFrom && this.cableFrom !== id) { const from = this.cableFrom; this.cableFrom = null; this.tryCable(from, id); }
+          else { this.cableFrom = id; this.render(); this.say(`Cable started at ${this.net.nodes.find((n) => n.id === id).name}. Tab to the other end and press Enter.`); }
+        } else this.select({ kind: 'node', id });
+        this.refocus(id);
+        return;
+      }
+      if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); this.select({ kind: 'node', id }); this.removeSel(); this.focusSomething(); return; }
+      const mv = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] }[e.key];
+      if (mv && this.tool === 'move') {
+        e.preventDefault();
+        const n = this.net.nodes.find((x) => x.id === id);
+        const c = { x: Math.max(0, Math.min(COLS - 1, n.x + mv[0])), y: Math.max(0, Math.min(ROWS - 1, n.y + mv[1])) };
+        this.sel = { kind: 'node', id };
+        this.moveNode(id, c);
+        this.refocus(id);
+      }
+    });
+    svg.addEventListener('pointermove', (e) => {
+      if (!this.opts.editable || !this.placing) return;
+      const c = this.cellFromEvent(e);
+      if (JSON.stringify(c) !== JSON.stringify(this.hoverCell)) { this.hoverCell = c; this.render(); }
+    });
+    svg.addEventListener('pointerleave', () => { if (this.hoverCell && this.placing) { this.hoverCell = null; this.render(); } });
+  }
+  refocus(id) { const el = this.svg.querySelector(`[data-node="${CSS.escape(id)}"]`); if (el) el.focus(); }
+  focusSomething() { const el = this.svg.querySelector('[data-node]'); if (el) el.focus(); else if (this.opts.onEmptyFocus) this.opts.onEmptyFocus(); }
+  tapLink(lid) {
+    const l = this.net.links.find((x) => x.id === lid);
+    if (!l || l.air) return false;
+    this.net.taps = this.net.taps || [];
+    if (this.net.taps.includes(lid)) return false;
+    this.net.taps.push(lid);
+    this.say('The hacker clipped a wiretap onto that cable. Every packet that crosses it gets copied.');
+    this.commit('tap');
+    return true;
+  }
+
+  /* ---------------- packet animation ---------------- */
+  fxAdd(tag, attrs, text) {
+    const el = document.createElementNS(SVGNS, tag);
+    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+    if (text != null) el.textContent = text;
+    this.fx.appendChild(el);
+    return el;
+  }
+  bubble(x, y, text, cls, ms) {
+    const g = document.createElementNS(SVGNS, 'g');
+    g.setAttribute('class', 'bubble ' + (cls || ''));
+    g.setAttribute('transform', `translate(${x},${y})`);
+    const t = document.createElementNS(SVGNS, 'text');
+    t.textContent = text;
+    t.setAttribute('y', '4');
+    g.appendChild(t);
+    this.fx.appendChild(g);
+    let bb;
+    try { bb = t.getBBox(); } catch (e) { bb = { x: -40, y: -10, width: 80, height: 14 }; }
+    const r = document.createElementNS(SVGNS, 'rect');
+    r.setAttribute('x', bb.x - 8); r.setAttribute('y', bb.y - 4); r.setAttribute('width', bb.width + 16); r.setAttribute('height', bb.height + 8); r.setAttribute('rx', 8);
+    g.insertBefore(r, t);
+    if (ms) setTimeout(() => g.remove(), ms);
+    return g;
+  }
+  async animate(res, pkt, opts) {
+    opts = opts || {};
+    this.render();
+    const byId = new Map(this.net.nodes.map((n) => [n.id, n]));
+    const known = (id) => byId.has(id);
+    if (res.steps.some((s) => (s.k === 'hop' && (!known(s.from) || !known(s.to))) || ((s.k === 'router' || s.k === 'end') && s.node && !known(s.node)))) return;
+    const fast = reduceMotion() || opts.instant;
+    const dur = fast ? 0 : (opts.speed || 420);
+    const wait = (ms) => new Promise((r) => setTimeout(r, fast ? 0 : ms));
+    this.busy = true;
+    const env = this.fxAdd('image', { href: spriteURL(pkt.locked ? 'lockedpacket' : 'packet'), width: 34, height: 34, x: -17, y: -17, class: 'env' });
+    const place = (p) => env.setAttribute('transform', `translate(${p.x},${p.y})`);
+    const start = byId.get(pkt.from);
+    if (start) place(center(start));
+    for (const s of res.steps) {
+      if (s.k === 'hop') {
+        const a = center(byId.get(s.from)), b = center(byId.get(s.to));
+        const ln = this.svg.querySelector(`g.link[data-link="${CSS.escape(s.link)}"]`);
+        if (ln) ln.classList.add('lit');
+        if (dur) {
+          await new Promise((done) => {
+            const t0 = performance.now();
+            const tick = (t) => {
+              const k = Math.min(1, (t - t0) / dur), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+              place({ x: a.x + (b.x - a.x) * e, y: a.y + (b.y - a.y) * e });
+              if (k < 1) requestAnimationFrame(tick); else done();
+            };
+            requestAnimationFrame(tick);
+          });
+        } else place(b);
+        if (ln) setTimeout(() => ln.classList.remove('lit'), 300);
+      } else if (s.k === 'capture') {
+        const l = this.net.links.find((x) => x.id === s.link);
+        const a = center(byId.get(l.a)), b = center(byId.get(l.b));
+        const m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+        let spot = m;
+        if (s.how === 'wifi') { const hk = byId.get(s.hacker); if (hk) spot = center(hk); }
+        const ring = this.fxAdd('circle', { cx: spot.x, cy: spot.y, r: 26, class: 'caught' + (s.locked ? ' locked' : '') });
+        this.bubble(spot.x, spot.y - 40, s.locked ? '🔒 copied, can\'t read it' : '👀 copied and READ!', s.locked ? 'b-ok' : 'b-bad', fast ? 0 : 1500);
+        await wait(700);
+        ring.remove();
+      } else if (s.k === 'router') {
+        const r = center(byId.get(s.node));
+        const txt = s.how === 'ttl' ? 'TTL 0 ✕' : s.how === 'none' ? `TTL ${s.ttl} · no route!` : s.how === 'direct' ? `TTL ${s.ttl} · that's my network` : `TTL ${s.ttl} → ${(byId.get(s.via) || {}).name || ''}`;
+        this.bubble(r.x, r.y - 42, txt, s.how === 'ttl' || s.how === 'none' ? 'b-bad' : 'b-info', fast ? 0 : 900);
+        await wait(260);
+      } else if (s.k === 'end') {
+        const n = byId.get(s.node);
+        const p = n ? center(n) : { x: 0, y: 0 };
+        const good = s.outcome === 'delivered' && s.reason === 'ok';
+        this.fxAdd('circle', { cx: p.x, cy: p.y, r: 32, class: 'endring ' + (good ? 'good' : 'bad') });
+        const label = s.outcome === 'delivered' ? (s.reason === 'tohacker' ? '✓ …to the hacker' : '✓ delivered') : s.outcome === 'refused' ? '✕ refused (wrong port)' : s.reason === 'ttl' ? '✕ TTL ran out' : s.reason === 'noroute' || s.reason === 'nonet' ? '✕ no route' : s.reason === 'nohost' ? '✕ no such device' : '✕ dropped';
+        this.bubble(p.x, p.y - 44, label, good ? 'b-ok' : 'b-bad');
+        if (s.outcome !== 'delivered') env.setAttribute('opacity', '0.35');
+      }
+    }
+    this.busy = false;
+  }
+}
+
+/* =====================================================================
+   PANELS: piece palette, selection info, packet builder, hacker's notebook,
+   packet log, and the router table editor
+   ===================================================================== */
+const PIECE_TIPS = {
+  laptop: 'Cable or Wi-Fi', phone: 'Wi-Fi only', printer: 'Cable only, listens on 9100', server: 'Cable only, you pick its service',
+  switch: 'Connects devices in one network', wifi: 'Radio: anyone nearby can listen', router: 'Connects networks together',
+  internet: 'Knows every network', hacker: 'Join an open Wi-Fi, plug into a switch, or drop on a cable',
+};
+const PIECE_ORDER = ['laptop', 'phone', 'printer', 'server', 'switch', 'wifi', 'router', 'internet', 'hacker'];
+
+/* ---------------- builder: palette + tools + selection ---------------- */
+class Builder {
+  constructor(host, board, opts) {
+    this.host = host; this.board = board; this.opts = opts || {};
+    host.innerHTML = `
+      <div class="pal" role="toolbar" aria-label="Pieces">${PIECE_ORDER.map((t) => `<button type="button" class="pc" data-type="${t}" title="${escHTML(PIECE_TIPS[t])}">${spriteImg(t)}<span>${DEV[t].label}</span></button>`).join('')}</div>
+      <div class="tools row">
+        <span class="small muted">Tool:</span>
+        <button type="button" class="btn small tool" data-tool="move" aria-pressed="true">✥ Move / select</button>
+        <button type="button" class="btn small ghost tool" data-tool="cable" aria-pressed="false">〰 Cable</button>
+        <span class="small muted toolhint"></span>
+      </div>
+      <div class="say" aria-live="polite"></div>
+      <div class="selinfo"></div>`;
+    this.sayEl = host.querySelector('.say');
+    this.selEl = this.opts.selHost || host.querySelector('.selinfo');
+    const pal = host.querySelector('.pal');
+    pal.addEventListener('pointerdown', (e) => {
+      const b = e.target.closest('.pc'); if (!b) return;
+      const type = b.dataset.type;
+      startGhostDrag(e, {
+        html: spriteImg(type, 'gsp'),
+        onMove: (ev) => {
+          const over = document.elementFromPoint(ev.clientX, ev.clientY);
+          const c = over && over.closest && over.closest('svg.board') === board.svg ? board.cellFromEvent(ev) : null;
+          if (JSON.stringify(c) !== JSON.stringify(board.hoverCell)) { board.hoverCell = c; board.render(); }
+        },
+        onDrop: (ev) => {
+          board.hoverCell = null;
+          const over = document.elementFromPoint(ev.clientX, ev.clientY);
+          if (over && over.closest && over.closest('svg.board') === board.svg) board.addPiece(type, board.cellFromEvent(ev), board.svgPoint(ev));
+          else board.render();
+        },
+        onCancel: (dragged) => {
+          if (dragged) return;
+          board.placing = type;
+          this.say(`Now click an empty square on the board to place a ${DEV[type].label.toLowerCase()}${type === 'hacker' ? ' (or click right on a cable to tap it)' : ''}. Keyboard: press Enter on "Place it".`);
+          this.showPlaceKbd(type);
+        },
+      });
+    });
+    pal.addEventListener('click', (e) => {
+      if (e.detail !== 0) return;                       // keyboard "click" only; mouse is handled on pointerdown
+      const b = e.target.closest('.pc'); if (!b) return;
+      board.placing = b.dataset.type;
+      this.say(`Press "Place it" to put a ${DEV[b.dataset.type].label.toLowerCase()} on the board, then move it with the arrow keys.`);
+      this.showPlaceKbd(b.dataset.type);
+    });
+    host.querySelectorAll('.tool').forEach((b) => b.addEventListener('click', () => this.setTool(b.dataset.tool)));
+    this.setTool('move');
+  }
+  showPlaceKbd(type) {
+    this.sayEl.insertAdjacentHTML('beforeend', ` <button type="button" class="btn small" data-kplace="${type}">Place it</button>`);
+    const b = this.sayEl.querySelector('[data-kplace]');
+    b.onclick = () => {
+      const board = this.board;
+      let cell = null;
+      for (let d = 0; d < 12 && !cell; d++) for (let y = 0; y < ROWS && !cell; y++) for (let x = 0; x < COLS && !cell; x++) if (Math.max(Math.abs(x - 5), Math.abs(y - 3)) === d && !board.nodeAt(x, y)) cell = { x, y };
+      board.placing = null;
+      if (board.addPiece(type, cell, null)) { board.refocus(board.sel.id); this.say(`Placed. Use the arrow keys to move it, then switch to the Cable tool.`); }
+    };
+    b.focus();
+  }
+  setTool(t) {
+    this.board.setTool(t);
+    this.host.querySelectorAll('.tool').forEach((b) => { const on = b.dataset.tool === t; b.setAttribute('aria-pressed', on); b.classList.toggle('ghost', !on); });
+    this.host.querySelector('.toolhint').textContent = t === 'cable' ? 'Drag from one piece to another (or click one, then the other). Keyboard: Enter on one, Tab, Enter on the other.' : 'Drag pieces to move them. Click a piece or cable to see it. Keyboard: arrows move, Delete removes.';
+  }
+  say(text, bad) { this.sayEl.className = 'say' + (bad ? ' bad' : ''); this.sayEl.textContent = text; }
+  showSel(sel) {
+    const board = this.board, net = board.net, A = analyze(net);
+    if (!sel) { this.selEl.innerHTML = ''; return; }
+    if (sel.kind === 'node') {
+      const n = net.nodes.find((x) => x.id === sel.id); if (!n) { this.selEl.innerHTML = ''; return; }
+      const nw = A.netOfNode.get(n.id), ip = A.ip.get(n.id);
+      const conns = A.adj.get(n.id).map((e) => `${A.byId.get(e.to).name}${e.link.air ? ' (Wi-Fi)' : ''}`);
+      let info = '';
+      if (routerish(n)) info = n.type === 'internet' ? 'The internet already knows how to reach every network (its routers share routes automatically).' : `Connects ${A.networks.filter((w) => w.gateway === n.id).map((w) => w.name).join(', ') || 'no networks yet'}${A.routerNeighbors(n.id).length ? ' to ' + A.routerNeighbors(n.id).map((id) => A.byId.get(id).name).join(', ') : ''}.`;
+      else if (n.type === 'hacker') info = nw ? (A.adj.get(n.id)[0] && A.adj.get(n.id)[0].link.air ? 'On the Wi-Fi: hears every packet sent over that Wi-Fi.' : 'Plugged into a switch. A switch only sends each packet out the port it\'s meant for, so this hacker hears nothing.') : 'Not connected yet. Join a Wi-Fi or plug into a switch (or delete it and drop a hacker right on a cable).';
+      else info = nw ? `${nw.name} (${nw.prefix}.x). Address handed out automatically by DHCP.${ports(n)}` : 'Not connected. It has no address until it joins a network.';
+      this.selEl.innerHTML = `<div class="selcard"><div class="row">${spriteImg(n.type)}<label class="small" for="nm-${n.id}">Name</label><input id="nm-${n.id}" class="nmin" maxlength="18" value="${escHTML(n.name)}">${n.type === 'server' ? `<select class="svc" aria-label="Server service">${Object.entries(SERVICES).map(([k, v]) => `<option value="${k}" ${n.service === k ? 'selected' : ''}>${v.label}</option>`).join('')}</select>` : ''}<button type="button" class="btn small ghost del">Delete</button></div><p class="small">${ip ? `<code>${ip}</code> · ` : ''}${escHTML(info)}</p>${conns.length ? `<p class="small muted">Connected to: ${escHTML(conns.join(', '))}</p>` : ''}</div>`;
+      const nm = this.selEl.querySelector('.nmin');
+      nm.addEventListener('change', () => { n.name = nm.value.trim().slice(0, 18) || defaultName(net, n.type); board.commit('rename'); });
+      const svc = this.selEl.querySelector('.svc');
+      if (svc) svc.addEventListener('change', () => { n.service = svc.value; board.commit('service'); this.showSel(sel); });
+      this.selEl.querySelector('.del').onclick = () => { board.removeSel(); board.focusSomething(); };
+    } else {
+      const l = net.links.find((x) => x.id === sel.id); if (!l) { this.selEl.innerHTML = ''; return; }
+      const tapped = (net.taps || []).includes(l.id);
+      this.selEl.innerHTML = `<div class="selcard"><p class="small"><b>${escHTML(A.byId.get(l.a).name)} ↔ ${escHTML(A.byId.get(l.b).name)}</b> · ${l.air ? 'Wi-Fi (radio waves: anyone in range can listen)' : 'cable'}${tapped ? ' · <b style="color:var(--red)">wiretapped</b>' : ''}</p><div class="row">${!l.air && !tapped ? '<button type="button" class="btn small ghost tapit">Clip a hacker\'s wiretap here</button>' : ''}<button type="button" class="btn small ghost del">${tapped ? 'Remove the wiretap' : 'Remove this ' + (l.air ? 'connection' : 'cable')}</button></div></div>`;
+      this.selEl.querySelector('.del').onclick = () => { board.removeSel(); board.focusSomething(); };
+      const t = this.selEl.querySelector('.tapit');
+      if (t) t.onclick = () => { board.tapLink(l.id); board.select({ kind: 'link', id: l.id }); };
+    }
+    function ports(n) { const p = portsOf(n); return Array.isArray(p) && p.length ? ` Listens on port ${p.join(', ')} (${p.map((x) => PORT_NAME[x]).join(', ')}).` : ''; }
+  }
+}
+
+/* ---------------- packet builder ---------------- */
+class SendPanel {
+  /* opts: { getNet, board, from?, fromLocked?, msg, lockable, onResult(res, pkt), notebook, log, mission } */
+  constructor(host, opts) {
+    this.host = host; this.o = opts;
+    this.pkt = { from: opts.from || null, to: null, toLabel: '', port: null, locked: false, msg: opts.msg || 'hello!' };
+    host.innerHTML = `
+      <div class="sp${opts.fixed ? ' fixed' : ''}">
+        <div class="envelope" aria-label="Your packet">
+          <div class="env-top">${spriteImg('packet', 'envicon')}<b>Your packet</b><span class="muted small">the header: every router can read it</span></div>
+          <div class="env-row"><span class="lbl">From</span><select class="sp-from" aria-label="Send from"></select><code class="sp-fromip"></code></div>
+          <div class="env-row"><span class="lbl">To</span><div class="slot" data-slot="to"></div></div>
+          <div class="env-row"><span class="lbl">Port</span><div class="slot" data-slot="port"></div></div>
+          <div class="env-row"><span class="lbl">TTL</span><span class="small">${START_TTL} hops, then it gets thrown away</span></div>
+          <div class="env-sep">the payload: your actual message</div>
+          <div class="env-row msgrow"><input class="sp-msg" maxlength="60" aria-label="Message"><div class="slot lockslot" data-slot="lock"></div></div>
+          <div class="row" style="margin-top:10px"><button type="button" class="btn sp-send">Send it ▶</button><span class="sp-need small muted"></span></div>
+          <div class="sp-out" aria-live="polite"></div>
+        </div>
+        <div class="cards">
+          <h4 class="h-addr">Address book <span class="muted">(who has which address)</span></h4><div class="cardlist addr"></div>
+          <div class="typed"><label class="small" for="">Or type any address:</label><input class="sp-typed" placeholder="10.0.1.10" maxlength="15" aria-label="Type an address"><button type="button" class="btn small ghost sp-use">Use it</button></div>
+          <h4 class="h-port">Services <span class="muted">(which program on that device)</span></h4><div class="cardlist ports">${PORTS.map((p) => `<button type="button" class="pcard port" data-kind="port" data-val="${p.port}" title="${escHTML(p.desc)}"><b>${p.port}</b> ${p.name}</button>`).join('')}</div>
+          ${opts.lockable === false ? '' : `<h4>Encryption</h4><div class="cardlist"><button type="button" class="pcard lockcard" data-kind="lock" data-val="1">${spriteImg('lock')} Encrypt it (TLS)</button></div>`}
+        </div>
+      </div>`;
+    this.q = (s) => host.querySelector(s);
+    this.q('.sp-msg').value = this.pkt.msg;
+    this.q('.sp-msg').addEventListener('input', (e) => { this.pkt.msg = e.target.value; });
+    this.q('.sp-from').addEventListener('change', (e) => { this.pkt.from = e.target.value; this.paint(); });
+    this.q('.sp-send').addEventListener('click', () => this.send());
+    this.q('.sp-use').addEventListener('click', () => { const v = this.q('.sp-typed').value.trim(); if (v) this.fill('to', v, v); });
+    this.q('.sp-typed').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); this.q('.sp-use').click(); } });
+    host.addEventListener('click', (e) => {
+      const x = e.target.closest('[data-clear]'); if (x) { this.clear(x.dataset.clear); return; }
+      const c = e.target.closest('.pcard'); if (!c || this.justDragged) return;
+      this.fill(c.dataset.kind, c.dataset.val, c.dataset.label || c.textContent.trim());
+    });
+    host.addEventListener('pointerdown', (e) => {
+      const c = e.target.closest('.pcard'); if (!c) return;
+      this.justDragged = false;
+      startGhostDrag(e, {
+        html: c.outerHTML,
+        onMove: (ev) => { host.querySelectorAll('.slot').forEach((s) => s.classList.remove('over')); const s = this.slotAt(ev); if (s) s.classList.add('over'); },
+        onDrop: (ev) => {
+          host.querySelectorAll('.slot').forEach((s) => s.classList.remove('over'));
+          this.justDragged = true; setTimeout(() => { this.justDragged = false; }, 50);
+          const s = this.slotAt(ev);
+          if (!s) return;
+          if (s.dataset.slot !== c.dataset.kind) { this.out(`That's ${c.dataset.kind === 'to' ? 'an address' : c.dataset.kind === 'port' ? 'a port' : 'the lock'}. It goes in the ${c.dataset.kind === 'to' ? 'To' : c.dataset.kind === 'port' ? 'Port' : 'lock'} slot.`, 'bad'); return; }
+          this.fill(c.dataset.kind, c.dataset.val, c.dataset.label || c.textContent.trim());
+        },
+      });
+    });
+    this.refresh();
+  }
+  slotAt(ev) { const over = document.elementFromPoint(ev.clientX, ev.clientY); return over && over.closest ? over.closest('.slot') : null; }
+  refresh() {
+    const net = this.o.getNet(), A = analyze(net);
+    this.A = A;
+    const hosts = net.nodes.filter((n) => isHost(n) && A.ip.get(n.id));
+    const sel = this.q('.sp-from');
+    if (this.o.fromLocked) sel.disabled = true;
+    sel.innerHTML = hosts.map((n) => `<option value="${n.id}">${escHTML(n.name)}</option>`).join('');
+    if (!hosts.some((n) => n.id === this.pkt.from)) this.pkt.from = hosts[0] ? hosts[0].id : null;
+    if (this.pkt.from) sel.value = this.pkt.from;
+    const addr = [...net.nodes].filter((n) => A.ip.get(n.id)).sort((a, b) => (A.ip.get(a.id) < A.ip.get(b.id) ? -1 : 1));
+    this.q('.cardlist.addr').innerHTML = addr.map((n) => { const nw = A.netOfNode.get(n.id); return `<button type="button" class="pcard addr" data-kind="to" data-val="${A.ip.get(n.id)}" data-label="${escHTML(n.name)}" style="--nc:${nw ? nw.color : '#8a93ad'}">${spriteImg(n.type)}<span><b>${escHTML(n.name)}</b><code>${A.ip.get(n.id)}</code></span></button>`; }).join('') || '<p class="small muted">No connected devices yet.</p>';
+    if (this.pkt.to && this.pkt.toLabel && A.hostByIp.get(this.pkt.to)) this.pkt.toLabel = A.byId.get(A.hostByIp.get(this.pkt.to)).name;
+    this.paint();
+  }
+  fill(kind, val, label) {
+    let note = '';
+    if (kind === 'to') { this.pkt.to = String(val); const hid = this.A.hostByIp.get(this.pkt.to); this.pkt.toLabel = hid ? this.A.byId.get(hid).name : ''; }
+    if (kind === 'port') {
+      this.pkt.port = +val;
+      if (this.pkt.port === 443 && !this.pkt.locked && this.o.lockable !== false) { this.pkt.locked = true; note = 'Port 443 is HTTPS: web traffic that is always encrypted, so the lock went on too.'; }
+      if (this.pkt.port === 80 && this.pkt.locked) { this.pkt.locked = false; note = 'Port 80 is plain HTTP: never encrypted, so the lock came off.'; }
+    }
+    if (kind === 'lock') {
+      this.pkt.locked = true;
+      if (this.pkt.port === 80) { this.pkt.port = 443; note = 'Encrypted web traffic is HTTPS, which uses port 443, so the port changed to 443.'; }
+    }
+    this.paint();
+    if (note) this.out(note, '');
+    if (this.o.onFill) this.o.onFill(kind);
+  }
+  clear(kind) {
+    let note = '';
+    if (kind === 'to') { this.pkt.to = null; this.pkt.toLabel = ''; }
+    if (kind === 'port') this.pkt.port = null;
+    if (kind === 'lock') { this.pkt.locked = false; if (this.pkt.port === 443) { this.pkt.port = 80; note = 'Unencrypted web traffic is plain HTTP on port 80, so the port changed to 80.'; } }
+    this.paint();
+    if (note) this.out(note, '');
+    if (this.o.onClear) this.o.onClear(kind);
+  }
+  paint() {
+    const p = this.pkt, A = this.A;
+    this.q('.sp-fromip').textContent = p.from && A.ip.get(p.from) ? A.ip.get(p.from) : '';
+    const chip = (kind, html) => `<span class="chip">${html}${this.o.fixed && kind !== 'lock' ? '' : `<button type="button" class="x" data-clear="${kind}" aria-label="Take it out">✕</button>`}</span>`;
+    this.q('[data-slot="to"]').innerHTML = p.to ? chip('to', `<code>${escHTML(p.to)}</code>${p.toLabel ? ' ' + escHTML(p.toLabel) : ' <span class="muted">(unknown)</span>'}`) : '<span class="ph">drag an address here</span>';
+    this.q('[data-slot="port"]').innerHTML = p.port ? chip('port', `<b>${p.port}</b> ${PORT_NAME[p.port] || ''}`) : '<span class="ph">drag a service here</span>';
+    const ls = this.q('[data-slot="lock"]');
+    ls.innerHTML = p.locked ? chip('lock', `${spriteImg('lock')} encrypted`) : '<span class="ph">🔒 drag the lock here to encrypt</span>';
+    ls.classList.toggle('on', p.locked);
+    this.q('.envelope').classList.toggle('locked', p.locked);
+    this.q('.envicon').src = spriteURL(p.locked ? 'lockedpacket' : 'packet');
+    const need = [!p.from && 'a sender', !p.to && 'a To address', !p.port && 'a port'].filter(Boolean);
+    this.q('.sp-send').disabled = need.length > 0;
+    this.q('.sp-need').textContent = need.length ? 'Still needs ' + need.join(', ') + '.' : '';
+  }
+  out(html, cls) { const o = this.q('.sp-out'); o.className = 'sp-out ' + (cls || ''); o.innerHTML = html; }
+  async send() {
+    const b = this.o.board;
+    if (b.busy) return;
+    const net = this.o.getNet();
+    const pkt = { from: this.pkt.from, to: this.pkt.to, port: this.pkt.port, locked: this.pkt.locked, msg: this.pkt.msg || '' };
+    const res = simulate(net, pkt);
+    this.q('.sp-send').disabled = true;
+    this.out('Sending…', '');
+    await b.animate(res, pkt, {});
+    this.q('.sp-send').disabled = false;
+    const A = analyze(net);
+    const read = res.captures.filter((c) => !c.locked).length, gib = res.captures.filter((c) => c.locked).length;
+    let html = `<b>${res.outcome === 'delivered' && res.reason === 'ok' ? '✓' : '✕'} ${escHTML(explainOutcome(net, res, A))}</b>`;
+    if (res.reason === 'tohacker') html += `<br><span class="bad">👀 You addressed it to the hacker, so they got the whole thing.</span>`;
+    else if (read) html += `<br><span class="bad">👀 ${read === 1 ? 'A hacker' : read + ' hackers'} copied it and read your message.</span>`;
+    else if (gib) html += `<br><span class="good">🔒 ${gib === 1 ? 'A hacker' : gib + ' hackers'} copied it, but the message is scrambled. They can still see the From and To addresses.</span>`;
+    else if (res.outcome !== 'dropped' || res.steps.some((s) => s.k === 'hop')) html += '<br><span class="muted">No hacker saw this one.</span>';
+    const cls = res.outcome === 'delivered' && res.reason === 'ok' && !read ? 'good' : 'bad';
+    this.out(html, cls);
+    if (this.o.log) this.o.log.add(res, pkt, net);
+    if (this.o.notebook) this.o.notebook.add(res, pkt, net);
+    if (this.o.onResult) this.o.onResult(res, pkt);
+    this.paint();
+  }
+}
+
+/* ---------------- hacker's notebook ---------------- */
+class Notebook {
+  constructor(host) { this.host = host; this.items = []; this.render(); }
+  add(res, pkt, net) {
+    const A = analyze(net);
+    for (const c of res.captures) {
+      const hk = String(c.hacker).startsWith('tap:') ? 'wiretap on a cable' : (A.byId.get(c.hacker) || {}).name + ' (on the Wi-Fi)';
+      this.items.unshift({ n: this.items.length + 1, who: hk, from: c.from, to: c.to, port: c.port, locked: c.locked, msg: c.msg, cipher: fakeCipher(pkt.msg) });
+    }
+    if (this.items.length > 40) this.items.length = 40;
+    this.render();
+  }
+  clear() { this.items = []; this.render(); }
+  render() {
+    this.host.innerHTML = `<div class="notebook"><div class="nb-head">${spriteImg('hacker')}<b>The hacker's notebook</b><span class="small muted">everything they copied</span></div>${this.items.length ? `<ul>${this.items.map((i) => `<li class="${i.locked ? 'lk' : 'rd'}"><div class="small muted">${escHTML(i.who)}</div><div><code>${escHTML(i.from || '?')}</code> → <code>${escHTML(i.to)}</code> · port ${i.port} · ${PORT_NAME[i.port] || '?'}</div><div class="msg">${i.locked ? `🔒 <code>${i.cipher}</code> <span class="muted">(scrambled, can't read it)</span>` : `"${escHTML(i.msg)}"`}</div></li>`).join('')}</ul>` : '<p class="small muted" style="margin:8px 0 0">Empty so far. Nothing has passed the hacker yet.</p>'}</div>`;
+  }
+}
+
+/* ---------------- packet log ---------------- */
+class PacketLog {
+  constructor(host, board, getNet) { this.host = host; this.board = board; this.getNet = getNet; this.items = []; this.render(); }
+  add(res, pkt, net) {
+    this.items.unshift({ n: this.items.length + 1, res, pkt: Object.assign({}, pkt), net: cloneNet(net) });
+    if (this.items.length > 30) this.items.length = 30;
+    this.render();
+  }
+  render() {
+    this.host.innerHTML = `<div class="plog"><div class="nb-head">${spriteImg('packet')}<b>Packets sent</b><span class="small muted">click one to replay its trip</span></div>${this.items.length ? `<ul>${this.items.map((it, i) => {
+      const r = it.res, good = r.outcome === 'delivered' && r.reason === 'ok';
+      const read = r.captures.some((c) => !c.locked);
+      return `<li><button type="button" class="logbtn" data-i="${i}"><span class="ic ${good && !read ? 'good' : 'bad'}">${good ? (read ? '👀' : '✓') : '✕'}</span><span>#${it.n} ${it.pkt.locked ? '🔒 ' : ''}to <code>${escHTML(it.pkt.to)}</code> port ${it.pkt.port}: ${escHTML(r.outcome === 'delivered' ? (read ? 'arrived, but it was read' : 'arrived') : r.outcome === 'refused' ? 'refused (wrong port)' : 'dropped (' + ({ ttl: 'TTL ran out', noroute: 'no route', nonet: 'no such network', nohost: 'no such device', badaddr: 'bad address', nogateway: 'no router', unplugged: 'not plugged in' }[r.reason] || r.reason) + ')')}</span></button><ol class="trace">${traceLines(it).map((t) => `<li>${t}</li>`).join('')}</ol></li>`;
+    }).join('')}</ul>` : '<p class="small muted" style="margin:8px 0 0">Nothing sent yet.</p>'}</div>`;
+    this.host.querySelectorAll('.logbtn').forEach((b) => b.addEventListener('click', () => {
+      const it = this.items[+b.dataset.i];
+      b.parentElement.classList.toggle('open');
+      if (this.onOpen) this.onOpen(it);
+      if (!this.board.busy) this.board.animate(it.res, it.pkt, {});
+    }));
+  }
+}
+function traceLines(it) {
+  const A = analyze(it.net), nm = (id) => escHTML((A.byId.get(id) || { name: id }).name);
+  const out = [];
+  for (const s of it.res.steps) {
+    if (s.k === 'hop') out.push(`${nm(s.from)} → ${nm(s.to)}${s.air ? ' <span class="muted">(over Wi-Fi)</span>' : ''}`);
+    else if (s.k === 'router') out.push(`<b>${nm(s.node)}</b> reads the To address. TTL is now ${s.ttl}. ${s.how === 'direct' ? 'That network is plugged into it.' : s.how === 'ttl' ? 'TTL hit 0: thrown away.' : s.how === 'none' ? 'No route found.' : s.how === 'auto' ? 'The internet knows the way: ' + nm(s.via) + '.' : (s.how === 'default' ? 'Uses its default route: ' : 'Its table says: ') + nm(s.via) + '.'}`);
+    else if (s.k === 'capture') out.push(`<span class="${s.locked ? 'good' : 'bad'}">${s.how === 'wifi' ? nm(s.hacker) + ' copied it out of the air' : 'The wiretap copied it'}${s.locked ? ', but it\'s encrypted' : ' and read it'}.</span>`);
+  }
+  return out;
+}
+
+/* ---------------- router tables ---------------- */
+class RouteEditor {
+  /* opts: { getNet, onChange, only: [routerIds] } */
+  constructor(host, opts) { this.host = host; this.o = opts; this.selNet = null; this.render(); }
+  render() {
+    const net = this.o.getNet(), A = analyze(net);
+    const routers = net.nodes.filter((n) => n.type === 'router' && (!this.o.only || this.o.only.includes(n.id))).sort((a, b) => cmpId(a.id, b.id));
+    const nets = A.networks.filter((nw) => nw.members.some((id) => isHost(A.byId.get(id)) || isHub(A.byId.get(id))));
+    const chipOf = (key) => {
+      if (key === 'default') return `<span class="nchip def">Anything else <small>(default)</small></span>`;
+      const nw = A.netByKey.get(key);
+      return nw ? `<span class="nchip" style="--nc:${nw.color}">${nw.name} <code>${nw.prefix}.x</code></span>` : '<span class="nchip gone">a network that\'s gone</span>';
+    };
+    const cards = nets.map((nw) => ({ key: nw.key, html: chipOf(nw.key), label: nw.name })).concat([{ key: 'default', html: chipOf('default'), label: 'Anything else (default route)' }]);
+    this.host.innerHTML = `
+      <div class="routes">
+        <div class="netcards" role="toolbar" aria-label="Network cards"><span class="small muted">Drag a network onto a router's arrow${this.selNet ? '' : ' (or click one, then click "put it here")'}:</span>${cards.map((c) => `<button type="button" class="ncard${this.selNet === c.key ? ' on' : ''}" data-net="${escHTML(c.key)}" aria-pressed="${this.selNet === c.key}" aria-label="${escHTML(c.label)}">${c.html}</button>`).join('')}</div>
+        <div class="rtables">${routers.map((r) => {
+          const direct = A.networks.filter((nw) => nw.gateway === r.id);
+          const nbs = A.routerNeighbors(r.id).map((id) => A.byId.get(id));
+          const table = net.tables[r.id] || [];
+          return `<div class="rcard2" data-router="${r.id}">
+            <div class="rhead">${spriteImg('router')}<b>${escHTML(r.name)}</b></div>
+            <p class="small muted">Plugged in, knows these already: ${direct.length ? direct.map((nw) => chipOf(nw.key)).join(' ') : '<i>none</i>'}</p>
+            ${nbs.length ? nbs.map((nb) => `<div class="rrow" data-via="${nb.id}"><div class="rto">send to → ${spriteImg(nb.type)}<b>${escHTML(nb.name)}</b></div><div class="rdrop" data-router="${r.id}" data-via="${nb.id}">${table.filter((e) => e.via === nb.id).map((e) => `<span class="rent">${chipOf(e.net)}<button type="button" class="x" data-del="${escHTML(r.id + '|' + e.net)}" aria-label="Remove this route">✕</button></span>`).join('') || '<span class="ph">drop networks here</span>'}${this.selNet ? `<button type="button" class="btn small ghost puthere" data-router="${r.id}" data-via="${nb.id}">put it here</button>` : ''}</div></div>`).join('') : '<p class="small">Not connected to another router yet.</p>'}
+          </div>`;
+        }).join('') || '<p class="small muted">No routers to set up here.</p>'}</div>
+      </div>`;
+    const h = this.host;
+    h.querySelectorAll('.ncard').forEach((b) => {
+      b.addEventListener('click', () => { if (this.dragged) return; this.selNet = this.selNet === b.dataset.net ? null : b.dataset.net; this.render(); const again = this.host.querySelector(`.ncard[data-net="${b.dataset.net}"]`); if (again) again.focus(); });
+      b.addEventListener('pointerdown', (e) => {
+        this.dragged = false;
+        startGhostDrag(e, {
+          html: b.innerHTML,
+          onMove: (ev) => { h.querySelectorAll('.rdrop').forEach((d) => d.classList.remove('over')); const d = this.dropAt(ev); if (d) d.classList.add('over'); },
+          onDrop: (ev) => { this.dragged = true; setTimeout(() => { this.dragged = false; }, 50); const d = this.dropAt(ev); h.querySelectorAll('.rdrop').forEach((x) => x.classList.remove('over')); if (d) this.put(d.dataset.router, d.dataset.via, b.dataset.net); },
+        });
+      });
+    });
+    h.querySelectorAll('.puthere').forEach((b) => b.addEventListener('click', () => this.put(b.dataset.router, b.dataset.via, this.selNet)));
+    h.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', () => { const [r, key] = b.dataset.del.split('|'); const net2 = this.o.getNet(); net2.tables[r] = (net2.tables[r] || []).filter((e) => e.net !== key); this.changed(`Removed that route from ${analyze(net2).byId.get(r).name}.`); const f = this.host.querySelector('.ncard'); if (f) f.focus(); }));
+  }
+  dropAt(ev) { const over = document.elementFromPoint(ev.clientX, ev.clientY); return over && over.closest ? over.closest('.rdrop') : null; }
+  put(rid, via, key) {
+    if (!key) return;
+    const net = this.o.getNet(), A = analyze(net);
+    const r = A.byId.get(rid);
+    const nw = A.netByKey.get(key);
+    if (nw && nw.gateway === rid) { this.say(`${r.name} is plugged into ${nw.name}. It already knows that one.`, true); return; }
+    net.tables[rid] = (net.tables[rid] || []).filter((e) => e.net !== key);
+    net.tables[rid].push({ net: key, via });
+    this.selNet = null;
+    this.changed(`${r.name}: packets for ${nw ? nw.name + ' (' + nw.prefix + '.x)' : 'anything else'} → ${A.byId.get(via).name}.`);
+    const back = this.host.querySelector(`.rdrop[data-router="${CSS.escape(rid)}"][data-via="${CSS.escape(via)}"] .x`) || this.host.querySelector('.ncard');
+    if (back) back.focus();
+  }
+  say(t, bad) { if (this.o.onSay) this.o.onSay(t, bad); }
+  changed(msg) { this.render(); this.say(msg); if (this.o.onChange) this.o.onChange(); }
+}
+
+/* =====================================================================
+   LESSON: six stops, scoring, and the HSCT result
+   ===================================================================== */
+HSCT.lesson({ id: 'packet-run', title: 'Packet Run: get it there, keep it secret', version: '1.0', course: 'it-network', possible: 100 });
+
+const $ = (id) => document.getElementById(id);
+const STOPS = [
+  { n: 1, name: 'Anatomy of a packet', short: 'Packet', pts: 10 },
+  { n: 2, name: 'Build a network', short: 'Build', pts: 15 },
+  { n: 3, name: 'Teach the routers', short: 'Routes', pts: 15 },
+  { n: 4, name: 'Send packets', short: 'Send', pts: 20 },
+  { n: 5, name: 'Help desk tickets', short: 'Tickets', pts: 20 },
+  { n: 6, name: 'Explain it', short: 'Explain', pts: 20 },
+];
+const STOP_BLURB = {
+  1: 'Send a login across library Wi-Fi and watch a hacker read it.',
+  2: 'Drag devices, switches, Wi-Fi and routers onto a board and cable them up.',
+  3: 'Drag routes into each router so packets find their way.',
+  4: 'Send packets to the right (and wrong) places, and beat the hacker.',
+  5: 'Fix three broken networks, like a help desk tech.',
+  6: 'Challenge a classmate, and explain who can see your packets.',
+};
+
+let L;
+function freshState() {
+  return {
+    stop: 1, unlocked: 1,
+    s1: { sent: false, read: false, locked: false, trace: false, q: {} },
+    net: emptyNet(), undo: [], fromStarter: false, lastJSON: null,
+    s3: { ttl: false, noroute: false, tested: false },
+    s4: { ok: false, wrongPlace: false, wrongPort: false, read: false, beat: false },
+    tickets: {},
+    s6: { mission: '', explain: ['', '', ''], see: {} },
+    logs: 0,
+  };
+}
+function show(id) { document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === id)); window.scrollTo(0, 0); }
+function logEv(type, data) { if (L.logs < 200) { L.logs++; HSCT.log(type, data); } }
+function taskList(ul, items) {
+  ul.innerHTML = items.map((t) => `<li class="${t.ok ? 'ok' : ''}"><span class="box" aria-hidden="true"></span><span>${t.html}<span class="sr">${t.ok ? ' (done)' : ' (not done yet)'}</span></span><span class="tp">${t.pts != null ? (t.ok ? '+' + t.pts : t.pts + ' pts') : ''}</span></li>`).join('');
+}
+function pktSummary(res, pkt) { return { to: pkt.to, port: pkt.port, locked: pkt.locked, outcome: res.outcome, reason: res.reason, caught: res.captures.length, read: res.captures.filter((c) => !c.locked).length }; }
+
+/* =========================== INTRO =========================== */
+$('intro-art').innerHTML = ['laptop', 'phone', 'switch', 'wifi', 'router', 'internet', 'server', 'packet', 'lock', 'hacker'].map((k) => `<img src="${spriteURL(k)}" alt="" style="width:40px;height:40px;image-rendering:pixelated">`).join('');
+$('intro-stops').innerHTML = STOPS.map((s) => `<li><span class="n">${s.n}</span><span><b>${s.name}.</b> <span class="muted">${STOP_BLURB[s.n]}</span></span><span class="pts">${s.pts} pts</span></li>`).join('');
+$('start').onclick = () => {
+  const name = $('name').value.trim();
+  if (name.length < 2) { $('name-err').hidden = false; $('name').focus(); return; }
+  $('name-err').hidden = true;
+  L = freshState();
+  HSCT.start(name);
+  show('view-work');
+  initWork();
+  goStop(1);
+};
+$('name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('start').click(); });
+
+/* =========================== STEPPER =========================== */
+function renderStepper() {
+  const sc = scoreAll();
+  $('stepper').innerHTML = STOPS.map((s) => {
+    const done = sc.by[s.n] >= s.pts;
+    const cls = ['step'];
+    if (s.n === L.stop) cls.push('current');
+    if (done) cls.push('done');
+    return `<button class="${cls.join(' ')}" data-step="${s.n}" ${s.n === L.stop ? 'aria-current="step"' : ''}><span class="num">${done ? '✓' : s.n}</span><span class="sname">${s.short}</span><span class="spts">${sc.by[s.n]}/${s.pts}</span></button>`;
+  }).join('') + `<span class="points">Points <b>${sc.total}</b> / 100</span>`;
+  $('stepper').querySelectorAll('[data-step]').forEach((b) => b.addEventListener('click', () => goStop(+b.dataset.step)));
+}
+function goStop(n) {
+  if ((n === 3 || n === 4) && !netReady()) { n = 2; flash($('s2-reqs')); s2say('Finish the checklist first: the next stops use your network.', true); }
+  L.stop = n;
+  L.unlocked = Math.max(L.unlocked, n);
+  for (let i = 1; i <= 6; i++) $('stop-' + i).hidden = i !== n;
+  HSCT.log('stop', { n });
+  ({ 1: enterStop1, 2: enterStop2, 3: enterStop3, 4: enterStop4, 5: enterStop5, 6: enterStop6 })[n]();
+  renderStepper();
+  window.scrollTo(0, 0);
+}
+function flash(el) { if (!el) return; el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
+document.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => goStop(+b.dataset.go)));
+let workInit = false;
+function initWork() { if (workInit) return; workInit = true; initStop1(); initStop2(); initStop3(); initStop4(); initStop5(); initStop6(); }
+
+/* reusable questions (same pattern as the other TechHub lessons) */
+function renderQuestion(host, q, store, onAnswer) {
+  const st = store[q.id] || (store[q.id] = { tries: 0, picked: [], right: false, pts: 0 });
+  host.innerHTML = `<div class="q"><p class="qt">${escHTML(q.q)}</p><div class="choices">${q.a.map((t, k) => `<button type="button" class="choice${st.picked.includes(k) ? (k === q.right ? ' right' : ' wrong') : ''}" data-k="${k}" ${st.right || st.picked.includes(k) ? 'disabled' : ''}>${escHTML(t)}</button>`).join('')}</div><div class="fb-host"></div></div>`;
+  const fb = host.querySelector('.fb-host');
+  if (st.right) fb.innerHTML = `<div class="fb good"><b>${st.tries === 1 ? 'Right, first try.' : 'Right.'}</b> ${escHTML(q.fb)}</div>`;
+  else if (st.tries) fb.innerHTML = `<div class="fb bad">Not that one. Try another (${st.tries === 1 ? `you can still get ${q.second} of the ${q.pts} points` : 'no points left on this one, but finish it'}).</div>`;
+  host.querySelectorAll('.choice').forEach((b) => b.addEventListener('click', () => {
+    const k = +b.dataset.k;
+    st.tries++; st.picked.push(k);
+    if (k === q.right) { st.right = true; st.pts = st.tries === 1 ? q.pts : st.tries === 2 ? q.second : 0; }
+    HSCT.log('answer', { q: q.id, picked: k, right: k === q.right, tries: st.tries });
+    renderQuestion(host, q, store, onAnswer);
+    const next = host.querySelector('.choice:not(:disabled)');
+    if (next) next.focus();
+    if (onAnswer) onAnswer();
+  }));
+}
+
+/* =========================== STOP 1 =========================== */
+let s1Board, s1Send, s1Net;
+const S1_QS = [
+  {
+    id: 'q1', pts: 3, second: 1, q: 'The hacker read Maya\'s password. How did they get it?',
+    a: ['They broke into the grades server.', 'Wi-Fi is radio. Every device in range receives the packet, and nothing was scrambled, so they could read it.', 'They guessed it.', 'The library router sent them a copy on purpose.'],
+    right: 1, fb: 'On Wi-Fi, packets travel through the air to every device in range. Normally a device ignores packets that aren\'t addressed to it, but a hacker\'s laptop can keep a copy of everything. The server was never touched. (Library Wi-Fi is open: no password, so nothing scrambles the radio. A Wi-Fi password (WPA2/WPA3) scrambles the air between you and the access point, but only that first hop. On a network with one shared password, anyone who knows it can often unscramble other people\'s traffic, and whoever runs the network sees everything. That\'s why the lock matters.)',
+  },
+  {
+    id: 'q2', pts: 3, second: 1, q: 'With the lock on, what can the hacker still see?',
+    a: ['Nothing at all.', 'The message, but not the addresses.', 'The header: who sent it, where it\'s going, and the port. Just not the message.', 'Everything. The lock only works at home.'],
+    right: 2, fb: 'Every router needs the header to deliver the packet, so the header can\'t be scrambled. Encryption hides the payload. The hacker still learns that Maya talked to the grades server, and when.',
+  },
+];
+function initStop1() {
+  s1Net = mkNet(SAMPLE_SPEC);
+  s1Board = new Board($('s1-board'), s1Net, { label: 'Library network' });
+  const nb = new Notebook($('s1-notebook'));
+  const log = new PacketLog($('s1-log'), s1Board, () => s1Net);
+  log.onOpen = () => { L.s1.trace = true; renderS1(); };
+  s1Send = new SendPanel($('s1-send'), {
+    getNet: () => s1Net, board: s1Board, from: 'n2', fromLocked: true, msg: 'user: maya  password: tacos123', notebook: nb, log,
+    onResult: (res, pkt) => {
+      const toServer = res.outcome === 'delivered' && res.deliveredTo === 'n9';
+      if (toServer) L.s1.sent = true;
+      if (res.captures.some((c) => !c.locked)) L.s1.read = true;
+      if (toServer && pkt.locked && res.captures.length) L.s1.locked = true;
+      logEv('s1-send', pktSummary(res, pkt));
+      renderS1();
+    },
+  });
+  $('s1-questions').innerHTML = '<h3>Check</h3><div id="s1q1"></div><div id="s1q2"></div>';
+  renderQuestion($('s1q1'), S1_QS[0], L.s1.q, renderStepper);
+  renderQuestion($('s1q2'), S1_QS[1], L.s1.q, renderStepper);
+}
+function enterStop1() { renderS1(); }
+function renderS1() {
+  const s = L.s1;
+  taskList($('s1-tasks'), [
+    { ok: s.sent, pts: 1, html: 'Get Maya\'s login to the <b>Grades server</b> the old way: drag its address into <b>To</b>, drag <b>80 Web (HTTP)</b> into <b>Port</b>, then Send.' },
+    { ok: s.read, pts: 1, html: 'Look in the hacker\'s notebook. What did they get?' },
+    { ok: s.locked, pts: 1, html: 'Switch to HTTPS: drag the 🔒 onto the packet (the port becomes 443) and send it again. Check the notebook now.' },
+    { ok: s.trace, pts: 1, html: 'Click a packet in <b>Packets sent</b> to read its trip, hop by hop.' },
+  ]);
+  renderStepper();
+}
+
+/* =========================== STOP 2: build =========================== */
+let s2Board, s2Builder;
+function s2say(t, bad) { if (s2Builder) s2Builder.say(t, bad); }
+function initStop2() {
+  s2Board = new Board($('s2-board'), L.net, {
+    editable: true, label: 'Your network. Build here.',
+    onChange: (net, what) => {
+      if (L.lastJSON) { L.undo.push(L.lastJSON); if (L.undo.length > 60) L.undo.shift(); }
+      L.lastJSON = JSON.stringify(net);
+      pruneTables(net);
+      afterNetChange();
+    },
+    onSelect: (sel) => s2Builder.showSel(sel),
+    onSay: (t, bad) => s2Builder.say(t, bad),
+    onPlaced: () => {},
+  });
+  s2Builder = new Builder($('s2-builder'), s2Board, { selHost: $('s2-selinfo') });
+  L.lastJSON = JSON.stringify(L.net);
+  $('s2-starter').onclick = () => { L.fromStarter = true; setNet(mkNet(STARTER_SPEC), true); s2say('Loaded the starter campus. Change it: move things, add a network, put the hacker somewhere sneaky.'); };
+  $('s2-clear').onclick = () => { L.fromStarter = false; setNet(emptyNet(), true); s2say('Cleared.'); };
+  $('s2-undo').onclick = () => {
+    const prev = L.undo.pop();
+    if (!prev) { s2say('Nothing to undo.'); return; }
+    L.net = JSON.parse(prev); L.lastJSON = prev;
+    s2Board.setNet(L.net); s2Builder.showSel(null); afterNetChange(); s2say('Undone.');
+  };
+}
+function setNet(net, undoable) {
+  if (undoable && L.lastJSON) L.undo.push(L.lastJSON);
+  L.net = net; L.lastJSON = JSON.stringify(net);
+  s2Board.sel = null; s2Board.setNet(net); s2Builder.showSel(null);
+  afterNetChange();
+}
+function pruneTables(net) {
+  const A = analyze(net);
+  for (const rid of Object.keys(net.tables)) {
+    if (!A.byId.has(rid)) { delete net.tables[rid]; continue; }
+    const nbs = A.routerNeighbors(rid);
+    net.tables[rid] = net.tables[rid].filter((e) => nbs.includes(e.via) && (e.net === 'default' || A.netByKey.has(e.net)));
+  }
+}
+function afterNetChange() { renderReqs(); renderAddr(); if (s2Board.sel) s2Builder.showSel(s2Board.sel); renderStepper(); }
+function netChecks(net) {
+  const A = analyze(net);
+  const routers = net.nodes.filter((n) => n.type === 'router');
+  let routersJoined = false;
+  if (routers.length >= 2) {
+    const seen = new Set([routers[0].id]), q = [routers[0].id];
+    while (q.length) { const c = q.shift(); for (const nb of A.routerNeighbors(c)) if (!seen.has(nb)) { seen.add(nb); q.push(nb); } }
+    routersJoined = routers.every((r) => seen.has(r.id));
+  }
+  const devNets = A.networks.filter((nw) => nw.gateway && nw.hosts.length);
+  const gws = new Set(devNets.map((nw) => nw.gateway));
+  const wifiDev = A.links.some((l) => l.air && ['laptop', 'phone'].includes(A.byId.get(l.a).type === 'wifi' ? A.byId.get(l.b).type : A.byId.get(l.a).type));
+  const hosts = net.nodes.filter(isHost);
+  const loose = net.nodes.filter((n) => (isHost(n) || isHub(n) || n.type === 'hacker') && !(A.netOfNode.get(n.id) && A.netOfNode.get(n.id).gateway));
+  const spyWifi = net.nodes.some((h) => h.type === 'hacker' && A.adj.get(h.id).some((e) => e.link.air && A.adj.get(e.to).some((f) => f.link.air && ['laptop', 'phone'].includes(A.byId.get(f.to).type))));
+  const spy = (net.taps || []).length > 0 || spyWifi;
+  let diff = 99;
+  if (L.fromStarter) {
+    const S = mkNet(STARTER_SPEC);
+    const sn = new Map(S.nodes.map((n) => [n.id, n])), nn = new Map(net.nodes.map((n) => [n.id, n]));
+    diff = 0;
+    for (const [id, n] of nn) { const o = sn.get(id); if (!o || o.type !== n.type) diff++; else if (o.x !== n.x || o.y !== n.y || o.name !== n.name || (o.service || '') !== (n.service || '')) diff++; }
+    for (const id of sn.keys()) if (!nn.has(id)) diff++;
+    const lk = (x) => new Set(x.links.map((l) => [l.a, l.b].sort().join('|')));
+    const a = lk(net), b = lk(S);
+    diff += [...a].filter((k) => !b.has(k)).length + [...b].filter((k) => !a.has(k)).length;
+    diff += Math.abs((net.taps || []).length - (S.taps || []).length);
+  }
+  return {
+    routers: routers.length >= 2 && routersJoined, nets: devNets.length >= 3 && gws.size >= 2, wifi: wifiDev, server: hosts.some((n) => n.type === 'server'),
+    devices: hosts.length >= 5, plugged: loose.length === 0 && net.nodes.length > 0, spy, mine: diff >= 5,
+    counts: { routers: routers.length, nets: devNets.length, gws: gws.size, hosts: hosts.length, loose: loose.map((n) => n.name), diff },
+  };
+}
+function netReady() { const k = netChecks(L.net); return k.routers && k.nets && k.wifi && k.server && k.devices && k.plugged && k.spy && k.mine; }
+function renderReqs() {
+  const k = netChecks(L.net), c = k.counts;
+  taskList($('s2-reqs'), [
+    { ok: k.routers, html: `At least 2 routers, linked to each other (directly or through the Internet) ${spriteImg('router')} (${c.routers})` },
+    { ok: k.nets, html: `At least 3 networks with devices in them, each with a router, and not all on the same router (${c.nets} networks, ${c.gws} router${c.gws === 1 ? '' : 's'})` },
+    { ok: k.wifi, html: `A Wi-Fi ${spriteImg('wifi')} with a laptop or phone on it` },
+    { ok: k.server, html: `A server ${spriteImg('server')}` },
+    { ok: k.devices, html: `At least 5 devices: laptops, phones, printers, servers (${c.hosts})` },
+    { ok: k.plugged, html: `Everything connected to a network that has a router${c.loose.length ? ` (not yet: ${escHTML(c.loose.slice(0, 3).join(', '))}${c.loose.length > 3 ? '…' : ''})` : ''}` },
+    { ok: k.spy, html: `A hacker ${spriteImg('hacker')} who can actually listen: on a Wi-Fi that has a laptop or phone on it, or clipped onto a cable` },
+    { ok: k.mine, html: L.fromStarter ? `Make it yours: at least 5 changes from the starter campus (${Math.min(c.diff, 5)}/5)` : 'Make it yours' },
+  ]);
+}
+function renderAddr() {
+  const A = analyze(L.net);
+  const rows = [];
+  for (const nw of A.networks) {
+    const hs = nw.members.filter((id) => A.ip.get(id)).sort((a, b) => idNum(a) - idNum(b));
+    if (!hs.length) continue;
+    rows.push(`<li><span class="sw" style="background:${nw.color}"></span><b>${nw.name}</b> <code>${nw.prefix}.x</code> ${nw.gateway ? `via ${escHTML(A.byId.get(nw.gateway).name)} <span class="muted">(gateway ${nw.prefix}.1)</span>` : '<span style="color:var(--red)">no router yet</span>'}</li>`);
+    for (const id of hs) rows.push(`<li style="padding-left:20px">${spriteImg(A.byId.get(id).type)} ${escHTML(A.byId.get(id).name)} <code>${A.ip.get(id)}</code></li>`);
+  }
+  $('s2-addr').innerHTML = rows.join('') || '<li class="muted">Nothing is connected yet.</li>';
+}
+function enterStop2() { s2Board.setNet(L.net); renderReqs(); renderAddr(); }
+$('s2-next').addEventListener('click', () => { if (netReady()) logEv('network', { code: encodeNet(L.net) }); });
+
+/* =========================== STOP 3: routes =========================== */
+let s3Board, s3Routes;
+function initStop3() {
+  s3Board = new Board($('s3-board'), L.net, { label: 'Your network' });
+  s3Routes = new RouteEditor($('s3-routes'), {
+    getNet: () => L.net,
+    onChange: () => { s3Board.setNet(L.net); $('s3-matrix').innerHTML = ''; renderS3(); },
+    onSay: (t, bad) => { const el = $('s3-say'); el.className = 'say' + (bad ? ' bad' : ''); el.textContent = t; },
+  });
+  $('s3-test').onclick = runMatrix;
+}
+function runMatrix() {
+  const m = testMatrix(L.net);
+  L.s3.tested = true;
+  for (const r of m.rows) for (const c of r.cells) if (c) { if (c.res.reason === 'ttl') L.s3.ttl = true; if (c.res.reason === 'noroute') L.s3.noroute = true; }
+  const A = analyze(L.net);
+  const lab = { noroute: 'no route', ttl: 'TTL', nonet: 'no route', nohost: 'no device', nogateway: 'no router', port: 'refused' };
+  $('s3-matrix').innerHTML = m.nets.length < 2 ? '<p class="small">You need at least two networks with devices.</p>' : `<div style="overflow-x:auto"><table class="matrix"><thead><tr><th>from ↓ to →</th>${m.nets.map((n) => `<th style="color:${n.color}">${n.letter}</th>`).join('')}</tr></thead><tbody>${m.rows.map((r, i) => `<tr><th style="color:${r.net.color}">${r.net.letter}</th>${r.cells.map((c, j) => (c ? `<td class="${c.res.outcome === 'delivered' ? 'ok' : 'no'}"><button type="button" data-i="${i}" data-j="${j}" aria-label="${escHTML(`${r.net.name} to ${m.nets[j].name}: ${c.res.outcome === 'delivered' ? 'delivered' : lab[c.res.reason] || 'dropped'}. Watch it.`)}">${c.res.outcome === 'delivered' ? '✓' : '✕ ' + (lab[c.res.reason] || 'dropped')}</button></td>` : '<td class="self">·</td>')).join('')}</tr>`).join('')}</tbody></table></div>${m.allOk ? '<div class="fb good">Every network can reach every other network.</div>' : '<p class="small">Click a ✕ to watch where that packet gets stuck.</p>'}`;
+  $('s3-matrix').querySelectorAll('button[data-i]').forEach((b) => b.addEventListener('click', () => {
+    const c = m.rows[+b.dataset.i].cells[+b.dataset.j];
+    const pkt = { from: c.from, to: A.ip.get(c.to), port: 5000, locked: false, msg: 'test' };
+    s3Board.animate(c.res, pkt, {});
+    const el = $('s3-say'); el.className = 'say' + (c.res.outcome === 'delivered' ? '' : ' bad'); el.textContent = explainOutcome(L.net, c.res, A);
+    $('s3-board').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }));
+  logEv('routes-test', { allOk: m.allOk, ttl: L.s3.ttl, noroute: L.s3.noroute });
+  renderS3();
+}
+function renderS3() {
+  const ok = testMatrix(L.net).allOk;
+  taskList($('s3-tasks'), [
+    { ok, pts: 10, html: 'Every network can reach every other network (use <b>Test every path</b>)' },
+    { ok: L.s3.noroute, pts: 2, html: 'See a packet dropped with "no route" (test before a router knows the way)' },
+    { ok: L.s3.ttl, pts: 3, html: 'Make a loop on purpose: two routers that send a network to each other. Test it, watch TTL run out, then fix it' },
+  ]);
+  renderStepper();
+}
+function enterStop3() { pruneTables(L.net); s3Board.setNet(L.net); s3Routes.render(); $('s3-matrix').innerHTML = ''; renderS3(); }
+
+/* =========================== STOP 4: send =========================== */
+let s4Board, s4Send, s4Notebook, s4Log;
+function initStop4() {
+  s4Board = new Board($('s4-board'), L.net, { label: 'Your network' });
+  s4Notebook = new Notebook($('s4-notebook'));
+  s4Log = new PacketLog($('s4-log'), s4Board, () => L.net);
+  s4Send = new SendPanel($('s4-send'), {
+    getNet: () => L.net, board: s4Board, msg: 'the answer to #7 is B', notebook: s4Notebook, log: s4Log,
+    onResult: (res, pkt) => {
+      const s = L.s4;
+      if (res.outcome === 'delivered' && res.reason === 'ok') s.ok = true;
+      if (res.outcome === 'dropped' && ['nohost', 'nonet', 'noroute'].includes(res.reason)) s.wrongPlace = true;
+      if (res.outcome === 'refused') s.wrongPort = true;
+      if (res.captures.some((c) => !c.locked)) s.read = true;
+      if (pkt.locked && res.captures.length && res.outcome === 'delivered' && res.reason === 'ok') s.beat = true;
+      logEv('send', pktSummary(res, pkt));
+      renderS4();
+    },
+  });
+}
+function enterStop4() { s4Board.setNet(L.net); s4Send.refresh(); renderS4(); }
+function renderS4() {
+  const s = L.s4;
+  taskList($('s4-tasks'), [
+    { ok: s.ok, pts: 4, html: 'Get a packet to the right device on a port it listens on (check the address book and each device\'s service)' },
+    { ok: s.wrongPlace, pts: 3, html: 'Wrong place: send to an address nobody has (type one, like <code>10.0.9.50</code>) and watch it get dropped' },
+    { ok: s.wrongPort, pts: 3, html: 'Wrong door: send to a real device on a port it doesn\'t listen on (a chat message to a printer?)' },
+    { ok: s.read, pts: 4, html: 'Let the hacker read one: send an unlocked packet past your hacker' },
+    { ok: s.beat, pts: 6, html: 'Beat the hacker: a 🔒 packet that passes the hacker and still arrives' },
+  ]);
+  renderStepper();
+}
+
+/* =========================== STOP 5: tickets =========================== */
+const TICKET_Q = {
+  id: 'tq', pts: 2, second: 0,
+  q: 'Coach asks: "Next time I\'ll log in from home, on my laptop plugged into my router with a cable, not Wi-Fi. Then I don\'t need the lock, right?"',
+  a: ['Right. Cables can\'t be tapped.', 'Not quite. The wiretap is on the cable between the internet and the school, and any login from outside the school crosses it. Only encryption protects the packet the whole way.', 'Right. Hackers only use Wi-Fi.', 'Right, as long as the password is long.'],
+  right: 1, fb: 'The Wi-Fi hacker is the easy one to spot. The wiretap on the provider\'s cable saw the same packet, and it would see a login from home too. Encryption protects the message on every hop, no matter who is listening where.',
+};
+function initStop5() {
+  $('tickets').innerHTML = TICKETS.map((t) => `<div class="card ticket" id="tk-${t.id}"></div>`).join('');
+  for (const t of TICKETS) {
+    L.tickets[t.id] = { net: mkNet(t.spec), passed: false, fails: 0, pts: 0, q: {} };
+    renderTicket(t);
+  }
+}
+function renderTicket(t) {
+  const st = L.tickets[t.id];
+  const host = $('tk-' + t.id);
+  const fixPts = t.id === 'C' ? 5 : t.pts;
+  host.innerHTML = `
+    <div class="tk-head"><h3>${escHTML(t.title)}</h3><span class="badge${st.passed ? ' pass' : ''}">${st.passed ? `Fixed · ${st.pts} / ${fixPts}` : `${t.pts} points`}</span></div>
+    <p class="story">${escHTML(t.story)}</p>
+    <div class="split">
+      <div class="pin tk-board"></div>
+      <div class="col">
+        <div class="tk-send"></div>
+        ${t.fix === 'routes' ? '<div><h4 style="margin:0 0 8px">Router tables</h4><div class="tk-routes"></div></div>' : ''}
+        <div class="card tight" style="margin:0"><p class="small" style="margin-top:0"><b>Found the cause and fixed it?</b> Checking sends their packet one more time. If it still isn't fixed, the check costs 2 points.</p><div class="row"><button type="button" class="btn tk-check">Check my fix</button><button type="button" class="btn ghost small tk-hint">Hint</button></div><div class="tk-out" aria-live="polite"></div><div class="tk-hinttext"></div></div>
+        <div class="tk-nb"></div><div class="tk-log"></div>
+      </div>
+    </div>
+    ${t.id === 'C' ? '<div class="tk-q" style="margin-top:14px"></div>' : ''}`;
+  const q = (s) => host.querySelector(s);
+  const board = new Board(q('.tk-board'), st.net, { label: t.title });
+  const nb = new Notebook(q('.tk-nb'));
+  const log = new PacketLog(q('.tk-log'), board, () => st.net);
+  const A = analyze(st.net);
+  const send = new SendPanel(q('.tk-send'), {
+    getNet: () => st.net, board, from: t.mission.from, fromLocked: true, fixed: true, msg: t.mission.msg, notebook: nb, log, lockable: t.fix === 'lock',
+    onResult: (res, pkt) => logEv('ticket-send', Object.assign({ t: t.id }, pktSummary(res, pkt))),
+  });
+  send.fill('to', A.ip.get(t.mission.toHost), A.byId.get(t.mission.toHost).name);
+  send.fill('port', t.mission.port);
+  send.o.onFill = () => {};
+  if (t.fix === 'routes') {
+    new RouteEditor(q('.tk-routes'), {
+      getNet: () => st.net, only: t.editable,
+      onChange: () => { board.setNet(st.net); },
+      onSay: (msg, bad) => { const o = q('.tk-out'); o.innerHTML = `<p class="say${bad ? ' bad' : ''}">${escHTML(msg)}</p>`; },
+    });
+  }
+  q('.tk-hint').onclick = () => { q('.tk-hinttext').innerHTML = `<div class="hint"><b>Hint.</b> ${escHTML(t.hint)}</div>`; logEv('hint', { t: t.id }); };
+  q('.tk-check').onclick = async () => {
+    if (board.busy) return;
+    const AA = analyze(st.net);
+    const pkt = { from: t.mission.from, to: AA.ip.get(t.mission.toHost), port: t.fix === 'lock' ? send.pkt.port : t.mission.port, locked: t.fix === 'lock' ? !!send.pkt.locked : false, msg: t.mission.msg };
+    const res = simulate(st.net, pkt);
+    nb.add(res, pkt, st.net); log.add(res, pkt, st.net);
+    await board.animate(res, pkt, {});
+    const arrived = res.outcome === 'delivered' && res.deliveredTo === t.mission.toHost;
+    const safe = !t.mission.secret || !res.captures.some((c) => !c.locked);
+    const ok = arrived && safe;
+    const o = q('.tk-out');
+    if (ok) {
+      if (!st.passed) { st.passed = true; st.pts = Math.max(Math.ceil(fixPts / 2), fixPts - 2 * st.fails); }
+      o.innerHTML = `<div class="fb good"><b>Fixed.</b> ${escHTML(explainOutcome(st.net, res, AA))} ${t.id === 'A' ? 'A router can\'t deliver to a network it has never heard of. Adding the route (or a default route) teaches it the way.' : t.id === 'B' ? 'Two routers each thought the other one knew the way, so the packet bounced until its TTL ran out. TTL exists so lost packets die instead of circling forever.' : 'The lock scrambles the message on every hop, so both hackers got gibberish. They still know Coach talked to the grades server.'}</div>`;
+    } else {
+      if (!st.passed) st.fails++;
+      o.innerHTML = `<div class="fb bad"><b>Not fixed yet.</b> ${escHTML(explainOutcome(st.net, res, AA))}${arrived && !safe ? ' It arrived, but a hacker read it.' : ''}${st.passed ? '' : ` (Each wrong check costs 2 points.)`}</div>`;
+    }
+    logEv('ticket-check', { t: t.id, ok, fails: st.fails });
+    host.querySelector('.badge').className = 'badge' + (st.passed ? ' pass' : '');
+    host.querySelector('.badge').textContent = st.passed ? `Fixed · ${st.pts} / ${fixPts}` : `${t.pts} points`;
+    renderStepper();
+  };
+  if (t.id === 'C') renderQuestion(q('.tk-q'), TICKET_Q, st.q, renderStepper);
+}
+function enterStop5() {}
+
+/* =========================== STOP 6: explain =========================== */
+const SEE = [
+  {
+    id: 'https', title: 'You log in to a website that shows the 🔒 (HTTPS), on coffee-shop Wi-Fi. A hacker on the same Wi-Fi can see…',
+    opts: [
+      { t: 'your password', yes: false, why: 'The login is inside the encrypted payload.' },
+      { t: 'the address of the server you connected to', yes: true, why: 'It\'s in the header. Routers need it, so it can\'t be hidden.' },
+      { t: 'when you connected and roughly how much data you sent', yes: true, why: 'Timing and size leak even when the contents are scrambled.' },
+      { t: 'the page you are reading', yes: false, why: 'The page comes back encrypted too.' },
+    ],
+  },
+  {
+    id: 'plain', title: 'A chat app sends messages with no encryption. You use it on the mall\'s free Wi-Fi (no password). A hacker on that Wi-Fi can see…',
+    opts: [
+      { t: 'the message you typed', yes: true, why: 'No lock, so the payload is readable, exactly like Maya\'s first packet.' },
+      { t: 'who you are sending it to (the To address)', yes: true, why: 'Headers are always readable.' },
+      { t: 'your password for a different app that does use the 🔒', yes: false, why: 'Each app\'s encryption protects its own packets.' },
+      { t: 'the photos saved on your phone', yes: false, why: 'A hacker listening to Wi-Fi only sees packets you send, not your storage.' },
+    ],
+  },
+  {
+    id: 'vpn', title: 'At the airport you turn on a VPN. It encrypts everything between your phone and the VPN company\'s server. A hacker on the airport Wi-Fi can see…',
+    opts: [
+      { t: 'that you are talking to a VPN server', yes: true, why: 'The To address of every packet is the VPN server.' },
+      { t: 'which websites you visit after that', yes: false, why: 'A VPN wraps your whole packet, header and all, inside a new packet addressed to the VPN server, so the real addresses are hidden inside. (The VPN company can see them, though. A VPN moves your trust, it doesn\'t erase it.)' },
+      { t: 'your messages', yes: false, why: 'Encrypted inside the tunnel.' },
+      { t: 'roughly how much data you send', yes: true, why: 'Sizes and timing still show.' },
+    ],
+  },
+];
+const EXPLAIN_QS = [
+  { id: 'ttl', pts: 2, q: 'Why did a packet die when two routers pointed at each other?', ph: 'Each router sent it to the other one, and every hop…' },
+  { id: 'switch', pts: 2, q: 'Why does a hacker on Wi-Fi catch packets, but a hacker plugged into a switch doesn\'t?', ph: 'Wi-Fi sends every packet through the air, but a switch…' },
+  { id: 'lock', pts: 3, q: 'What does encryption hide, and what doesn\'t it hide? Why?', ph: 'It hides the message, but not…' },
+];
+let playBoard = null;
+function initStop6() {
+  $('share-card').innerHTML = `
+    <h3>Challenge a classmate <span class="status-pill" id="share-pill">4 pts</span></h3>
+    <p class="small muted" style="margin-top:0">Write a mission for your network, then copy the code and send it to a classmate (Google Chat, a Classroom comment…). They paste it at the bottom of this page and play your network.</p>
+    <div class="field"><label for="mission">Your mission</label><textarea id="mission" maxlength="300" placeholder="Get the answer key from Laptop 1 to Printer 1 without the hacker reading it. Watch out: someone is on the library Wi-Fi."></textarea></div>
+    <div class="sharebox"><label class="small" for="sharecode" style="font-weight:600">Your network's code</label><textarea id="sharecode" readonly></textarea><div class="row" style="margin-top:6px"><button type="button" class="btn small" id="copycode">Copy code</button><span class="small muted" id="copied" aria-live="polite"></span></div></div>`;
+  $('mission').addEventListener('input', () => { L.s6.mission = $('mission').value; updateShare(); renderS6(); });
+  $('copycode').onclick = async () => {
+    const t = $('sharecode');
+    let ok = false;
+    try { await navigator.clipboard.writeText(t.value); ok = true; } catch (e) { t.select(); try { ok = document.execCommand('copy'); } catch (e2) { ok = false; } }
+    $('copied').textContent = ok ? 'Copied.' : 'Select the code and copy it with Ctrl+C.';
+    logEv('share', {});
+  };
+  $('explain-card').innerHTML = `<h3>Explain it like a network tech <span class="status-pill" id="exp-pill">7 pts</span></h3><p class="small muted" style="margin-top:0">A sentence or two each, in your own words.</p>` + EXPLAIN_QS.map((q, i) => `<div class="field"><label for="ex-${q.id}">${escHTML(q.q)}</label><textarea id="ex-${q.id}" maxlength="400" placeholder="${escHTML(q.ph)}"></textarea></div>`).join('');
+  EXPLAIN_QS.forEach((q, i) => $('ex-' + q.id).addEventListener('input', (e) => { L.s6.explain[i] = e.target.value; renderS6(); }));
+  $('see-card').innerHTML = `<h3>What can the hacker see? <span class="status-pill" id="see-pill">9 pts</span></h3><p class="small muted" style="margin-top:0">Tick everything the hacker can see. One check per question.</p>` + SEE.map((g) => `
+    <div class="game-q" id="sq-${g.id}"><h4>${escHTML(g.title)}</h4>
+      <div class="checks">${g.opts.map((o, i) => `<label data-i="${i}"><input type="checkbox" value="${i}"><span>${escHTML(o.t)}<span class="why"></span></span></label>`).join('')}</div>
+      <div class="row" style="margin-top:8px"><button type="button" class="btn small" data-see="${g.id}">Check</button><span class="gres small"></span></div>
+    </div>`).join('');
+  $('see-card').querySelectorAll('[data-see]').forEach((b) => b.addEventListener('click', () => gradeSee(b.dataset.see)));
+  $('play-card').innerHTML = `
+    <h3>Play a classmate's network <span class="muted small">(no points, just for fun)</span></h3>
+    <div class="field"><label for="pastecode">Paste their code</label><textarea id="pastecode" rows="3" style="font-family:var(--mono);font-size:12px" placeholder="PKT1-…"></textarea></div>
+    <div class="row"><button type="button" class="btn small" id="loadcode">Load it</button><span class="small" id="loadmsg" aria-live="polite"></span></div>
+    <div id="play-area" hidden><div class="callout blue" id="play-mission"></div><div id="play-board"></div><div class="playgrid"><div id="play-send"></div><div class="side"><div id="play-nb"></div><div id="play-log"></div></div></div></div>`;
+  $('loadcode').onclick = () => {
+    let got;
+    try { got = decodeNet($('pastecode').value); } catch (e) { $('loadmsg').textContent = e.message; $('loadmsg').style.color = 'var(--red)'; return; }
+    $('loadmsg').textContent = `Loaded: ${got.net.nodes.length} pieces.`; $('loadmsg').style.color = 'var(--green)';
+    $('play-area').hidden = false;
+    const pnet = got.net;
+    $('play-mission').innerHTML = got.mission && got.mission.text ? `<b>Their mission:</b> ${escHTML(got.mission.text)}` : 'They didn\'t write a mission. Explore!';
+    playBoard = new Board($('play-board'), pnet, { label: 'A classmate\'s network' });
+    const nb = new Notebook($('play-nb'));
+    const log = new PacketLog($('play-log'), playBoard, () => pnet);
+    new SendPanel($('play-send'), { getNet: () => pnet, board: playBoard, msg: 'hi from ' + ((HSCT.session && HSCT.session.name.split(' ')[0]) || 'me'), notebook: nb, log, onResult: (res, pkt) => logEv('play-send', pktSummary(res, pkt)) });
+    logEv('play-load', { pieces: pnet.nodes.length });
+  };
+}
+function updateShare() { const t = $('sharecode'); if (t) t.value = encodeNet(L.net, { text: (L.s6.mission || '').trim().slice(0, 300) }); }
+function gradeSee(id) {
+  if (L.s6.see[id]) return;
+  const g = SEE.find((x) => x.id === id), box = $('sq-' + id);
+  const checked = new Set([...box.querySelectorAll('input:checked')].map((x) => +x.value));
+  if (!checked.size) { box.querySelector('.gres').textContent = 'Tick at least one box first.'; return; }
+  let right = 0;
+  g.opts.forEach((o, i) => {
+    const ok = checked.has(i) === o.yes;
+    if (ok) right++;
+    const lab = box.querySelector(`label[data-i="${i}"]`);
+    lab.classList.add(ok ? 'right' : 'wrong');
+    lab.querySelector('input').disabled = true;
+    lab.querySelector('.why').textContent = (o.yes ? 'Can see it. ' : 'Can\'t see it. ') + o.why;
+  });
+  const pts = right === 4 ? 3 : right === 3 ? 2 : 0;
+  L.s6.see[id] = { picked: [...checked], right, pts };
+  box.querySelector('[data-see]').disabled = true;
+  box.querySelector('.gres').textContent = `${right} of 4 right: ${pts} / 3`;
+  logEv('see', { id, picked: [...checked], right });
+  renderS6();
+}
+const missionPts = () => ((L.s6.mission || '').trim().length >= 25 ? 4 : 0);
+const explainPts = () => EXPLAIN_QS.reduce((a, q, i) => a + ((L.s6.explain[i] || '').trim().length >= 25 ? q.pts : 0), 0);
+const seePts = () => SEE.reduce((a, g) => a + (L.s6.see[g.id] ? L.s6.see[g.id].pts : 0), 0);
+function renderS6() {
+  const set = (id, got, max, done) => { const p = $(id); if (!p) return; p.textContent = done ? `${got} / ${max}` : `${max} pts`; p.className = 'status-pill' + (done && got === max ? ' ok' : ''); };
+  set('share-pill', missionPts(), 4, missionPts() > 0);
+  set('exp-pill', explainPts(), 7, explainPts() > 0);
+  set('see-pill', seePts(), 9, Object.keys(L.s6.see).length > 0);
+  renderStepper();
+}
+function enterStop6() { updateShare(); renderS6(); }
+
+/* =========================== SCORING + FINISH =========================== */
+function scoreAll() {
+  const by = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+  if (!L) return { by, total: 0 };
+  const s1 = L.s1;
+  by[1] = S1_QS.reduce((a, q) => a + ((s1.q[q.id] && s1.q[q.id].pts) || 0), 0) + [s1.sent, s1.read, s1.locked, s1.trace].filter(Boolean).length;
+  by[2] = netReady() && L.unlocked >= 3 ? 15 : 0;
+  by[3] = netReady() && testMatrix(L.net).allOk ? 10 : 0;
+  by[3] += (L.s3.noroute ? 2 : 0) + (L.s3.ttl ? 3 : 0);
+  const s4 = L.s4;
+  by[4] = (s4.ok ? 4 : 0) + (s4.wrongPlace ? 3 : 0) + (s4.wrongPort ? 3 : 0) + (s4.read ? 4 : 0) + (s4.beat ? 6 : 0);
+  by[5] = TICKETS.reduce((a, t) => { const st = L.tickets[t.id]; if (!st) return a; return a + (st.passed ? st.pts : 0) + (t.id === 'C' && st.q.tq ? st.q.tq.pts : 0); }, 0);
+  by[6] = missionPts() + explainPts() + seePts();
+  return { by, total: Object.values(by).reduce((a, b) => a + b, 0) };
+}
+function missingList() {
+  const m = [], s1 = L.s1, s4 = L.s4;
+  if (!(s1.sent && s1.read && s1.locked && s1.trace)) m.push('Stop 1: the "Try it" list');
+  if (S1_QS.some((q) => !(s1.q[q.id] && s1.q[q.id].right))) m.push('Stop 1: a check question');
+  if (!netReady()) m.push('Stop 2: the network checklist');
+  if (!(netReady() && testMatrix(L.net).allOk)) m.push('Stop 3: not every network can reach every other one');
+  if (!L.s3.ttl || !L.s3.noroute) m.push('Stop 3: see a "no route" drop and a TTL loop');
+  const s4m = [!s4.ok && 'deliver one', !s4.wrongPlace && 'wrong place', !s4.wrongPort && 'wrong port', !s4.read && 'let the hacker read one', !s4.beat && 'beat the hacker'].filter(Boolean);
+  if (s4m.length) m.push('Stop 4: ' + s4m.join(', '));
+  TICKETS.forEach((t) => { if (!L.tickets[t.id] || !L.tickets[t.id].passed) m.push(`Stop 5: ${t.title.split(':')[0]}`); });
+  if (!(L.tickets.C && L.tickets.C.q.tq && L.tickets.C.q.tq.right)) m.push('Stop 5: Coach\'s question');
+  if (!missionPts()) m.push('Stop 6: your mission');
+  if (explainPts() < 7) m.push('Stop 6: the explain-it answers');
+  SEE.forEach((g) => { if (!L.s6.see[g.id]) m.push(`Stop 6: "what can the hacker see?" (${g.id === 'https' ? 'HTTPS' : g.id === 'plain' ? 'chat app' : 'VPN'})`); });
+  return m;
+}
+$('finish').onclick = () => tryFinish(false);
+function tryFinish(force) {
+  const miss = missingList(), host = $('finish-confirm');
+  if (miss.length && !force) {
+    host.innerHTML = `<div class="confirm" role="alert"><b>Not everything is done yet.</b> Unfinished parts score 0:<ul class="small">${miss.map((x) => `<li>${escHTML(x)}</li>`).join('')}</ul><div class="row"><button class="btn small" id="fin-keep">Keep working</button><button class="btn small maroon ghost" id="fin-force">Finish anyway</button></div></div>`;
+    $('fin-keep').onclick = () => { host.innerHTML = ''; };
+    $('fin-force').onclick = () => tryFinish(true);
+    $('fin-force').focus();
+    return;
+  }
+  host.innerHTML = '';
+  renderEnd();
+}
+function renderEnd() {
+  const sc = scoreAll(), t = sc.total;
+  show('view-end');
+  const tier = t >= 90 ? 'Network pro' : t >= 70 ? 'Delivered' : 'Retransmit';
+  $('end-lede').textContent = t >= 90 ? 'You built a network, routed it, beat a hacker and closed three tickets. Download your result and submit it.' : 'The table shows where your points came from. Download your result and submit it.';
+  $('end-breakdown').innerHTML = STOPS.map((s) => `<tr><td>${s.n}. ${escHTML(s.name)}</td><td>${sc.by[s.n]} / ${s.pts}</td></tr>`).join('') + `<tr><td><b>Total</b></td><td><b>${t} / 100</b></td></tr>`;
+  HSCT.endScreen('#hsct-result', {
+    earned: t, possible: 100, tier,
+    sections: STOPS.map((s) => ({ id: 's' + s.n, title: `${s.n}. ${s.name}`, earned: sc.by[s.n], possible: s.pts })),
+    extra: {
+      networkCode: encodeNet(L.net, { text: (L.s6.mission || '').trim() }),
+      s1: { tasks: { sent: L.s1.sent, read: L.s1.read, locked: L.s1.locked, trace: L.s1.trace }, q: L.s1.q },
+      s3: L.s3, s4: L.s4,
+      tickets: Object.fromEntries(TICKETS.map((tk) => [tk.id, { passed: L.tickets[tk.id].passed, fails: L.tickets[tk.id].fails, pts: L.tickets[tk.id].pts, q: L.tickets[tk.id].q }])),
+      mission: L.s6.mission, explain: L.s6.explain, see: L.s6.see,
+    },
+  }).catch(() => {});
+}
+$('again').onclick = () => {
+  const host = $('again-confirm');
+  host.innerHTML = `<div class="confirm" role="alert"><b>Start over from the beginning?</b> This wipes your network and answers. The result file you downloaded is not affected.<div class="row" style="margin-top:8px"><button class="btn small maroon" id="again-yes">Start over</button><button class="btn small ghost" id="again-no">Cancel</button></div></div>`;
+  $('again-yes').onclick = () => { location.reload(); };
+  $('again-no').onclick = () => { host.innerHTML = ''; $('again').focus(); };
+  $('again-yes').focus();
+};
+window.addEventListener('beforeunload', (e) => { if ($('view-work').classList.contains('active')) { e.preventDefault(); e.returnValue = ''; } });
+
+</script>
+</body>
+</html>

@@ -57,6 +57,22 @@ export const CATEGORIES = [
          ] },
       { id: 'cabling-and-wifi', title: 'Cabling & Wi-Fi', lessons: [] },
       { id: 'connection-problems', title: 'Connection problems', lessons: [] },
+      {
+        id: 'network-security',
+        title: 'Network security',
+        lessons: [
+          {
+            slug: 'packet-run',
+            title: 'Packet Run: get it there, keep it secret',
+            description: 'Build a network with drag-and-drop pieces (laptops, phones, switches, Wi-Fi, routers, the Internet), teach the routers where to send things, then send packets through it while a hacker listens on open Wi-Fi or a wiretapped cable. Wrong address, wrong port, missing route or no lock: the packet gets lost or the hacker reads it. Fix three help-desk tickets, then share your network as a challenge for a classmate. No code.',
+            file: 'packet-run.html',
+            kind: 'game',
+            minutes: 60,
+            added: '2026-09-23',
+            tags: ['packets', 'header', 'payload', 'IP address', 'DHCP', 'gateway', 'router', 'routing table', 'default route', 'switch', 'Wi-Fi', 'access point', 'TTL', 'ports', '80', '443', 'HTTP', 'HTTPS', 'TLS', 'encryption', 'sniffing', 'wiretap', 'hacker', 'open Wi-Fi', 'security'],
+          },
+        ],
+      },
     ],
   },
   {
