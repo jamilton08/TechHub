@@ -200,6 +200,22 @@ export const CATEGORIES = [
           },
       ] },
       { id: 'python', title: 'Python', lessons: [] },
+      {
+        id: 'game-design',
+        title: 'Game design',
+        lessons: [
+          {
+            slug: 'save-point-build-a-game',
+            title: 'Save Point: build a game that remembers',
+            description: 'Build a dungeon game from drag-and-drop pieces, snap rule blocks onto them, and watch every rule turn into a Python function you can edit. Play it while the whole game shows up as one state dict, then save, quit, load, and hack a save file by hand. Fix two real save bugs in Python (a quick save that shares memory, and an infinite-coin glitch), write the rulebook, and take your game home as a .py file.',
+            file: 'save-point-build-a-game.html',
+            kind: 'lab',
+            minutes: 60,
+            added: '2026-09-23',
+            tags: ['Python', 'game design', 'games', 'state', 'save file', 'save game', 'load', 'JSON', 'json.dumps', 'json.loads', 'dict', 'list', 'functions', 'def', 'if', 'f-string', 'files', 'open', 'copy', 'deepcopy', 'shallow copy', 'references', 'blocks', 'drag and drop', 'level editor', 'game loop', 'rules', 'serialization', 'undo', 'rewind', 'cheating'],
+          },
+        ],
+      },
       { id: 'data-structures', title: 'Data structures', lessons: [] },
     ],
   },
