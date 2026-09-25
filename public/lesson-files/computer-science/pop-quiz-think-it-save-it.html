@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pop quiz: think it, then save it — HSCT</title>
+<!--
+  HSCT POP QUIZ: Think it, then save it (computer-science)
+  Covers two lessons: "Think it, then code it" (variables, loops, strings, if/else, while + flags)
+  and "Save Point" (LEVEL vs state, rules as functions, json save/load, aliasing, incomplete saves).
+  Three screens, in the template's order:
+    1. #view-intro   what the quiz is, the rules, the student's name   -> HSCT.start(name)
+    2. #view-work    Part A quick checks, Part B trace the code, Part C two think-it-through problems
+    3. #view-end     score breakdown + the standard result card        -> HSCT.endScreen(...)
+  Settings are in CONFIG at the top of the quiz script (time limit, whether to reveal answers after submitting).
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f7fc; --paper:#fff; --bench:#eef1f8; --ink:#101a3f; --muted:#5b6485; --line:#d3d9ee;
+  --blue:#1f3fae; --blue-soft:#e9edf8; --green:#1f7a3d; --green-soft:#e1f2e6; --red:#b3261e; --red-soft:#fbe3e1;
+  --amber:#8a5a00; --amber-soft:#fff4d6; --maroon:#7a1f3d; --maroon-soft:#f6e6ec;
+  --code-bg:#0f1533; --code-ink:#e6e9f5;
+  --sans:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --hsct-color: var(--blue);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.5}
+h1,h2,h3,h4{margin:0;line-height:1.2}
+p{margin:0 0 .75rem}
+button{font:inherit;cursor:pointer}
+input,textarea{font:inherit;color:inherit}
+button:focus-visible,textarea:focus-visible,input:focus-visible{outline:3px solid #a9b7ea;outline-offset:2px}
+code{font-family:var(--mono);font-size:.92em;background:var(--blue-soft);padding:.05em .35em;border-radius:3px}
+pre{font-family:var(--mono);font-size:.9rem;line-height:1.5;background:var(--code-bg);color:var(--code-ink);padding:.75rem .9rem;border-radius:8px;overflow-x:auto;margin:.5rem 0 .9rem;white-space:pre}
+pre .c{color:#8b95c9}pre .s{color:#ffd166}pre .k{color:#8ec5ff}
+[hidden]{display:none!important}
+.btn{border:2px solid var(--blue);background:var(--blue);color:#fff;border-radius:8px;padding:.6rem 1.1rem;font-weight:600}
+.btn:hover{filter:brightness(.92)}.btn.ghost{background:transparent;color:var(--blue)}.btn.small{padding:.4rem .8rem;font-size:.9rem}
+.btn.maroon{background:var(--maroon);border-color:var(--maroon)}
+.btn:disabled{opacity:.5;cursor:not-allowed;filter:none}
+.view{display:none}.view.active{display:block}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* topbar */
+.topbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:1rem;padding:.6rem 1.2rem;background:var(--paper);border-bottom:1px solid var(--line)}
+.topbar .brand{font-weight:700;white-space:nowrap}.topbar .brand span{color:var(--muted);font-weight:400}
+.progress{display:flex;gap:3px;flex-wrap:wrap}
+.progress button{display:block;width:16px;height:8px;border-radius:2px;background:var(--line);border:0;padding:0}
+.progress button.done{background:var(--blue)}.progress button.gap{margin-left:6px}
+.topbar .grow{flex:1}
+.stat{font-family:var(--mono);font-size:.85rem;color:var(--muted);white-space:nowrap}.stat b{color:var(--ink)}
+.timer{font-family:var(--mono);font-weight:600;font-size:1rem;padding:.2rem .6rem;border-radius:6px;background:var(--blue-soft);color:var(--blue);min-width:4.2em;text-align:center}
+.timer.warn{background:var(--amber-soft);color:var(--amber)}
+.timer.low{background:var(--red-soft);color:var(--red)}
+
+/* intro */
+.wrap{max-width:820px;margin:0 auto;padding:2.5rem 1.2rem 5rem}
+.kicker{font-family:var(--mono);font-size:.8rem;color:var(--muted);letter-spacing:.03em;margin-bottom:.35rem}
+.wrap > h1{font-size:2.1rem;letter-spacing:-.01em;margin-bottom:.4rem}
+.lede{font-size:1.12rem;color:var(--muted);margin-bottom:1.4rem}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:1.1rem 1.3rem;margin-bottom:1rem}
+.card h3{font-size:1.05rem;margin-bottom:.5rem}
+.rules{margin:0;padding-left:1.2rem}.rules li{margin:.3rem 0}
+.parts{list-style:none;margin:.2rem 0 0;padding:0;display:grid;gap:.5rem}
+.parts li{display:grid;grid-template-columns:2.2rem minmax(0,1fr) auto;gap:.7rem;align-items:baseline}
+.parts .n{font-family:var(--mono);font-weight:600;color:var(--blue)}
+.parts .pts{font-family:var(--mono);font-size:.85rem;color:var(--muted);white-space:nowrap}
+.parts .muted{color:var(--muted)}
+.name-row{display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap}
+.name-row input{flex:1;min-width:220px;padding:.7rem .8rem;border:1.5px solid var(--line);border-radius:8px}
+.err{color:var(--red);margin-top:.5rem}
+
+/* parts + questions */
+.part{margin:2.2rem 0 0}
+.part:first-child{margin-top:0}
+.part-head{margin-bottom:1rem}
+.part-head h2{font-size:1.6rem;margin-bottom:.3rem}
+.part-head .lede{font-size:1rem;margin-bottom:0}
+.q{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:1rem 1.2rem 1.1rem;margin-bottom:.9rem;scroll-margin-top:80px}
+.q.sub{border-radius:10px;background:var(--paper);margin:.8rem 0 0}
+.qhead{display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem;flex-wrap:wrap}
+.qnum{font-family:var(--mono);font-weight:600;font-size:.85rem;background:var(--blue);color:#fff;border-radius:5px;padding:.05rem .45rem}
+.q.answered .qnum{background:var(--green)}
+.tag{font-size:.8rem;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:0 .55rem}
+.qhead .grow{flex:1}
+.qpts{font-family:var(--mono);font-size:.8rem;color:var(--muted)}
+.qt{font-weight:600;margin:0 0 .5rem}
+.q fieldset{border:0;margin:0;padding:0;min-width:0}
+.q legend{padding:0;margin:0 0 .5rem;font-weight:600}
+.opts{display:grid;gap:.4rem}
+.opt{display:grid;grid-template-columns:1.3rem minmax(0,1fr);gap:.55rem;align-items:start;padding:.55rem .7rem;border:1.5px solid var(--line);border-radius:8px;cursor:pointer;background:var(--paper)}
+.opt:hover{border-color:#a9b7ea}
+.opt input{margin:.2rem 0 0;width:1.05rem;height:1.05rem;accent-color:var(--blue)}
+.opt:has(input:checked){border-color:var(--blue);background:var(--blue-soft)}
+.opt:has(input:focus-visible){outline:3px solid #a9b7ea;outline-offset:2px}
+.opt input:focus-visible{outline:none}
+.opt.disabled{cursor:default}
+.tip{font-size:.88rem;color:var(--muted);margin:.1rem 0 .5rem}
+.answer{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+.answer label{font-size:.9rem;color:var(--muted)}
+.answer input{font-family:var(--mono);font-size:1rem;padding:.55rem .7rem;border:1.5px solid var(--line);border-radius:8px;width:14rem;max-width:100%;background:#fff}
+.answer input:focus{border-color:var(--blue)}
+
+/* problems */
+.problem{background:var(--bench);border:1px solid var(--line);border-radius:14px;padding:1.2rem 1.3rem 1.3rem;margin-bottom:1.3rem;scroll-margin-top:80px}
+.problem > h3{font-size:1.25rem;margin-bottom:.5rem}
+.problem .story ul{margin:.2rem 0 .7rem;padding-left:1.2rem}.problem .story li{margin:.15rem 0}
+.problem .note{font-size:.95rem}
+.write textarea{width:100%;min-height:110px;padding:.65rem .75rem;border:1.5px solid var(--line);border-radius:8px;resize:vertical;background:#fff;font-size:.98rem}
+.write textarea:focus{border-color:var(--blue)}
+.write .row{display:flex;justify-content:space-between;gap:.8rem;margin-top:.35rem;flex-wrap:wrap}
+.count{font-family:var(--mono);font-size:.82rem;color:var(--muted)}
+.count.ok{color:var(--green)}
+
+/* submit */
+.submit-card{background:var(--paper);border:1px solid var(--line);border-left:6px solid var(--maroon);border-radius:12px;padding:1.1rem 1.3rem;margin-top:1.6rem}
+.submit-card .row{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap}
+.submit-card .grow{flex:1}
+.confirm{margin-top:.8rem;padding:.8rem .9rem;border-radius:8px;background:var(--amber-soft)}
+.confirm p{margin-bottom:.6rem}
+.confirm .row{gap:.5rem}
+.blank-list{display:flex;flex-wrap:wrap;gap:.35rem;margin:.2rem 0 .6rem}
+.blank-list button{font-family:var(--mono);font-size:.82rem;border:1px solid var(--amber);background:#fff;color:var(--amber);border-radius:5px;padding:.05rem .45rem}
+
+/* end */
+.recap{width:100%;border-collapse:collapse;font-size:.95rem;margin:.2rem 0 .2rem}
+.recap th,.recap td{text-align:left;padding:.45rem .5rem;border-bottom:1px solid var(--line);vertical-align:top}
+.recap th{font-size:.78rem;color:var(--muted);font-weight:600}
+.recap td.p{font-family:var(--mono);text-align:right;white-space:nowrap}
+.review{list-style:none;margin:0;padding:0}
+.review li{padding:.7rem 0;border-top:1px solid var(--line);display:grid;grid-template-columns:2rem minmax(0,1fr) auto;gap:.2rem .7rem;align-items:baseline}
+.review li:first-child{border-top:0}
+.review .m{font-family:var(--mono);font-weight:700}
+.review .ok .m,.review li.ok .m{color:var(--green)}
+.review li.bad .m{color:var(--red)}
+.review li.part-ok .m{color:var(--amber)}
+.review li.read .m{color:var(--muted)}
+.review .id{font-family:var(--mono);font-size:.8rem;color:var(--muted);margin-right:.3rem}
+.review .yours{font-size:.9rem;color:var(--muted);grid-column:2/-1}
+.review .yours code{white-space:pre-wrap}
+.review .key{font-size:.9rem;grid-column:2/-1;background:var(--green-soft);border-radius:6px;padding:.4rem .6rem;margin-top:.2rem}
+.review .p{font-family:var(--mono);font-size:.85rem;white-space:nowrap}
+.banner{padding:.7rem .9rem;border-radius:8px;background:var(--amber-soft);color:var(--amber);font-weight:600;margin-bottom:1rem}
+.teacher{margin-top:2rem;font-size:.9rem;color:var(--muted)}
+.teacher summary{cursor:pointer}
+.teacher ul{padding-left:1.2rem}
+
+@media (max-width:700px){
+  .topbar{gap:.6rem;padding:.5rem 1rem}
+  .topbar .brand span{display:none}
+  .progress{display:none}
+  .wrap{padding:1.6rem 1rem 4rem}
+  .wrap > h1{font-size:1.7rem}
+  .q{padding:.9rem 1rem 1rem}
+  .problem{padding:1rem 1rem 1.1rem}
+  .parts li{grid-template-columns:1.8rem minmax(0,1fr)}
+  .parts .pts{grid-column:2}
+  .review li{grid-template-columns:1.6rem minmax(0,1fr) auto}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+@media print{.topbar,.teacher,.submit-card{display:none!important}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">Pop quiz <span>— HSCT Computer Science</span></div>
+  <div class="progress" id="progress" aria-label="Questions answered"></div>
+  <div class="grow"></div>
+  <div class="stat" id="stat-answered"></div>
+  <div class="timer" id="timer" hidden role="timer" aria-label="Time left">15:00</div>
+</header>
+<div class="sr" id="live" aria-live="assertive"></div>
+
+<!-- ===== 1. INTRO ===== -->
+<section class="view active" id="view-intro">
+  <div class="wrap">
+    <p class="kicker">Computer Science · Pop quiz · 15 minutes</p>
+    <h1>Pop quiz: think it, then save it.</h1>
+    <p class="lede">Everything from the last two lessons: variables, loops, strings and if/else from <b>Think it, then code it</b>, and state, rules and save files from <b>Save Point</b>. It ends with two problems where you get the details and work out what the code really does.</p>
+
+    <div class="card">
+      <h3>Three parts, 100 points</h3>
+      <ol class="parts" id="intro-parts"></ol>
+    </div>
+
+    <div class="card">
+      <h3>How this works</h3>
+      <ul class="rules">
+        <li>You have <b>15 minutes</b>. The clock starts when you press Start, and the quiz submits itself at <b>0:00</b> with whatever you have.</li>
+        <li>You can change any answer until you submit. There's no running code: work it out in your head or on scrap paper.</li>
+        <li>Each problem in Part C ends with a short written answer. The computer doesn't grade it, but it's required and Mr. Cruz reads it.</li>
+        <li>Leaving this tab and pasting into your answers are both recorded in your result file. Refreshing the page erases your answers.</li>
+        <li>At the end you download a result file and submit it in Google Classroom.</li>
+      </ul>
+      <div class="name-row">
+        <input id="name" type="text" placeholder="Your full name (goes on your result)" autocomplete="off" maxlength="60" aria-label="Your full name">
+        <button class="btn" id="start">Start the quiz</button>
+      </div>
+      <div class="err" id="name-err" hidden>Enter your name first. It goes on your result file.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 2. QUIZ ===== -->
+<section class="view" id="view-work">
+  <div class="wrap">
+    <div id="quiz"></div>
+    <div class="submit-card" id="submit-card">
+      <div class="row">
+        <span id="submit-status"></span>
+        <span class="grow"></span>
+        <button class="btn maroon" id="submit">Submit the quiz</button>
+      </div>
+      <div id="confirm"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 3. END ===== -->
+<section class="view" id="view-end">
+  <div class="wrap">
+    <p class="kicker">Pop quiz · submitted</p>
+    <h1 id="end-h1">Quiz submitted.</h1>
+    <p class="lede" id="end-lede"></p>
+    <div id="end-banner"></div>
+    <div class="card">
+      <h3>By part</h3>
+      <table class="recap" id="recap"></table>
+    </div>
+    <div class="card">
+      <h3>Question by question</h3>
+      <ul class="review" id="review"></ul>
+    </div>
+    <!-- The kit renders the standard result card (score, time, code, download) into this element. -->
+    <div id="hsct-result"></div>
+    <details class="teacher">
+      <summary>Teachers</summary>
+      <ul>
+        <li>The result file holds every answer (including the two written ones), the points for each question, how many times the student left the tab, any pastes into answers, the order their options were shuffled into, and whether the timer ran out. Open files at <b>hsct.tech/lessons/verify</b>.</li>
+        <li>Answer choices are shuffled per student, so neighbors see different letters in different spots.</li>
+        <li>After submitting, students see ✓ or ✗ per question but not the right answers. To go over it in class, set <code>REVEAL_ANSWERS: true</code> in <code>CONFIG</code> at the top of the quiz script.</li>
+      </ul>
+    </details>
+  </div>
+</section>
+
+<!-- HSCT KIT START — do not edit; copy the whole block from lesson-template/hsct-lesson.js -->
+<script>
+/* ============================================================================
+   HSCT LESSON KIT  v1.0
+   Every lesson on HSCT TechHub inlines this block unchanged (between the
+   <!-- HSCT KIT START --> and <!-- HSCT KIT END --> markers). It gives a
+   lesson three things:
+
+     1. A clock.   HSCT.start(name) when the student begins. The kit records
+                   wall-clock time and "active" time (tab visible).
+     2. A log.     HSCT.log(type, data) for anything worth remembering —
+                   answers, hints, retries. Ends up inside the result file.
+     3. A result.  HSCT.endScreen(el, {...scores}) renders the standard result
+                   card: name, score, time taken, badge code, and a button
+                   that downloads the encrypted result file the student
+                   submits in Google Classroom.
+
+   The file is encrypted with the teacher's PUBLIC key below (RSA-OAEP wrapping
+   an AES-256-GCM key). It can only be opened with the matching private key,
+   on the site's /lessons/verify page. Students can't read or edit it.
+
+   API (all on window.HSCT):
+     HSCT.lesson({ id, title, version, course, possible })   once, at load
+     HSCT.start(name)                                        when work begins
+     HSCT.log(type, data)                                    any time
+     HSCT.elapsed()   -> { seconds, activeSeconds }
+     HSCT.finish({ earned, possible, sections, tier, extra }) -> Promise<result>
+     HSCT.endScreen(el, { earned, possible, sections, tier, extra, note })
+                      -> Promise<result>   (calls finish, renders the card)
+     HSCT.download()  / HSCT.copyCode()                      after finish
+   ========================================================================== */
+(function () {
+  'use strict';
+  var KIT = '1.0';
+
+  /* Mr. Cruz's public key. Replace the whole object if the key pair is ever
+     regenerated on /lessons/verify — and keep the private key out of git. */
+  var PUBLIC_KEY = {"kty":"RSA","n":"rZUBRxn7dUikufJq7z2XVn-on4Of0IyQr_YaPSTgIUaGsYKcrZ4FNROL4A_ZM5JShLf6OVp2ZeAI7XN_7iX0tvd79RqAWRM9an6rx-s6bMYSW1wmtRxZyL-BX56vTtikVRLNO7uyzCb8kevJE71Fi6nlPhdXa-iS4vtIEm2Wjh4cLPinAKhMnkO3BpGHUhtFw7Hyus1w04EdLxowk4UcN7d0w4MQRnBV8ehXQVoLVQ0_QtfrtPTQOpScHuwyaw9nwnTA7h7BEOv1ZkbEyq2N4TFixSSCsneUsc3PlbZOndDzMGMmdMr00ulntRZBfyioFzRcsRUGGwAqpB9SuH7XGQ","e":"AQAB","alg":"RSA-OAEP-256","ext":true};
+
+  var VERIFY_URL = 'hsct.tech/lessons/verify';
+
+  var cfg = null;      // lesson config
+  var ses = null;      // current session
+  var ticker = null;   // active-time interval
+  var result = null;   // { badge, filename, text, envelope, payload }
+
+  /* ---------- small helpers ---------- */
+  var enc = new TextEncoder();
+  function b64(buf) {
+    var bytes = new Uint8Array(buf), s = '';
+    for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return btoa(s);
+  }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function fmtDuration(sec) {
+    sec = Math.max(0, Math.round(sec || 0));
+    var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+    if (h) return h + ' h ' + pad(m) + ' min';
+    if (m) return m + ' min ' + pad(s) + ' s';
+    return s + ' s';
+  }
+  function fmtDate(iso) {
+    try { return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+    catch (e) { return iso; }
+  }
+  function slug(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'student'; }
+  function stamp(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes()); }
+
+  /* Badge code: 8 characters from a SHA-256 of the result, shown on screen
+     so a screenshot can be matched to its file. */
+  var ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ23456789';
+  function badgeFrom(hashBuf) {
+    var bytes = new Uint8Array(hashBuf), out = '';
+    for (var i = 0; i < 8; i++) out += ALPHABET[bytes[i] % ALPHABET.length];
+    return out.slice(0, 4) + '-' + out.slice(4);
+  }
+
+  function needSubtle() {
+    if (!(window.crypto && crypto.subtle)) {
+      throw new Error('Result files need a secure page (https). Open this lesson from the TechHub site and finish again.');
+    }
+  }
+
+  /* ---------- public API ---------- */
+  function lesson(c) {
+    if (!c || !c.id || !c.title) throw new Error('HSCT.lesson needs { id, title }');
+    cfg = { version: '1.0', course: '', possible: 100 };
+    for (var k in c) cfg[k] = c[k];
+    return HSCT;
+  }
+
+  function start(name) {
+    if (!cfg) throw new Error('Call HSCT.lesson({...}) before HSCT.start(name)');
+    name = String(name || '').trim().replace(/\s+/g, ' ');
+    if (name.length < 2) throw new Error('HSCT.start needs the student\'s name');
+    ses = { name: name, started: new Date().toISOString(), t0: Date.now(), active: 0, events: [] };
+    result = null;
+    clearInterval(ticker);
+    ticker = setInterval(function () { if (document.visibilityState === 'visible') ses.active += 1; }, 1000);
+    log('start');
+    return HSCT;
+  }
+
+  function log(type, data) {
+    if (!ses) return HSCT;
+    var e = { t: Math.round((Date.now() - ses.t0) / 100) / 10, type: String(type) };
+    if (data && typeof data === 'object') for (var k in data) if (k !== 't' && k !== 'type') e[k] = data[k];
+    if (ses.events.length < 800) ses.events.push(e);
+    return HSCT;
+  }
+
+  function elapsed() {
+    if (!ses) return { seconds: 0, activeSeconds: 0 };
+    return { seconds: Math.round((Date.now() - ses.t0) / 1000), activeSeconds: ses.active };
+  }
+
+  /* Build, seal, and keep the result. Resolves to { badge, filename, text, payload }. */
+  async function finish(opts) {
+    if (!cfg || !ses) throw new Error('HSCT.start(name) was never called');
+    needSubtle();
+    opts = opts || {};
+    clearInterval(ticker);
+    var finished = new Date();
+    var el = elapsed();
+    var earned = Number(opts.earned || 0), possible = Number(opts.possible || cfg.possible || 0);
+    var payload = {
+      kit: KIT,
+      lesson: { id: cfg.id, title: cfg.title, version: cfg.version, course: cfg.course },
+      student: { name: ses.name },
+      started: ses.started,
+      finished: finished.toISOString(),
+      seconds: el.seconds,
+      activeSeconds: el.activeSeconds,
+      score: { earned: earned, possible: possible, percent: possible ? Math.round(1000 * earned / possible) / 10 : null },
+      tier: opts.tier || null,
+      sections: (opts.sections || []).map(function (s) { return { id: s.id, title: s.title, earned: s.earned, possible: s.possible, status: s.status }; }),
+      extra: opts.extra || null,
+      events: ses.events,
+      env: { tz: Intl.DateTimeFormat().resolvedOptions().timeZone, ua: navigator.userAgent, url: location.href.split('?')[0] },
+    };
+    var hash = await crypto.subtle.digest('SHA-256', enc.encode(JSON.stringify(payload)));
+    var badge = badgeFrom(hash);
+    payload.badge = badge;
+
+    /* header travels in the clear but is authenticated (AES-GCM additional data) */
+    var header = { hsct: 1, kit: KIT, lesson: cfg.id, title: cfg.title, student: ses.name, finished: payload.finished, badge: badge };
+    var pub = await crypto.subtle.importKey('jwk', PUBLIC_KEY, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['wrapKey']);
+    var aes = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt']);
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    var data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv, additionalData: enc.encode(JSON.stringify(header)) }, aes, enc.encode(JSON.stringify(payload)));
+    var wrapped = await crypto.subtle.wrapKey('raw', aes, pub, { name: 'RSA-OAEP' });
+    var envelope = {};
+    for (var k in header) envelope[k] = header[k];
+    envelope.key = b64(wrapped); envelope.iv = b64(iv); envelope.data = b64(data);
+
+    result = {
+      badge: badge,
+      filename: 'HSCT_' + cfg.id + '_' + slug(ses.name) + '_' + stamp(finished) + '.hsct',
+      text: JSON.stringify(envelope),
+      payload: payload,
+    };
+    return result;
+  }
+
+  function download() {
+    if (!result) throw new Error('Nothing to download yet — call HSCT.finish first');
+    var blob = new Blob([result.text], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = result.filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+    return result.filename;
+  }
+
+  async function copyCode() {
+    if (!result) throw new Error('Nothing to copy yet — call HSCT.finish first');
+    try { await navigator.clipboard.writeText(result.text); return true; }
+    catch (e) {
+      var ta = document.createElement('textarea'); ta.value = result.text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      var ok = false; try { ok = document.execCommand('copy'); } catch (e2) {}
+      ta.remove(); return ok;
+    }
+  }
+
+  /* ---------- the standard end screen ---------- */
+  var CSS = '.hsct-card{--hsct-ink:#101a3f;--hsct-mute:#5b6485;--hsct-line:#d3d9ee;--hsct-accent:var(--hsct-color,#1f3fae);--hsct-ok:#1f7a3d;--hsct-bad:#b3261e;'
+    + 'font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;color:var(--hsct-ink);background:#fff;border:1px solid var(--hsct-line);border-left:6px solid var(--hsct-accent);border-radius:12px;padding:20px 22px;margin:20px 0;line-height:1.45}'
+    + '.hsct-card *{box-sizing:border-box}.hsct-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--hsct-mute)}.hsct-head b{color:var(--hsct-accent)}'
+    + '.hsct-name{font-size:22px;font-weight:700;margin:6px 0 2px}.hsct-score{font-size:15px;margin:0 0 12px}.hsct-score b{font-size:28px;font-weight:700}.hsct-score .hsct-tier{display:inline-block;margin-left:8px;padding:2px 10px;border-radius:999px;background:var(--hsct-accent);color:#fff;font-size:13px;font-weight:600;vertical-align:middle}'
+    + '.hsct-facts{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0 0 14px;font-size:14px}.hsct-facts dt{color:var(--hsct-mute)}.hsct-facts dd{margin:0}.hsct-facts code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;letter-spacing:.08em;font-weight:600}'
+    + '.hsct-secs{width:100%;border-collapse:collapse;font-size:14px;margin:0 0 14px}.hsct-secs td{padding:5px 0;border-top:1px solid var(--hsct-line)}.hsct-secs td:last-child{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}'
+    + '.hsct-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.hsct-btn{font:600 15px "IBM Plex Sans","Segoe UI",system-ui,sans-serif;padding:11px 18px;border-radius:8px;border:2px solid var(--hsct-accent);background:var(--hsct-accent);color:#fff;cursor:pointer}.hsct-btn:hover{filter:brightness(.92)}.hsct-btn.hsct-alt{background:transparent;color:var(--hsct-accent)}.hsct-btn:focus-visible{outline:3px solid #a9b7ea;outline-offset:2px}.hsct-btn:disabled{opacity:.55;cursor:wait}'
+    + '.hsct-note{margin:12px 0 0;font-size:13.5px;color:var(--hsct-mute)}.hsct-status{margin:8px 0 0;font-size:14px;min-height:1.4em}.hsct-status.ok{color:var(--hsct-ok)}.hsct-status.bad{color:var(--hsct-bad)}'
+    + '@media print{.hsct-actions,.hsct-note,.hsct-status{display:none}}';
+
+  function injectCss() {
+    if (document.getElementById('hsct-kit-css')) return;
+    var s = document.createElement('style'); s.id = 'hsct-kit-css'; s.textContent = CSS; document.head.appendChild(s);
+  }
+
+  /* Renders the card into `el` and seals the result. Resolves with the result. */
+  async function endScreen(el, opts) {
+    if (typeof el === 'string') el = document.querySelector(el);
+    if (!el) throw new Error('HSCT.endScreen needs an element');
+    injectCss();
+    opts = opts || {};
+    var elp = elapsed();
+    var possible = Number(opts.possible || cfg.possible || 0), earned = Number(opts.earned || 0);
+    var pct = possible ? Math.round(100 * earned / possible) : null;
+    var secs = (opts.sections || []).map(function (s) {
+      var right = s.status != null ? esc(s.status) : (s.possible != null ? esc(s.earned) + ' / ' + esc(s.possible) : esc(s.earned));
+      return '<tr><td>' + esc(s.title) + '</td><td>' + right + '</td></tr>';
+    }).join('');
+    el.innerHTML = '<div class="hsct-card">'
+      + '<div class="hsct-head"><span><b>HSCT TechHub</b> result</span><span>' + esc(cfg.title) + '</span></div>'
+      + '<div class="hsct-name">' + esc(ses ? ses.name : '') + '</div>'
+      + '<div class="hsct-score"><b>' + esc(earned) + '</b> / ' + esc(possible) + (pct != null ? ' <span>(' + pct + '%)</span>' : '') + (opts.tier ? '<span class="hsct-tier">' + esc(opts.tier) + '</span>' : '') + '</div>'
+      + '<dl class="hsct-facts"><dt>Finished</dt><dd>' + esc(fmtDate(new Date().toISOString())) + '</dd>'
+      + '<dt>Time taken</dt><dd>' + esc(fmtDuration(elp.seconds)) + (elp.activeSeconds < elp.seconds - 60 ? ' <span style="color:var(--hsct-mute)">(' + esc(fmtDuration(elp.activeSeconds)) + ' with the tab open)</span>' : '') + '</dd>'
+      + '<dt>Code</dt><dd><code class="hsct-badge">........</code></dd></dl>'
+      + (secs ? '<table class="hsct-secs"><tbody>' + secs + '</tbody></table>' : '')
+      + '<div class="hsct-actions"><button type="button" class="hsct-btn hsct-dl" disabled>Download your result file</button><button type="button" class="hsct-btn hsct-alt hsct-copy" disabled>Copy result code</button></div>'
+      + '<p class="hsct-note">' + esc(opts.note || 'Submit the file in Google Classroom. If downloads are blocked, copy the code and paste it instead. The file is encrypted: only your teacher can open it.') + '</p>'
+      + '<p class="hsct-status" aria-live="polite">Preparing your result file…</p>'
+      + '</div>';
+    var status = el.querySelector('.hsct-status'), dl = el.querySelector('.hsct-dl'), cp = el.querySelector('.hsct-copy');
+    try {
+      var r = await finish(opts);
+      el.querySelector('.hsct-badge').textContent = r.badge;
+      status.textContent = 'Ready: ' + r.filename;
+      dl.disabled = false; cp.disabled = false;
+      dl.onclick = function () { try { download(); status.className = 'hsct-status ok'; status.textContent = 'Downloaded ' + r.filename + ' — now submit it.'; } catch (e) { status.className = 'hsct-status bad'; status.textContent = e.message; } };
+      cp.onclick = async function () { var ok = await copyCode(); status.className = 'hsct-status ' + (ok ? 'ok' : 'bad'); status.textContent = ok ? 'Code copied — paste it into your submission.' : 'Copy failed. Use the download instead.'; };
+      return r;
+    } catch (e) {
+      status.className = 'hsct-status bad';
+      status.textContent = e.message || String(e);
+      throw e;
+    }
+  }
+
+  var HSCT = {
+    kit: KIT, verifyUrl: VERIFY_URL,
+    lesson: lesson, start: start, log: log, elapsed: elapsed,
+    finish: finish, download: download, copyCode: copyCode, endScreen: endScreen,
+    get result() { return result; },
+    get session() { return ses ? { name: ses.name, started: ses.started } : null; },
+    fmtDuration: fmtDuration,
+  };
+  window.HSCT = HSCT;
+})();
+</script>
+<!-- HSCT KIT END -->
+
+<script>
+/* ============================================================================
+   POP QUIZ: Think it, then save it
+   Everything a teacher might want to change is in CONFIG.
+   ========================================================================== */
+const CONFIG = {
+  MINUTES: 15,            // time limit; the quiz submits itself at 0:00
+  REVEAL_ANSWERS: false,  // true = after submitting, students see the right answer and why for every question
+  MIN_WORDS: 10,          // written answers in Part C need at least this many words to count as answered
+};
+
+HSCT.lesson({ id: 'pop-quiz-think-it-save-it', title: 'Pop quiz: think it, then save it', version: '1.0', course: 'computer-science', possible: 100 });
+
+/* ---------- helpers ---------- */
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+/* `code` and **bold** inside question text */
+const fmt = (s) => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+const plain = (s) => String(s == null ? '' : s).replace(/`/g, '').replace(/\*\*/g, '');
+/* tiny syntax colouring, same as the lessons */
+const py = (src) => '<pre>' + esc(src).replace(/(#.*$)|(&quot;[^\n]*?&quot;)|\b(if|elif|else|while|for|in|not|and|or|True|False|None|def|return|import|with|as)\b/gm,
+  (m, c, str, kw) => c ? '<span class="c">' + c + '</span>' : str ? '<span class="s">' + str + '</span>' : '<span class="k">' + kw + '</span>') + '</pre>';
+const words = (t) => String(t || '').trim().split(/\s+/).filter(Boolean).length;
+
+/* ---------- the quiz ---------- */
+const PARTS = [
+  { id: 'A', title: 'Quick checks', pts: 30, kicker: 'Part A · 6 questions · 30 points · about 4 minutes',
+    lede: 'Pick one answer for each.', blurb: 'Six multiple-choice questions from both lessons.' },
+  { id: 'B', title: 'Trace the code', pts: 20, kicker: 'Part B · 4 questions · 20 points · about 4 minutes',
+    lede: 'Read each program the way the computer would, one line at a time, and type what it prints.', blurb: 'Read four short programs and type what each one prints.' },
+  { id: 'C', title: 'Think it through', pts: 50, kicker: 'Part C · 2 problems · 50 points · about 7 minutes',
+    lede: 'Each problem gives you the details and a bug report. Use logic to work out what the code really does, then explain the fix in your own words.', blurb: 'Two bug reports. Work out what the code really does, then explain the fix.' },
+];
+
+const PROBLEMS = [
+  {
+    id: 'p1', n: 1, title: 'The school store discount', topic: 'If / else', pts: 25,
+    body: [
+      { html: '<p>The school store takes whole-dollar orders and gives discounts. The rules taped to the register:</p><ul><li><b>$50 or more:</b> 20% off</li><li><b>$20 to $49:</b> 10% off</li><li><b>$1 to $19:</b> no discount</li><li><b>$0 or less:</b> that’s a typo, so print Error</li></ul><p>A teammate wrote the program that picks the message. Customers with big orders say they’re being shortchanged.</p>' },
+      { code: 'total = int(input())\nif total >= 20:\n    print("10% off")\nelif total >= 50:\n    print("20% off")\nelif total > 0:\n    print("No discount")\nelse:\n    print("Error")' },
+    ],
+  },
+  {
+    id: 'p2', n: 2, title: 'The Sprout Valley money glitch', topic: 'Save files', pts: 25,
+    body: [
+      { html: '<p><b>Sprout Valley</b> is a farming game built the same way as Save Point. Every new game starts on <b>day 1</b> with <b>0 coins</b>, <b>10 seeds</b> and <b>every crop plot empty</b>. The shop buys seeds back for <b>3 coins each</b>.</p><p>Here’s a player’s <code>state</code> on day 4:</p>' },
+      { code: 'state = {\n    "day": 4,\n    "coins": 30,\n    "seeds": 2,\n    "crops": ["corn", "tomato", "empty"],\n    "hero": {"x": 3, "y": 1},\n}' },
+      { html: '<p>A teammate wrote the save code. To keep save files small, it only saves a few keys:</p>' },
+      { code: 'def save_game(state, slot):\n    data = {"day": state["day"],\n            "coins": state["coins"],\n            "hero": state["hero"]}\n    with open(slot + ".json", "w") as f:\n        f.write(json.dumps(data))\n\n\ndef load_game(slot):\n    with open(slot + ".json") as f:\n        data = json.loads(f.read())\n    state = new_game()        # day 1, 0 coins, 10 seeds, empty plots\n    state["day"] = data["day"]\n    state["coins"] = data["coins"]\n    state["hero"] = data["hero"]\n    return state' },
+      { html: '<p class="note"><b>The player saves with the state above, quits, and loads.</b></p>' },
+    ],
+  },
+];
+
+/* type: mc (one answer) · multi (tick all) · text (typed, auto-checked) · write (read by the teacher, 0 auto points) */
+const QUESTIONS = [
+  /* ----- Part A ----- */
+  {
+    id: 'a1', part: 'A', type: 'mc', pts: 5, topic: 'Loops',
+    prompt: 'The custodian needs a label for every locker from 214 to 260, **including 260**. Which loop visits every one of those numbers exactly once?',
+    options: ['`for n in range(214, 260):`', '`for n in range(214, 261):`', '`for n in range(215, 261):`', '`for n in range(213, 260):`'],
+    answer: 1,
+    why: '`range(a, b)` stops before `b`. To include 260, the second number has to be 261: `range(first, last + 1)`.',
+  },
+  {
+    id: 'a2', part: 'A', type: 'mc', pts: 5, topic: 'Variables',
+    prompt: 'A student runs this and types `16`. What happens?',
+    code: 'age = input()\nprint(age + 1)',
+    options: ['It prints `17`', 'It prints `161`', 'It crashes: `input()` hands back text, and Python won’t add a number to text', 'It prints `16 1`'],
+    answer: 2,
+    why: '`input()` always returns a string, so `age` is `"16"`, not 16. `"16" + 1` is a TypeError. `int(input())` turns the text into a number first.',
+  },
+  {
+    id: 'a3', part: 'A', type: 'mc', pts: 5, topic: 'Loops',
+    prompt: 'What happens when this runs?',
+    code: 'count = 0\nwhile count < 3:\n    print("Locker", count)',
+    options: ['It prints Locker 0, Locker 1, Locker 2 and stops', 'It prints Locker 0 forever, because nothing inside the loop changes `count`', 'It prints nothing, because `count` starts at 0', 'It crashes on the second line'],
+    answer: 1,
+    why: 'A `while` loop repeats as long as its condition is True. Nothing inside the loop changes `count`, so `count < 3` stays True forever. It needs `count += 1` inside the loop.',
+  },
+  {
+    id: 'a4', part: 'A', type: 'mc', pts: 5, topic: 'Game state',
+    prompt: 'In Save Point, which of these belongs in `state` instead of `LEVEL`?',
+    options: ['Where the walls are', 'Where the slime is right now', 'How many rows the map has', 'Which character means wall (`#`)'],
+    answer: 1,
+    why: '`LEVEL` is the map, and it never changes while you play. The slime moves every turn, so where it is right now is state. It lives in `state["things"]`.',
+  },
+  {
+    id: 'a5', part: 'A', type: 'mc', pts: 5, topic: 'Save files',
+    prompt: 'What does `json.dumps(state)` give back?',
+    options: ['A second name for the same dict', 'A string: the whole dict written out as text', 'The save file on the disk', 'A list of the dict’s keys'],
+    answer: 1,
+    why: '`dumps` means dump to a string. Text can be written to a file, and nothing the game does later can change it. `json.loads` turns the text back into a brand-new dict.',
+  },
+  {
+    id: 'a6', part: 'A', type: 'mc', pts: 5, topic: 'Rules',
+    prompt: 'This is the door’s rule. The hero walks into the door with an **empty bag**. What happens?',
+    code: 'def on_touch_door(state, thing):\n    if "key" not in state["bag"]:\n        state["message"] = "Locked. Find a key."\n        return "stop"\n    state["bag"].remove("key")\n    state["things"].remove(thing)',
+    options: ['The door opens and disappears', 'The game crashes, because there’s no key to remove', 'The hero is stopped, the message says `Locked. Find a key.`, and the two lines after `return` never run', 'The key is removed and the hero is sent home'],
+    answer: 2,
+    why: 'The bag is empty, so the `if` is True. `return "stop"` ends the function right there, so the two lines under it never run. The engine sees `"stop"` and moves the hero back.',
+  },
+
+  /* ----- Part B ----- */
+  {
+    id: 'b1', part: 'B', type: 'text', pts: 5, topic: 'Variables', label2: 'It prints:',
+    prompt: 'What does this print?',
+    code: 'pencils = 50\nstudents = 8\neach = pencils // students\nextra = pencils % students\nprint(each, extra)',
+    check: { numbers: [6, 2] }, show: '6 2',
+    why: '`50 // 8` is 6 (8 goes into 50 six whole times) and `50 % 8` is 2 (what’s left over). `print` puts a space between the two values.',
+  },
+  {
+    id: 'b2', part: 'B', type: 'text', pts: 5, topic: 'Loops + if', label2: 'It prints:',
+    prompt: 'What does this print?',
+    code: 'count = 0\nfor n in range(3, 12):\n    if n % 3 == 0:\n        count += 1\nprint(count)',
+    check: { number: 3 }, show: '3',
+    why: '`range(3, 12)` is 3 through 11, because it stops before 12. Of those, 3, 6 and 9 divide by 3 with nothing left over, so `count` goes up three times.',
+  },
+  {
+    id: 'b3', part: 'B', type: 'text', pts: 5, topic: 'Strings', label2: 'It prints:', tip: 'Capital letters count.',
+    prompt: 'What does this print?',
+    code: 'word = "  gRACE hopper "\nword.lower()\nparts = word.split()\nprint(parts[0][0] + parts[0][-1])',
+    check: { exact: ['gE'] }, show: 'gE',
+    why: '`word.lower()` makes a new string, but nothing keeps it, so `word` never changes. `split()` gives `["gRACE", "hopper"]`. The first word’s first letter is `g` and its last letter (`[-1]`) is `E`.',
+  },
+  {
+    id: 'b4', part: 'B', type: 'text', pts: 5, topic: 'Save files', label2: 'It prints:',
+    prompt: 'What does this print?',
+    code: 'import json\nstate = {"score": 1}\nsnapshot = state\nsaved = json.dumps(state)\nstate["score"] = 5\nprint(snapshot["score"], json.loads(saved)["score"])',
+    check: { numbers: [5, 1] }, show: '5 1',
+    why: '`snapshot = state` copies nothing. It’s a second name for the same dict, so it sees the 5. `saved` is text written while the score was 1, and text can’t change. That’s the quick-save bug from Save Point, and its fix.',
+  },
+
+  /* ----- Part C, problem 1 ----- */
+  {
+    id: 'c1a', part: 'C', problem: 'p1', label: '1a', type: 'mc', pts: 8, topic: 'If / else',
+    prompt: 'A customer’s order comes to **$75**. What does the program print?',
+    options: ['`10% off`', '`20% off`', '`No discount`', '`Error`'],
+    answer: 0,
+    why: 'Python checks from the top, and `75 >= 20` is True, so the first branch prints `10% off`. Exactly one branch runs, so the 20% check never gets a turn.',
+  },
+  {
+    id: 'c1b', part: 'C', problem: 'p1', label: '1b', type: 'multi', pts: 10, topic: 'If / else',
+    prompt: 'Which order totals get the **wrong** message? Tick every one.',
+    options: [
+      { t: '$75', yes: true, why: 'Prints 10% off. It should be 20% off.' },
+      { t: '$50', yes: true, why: 'Prints 10% off. “$50 or more” means 50 gets 20% off.' },
+      { t: '$35', yes: false, why: 'Prints 10% off, which is right.' },
+      { t: '$12', yes: false, why: 'Prints No discount, which is right.' },
+      { t: '$0', yes: false, why: 'Prints Error, which is right.' },
+    ],
+    why: 'Every total of 50 or more is caught by `>= 20` first, so $75 and $50 both get 10% off. Everything under 50 comes out right.',
+  },
+  {
+    id: 'c1c', part: 'C', problem: 'p1', label: '1c', type: 'mc', pts: 7, topic: 'If / else',
+    prompt: 'Can the line `print("20% off")` ever run?',
+    options: ['Yes, when the total is exactly 50', 'Yes, when the total is over 100', 'No. Any total that’s 50 or more is also 20 or more, so the first check always catches it first', 'No. Python skips every `elif` that comes after the first one'],
+    answer: 2,
+    why: 'An `elif` only gets a turn when every check above it was False. A total can’t be under 20 and at least 50 at the same time, so that line can never run. Programmers call that dead code.',
+  },
+  {
+    id: 'c1w', part: 'C', problem: 'p1', label: '1d', type: 'write', pts: 0, topic: 'Explain',
+    prompt: 'Explain to your teammate how to fix the program, and why the order of the checks matters.',
+    placeholder: 'The problem is… To fix it…',
+    rubric: ['Check the biggest cutoff first: `>= 50`, then `>= 20`, then `> 0`, then `else` for Error.', 'Only one branch runs, and a total of 50 or more also passes `>= 20`, so the stricter check has to come first.'],
+  },
+
+  /* ----- Part C, problem 2 ----- */
+  {
+    id: 'c2a', part: 'C', problem: 'p2', label: '2a', type: 'text', pts: 8, topic: 'Save files', label2: 'Seeds:', tip: 'Type a number.',
+    prompt: 'Right after loading, how many **seeds** does the player have?',
+    check: { number: 10 }, show: '10',
+    why: '`seeds` isn’t in `data`, so `load_game` never puts it back. It keeps what `new_game()` gave it: 10. The 2 seeds the player really had are gone.',
+  },
+  {
+    id: 'c2b', part: 'C', problem: 'p2', label: '2b', type: 'mc', pts: 7, topic: 'Save files',
+    prompt: 'A player posts: “Free money glitch in Sprout Valley!” Which trick really works?',
+    options: ['Sell all your seeds to the shop, save, then load. The coins stay and the seeds come back. Repeat.', 'Plant corn, save, then load. The corn comes back fully grown.', 'Save on day 4, then load. It turns back into day 1, so you get extra days.', 'Walk far from home, save, then load. The game pays you for the distance.'],
+    answer: 0,
+    why: 'Coins are saved but seeds aren’t. Selling seeds turns them into coins that survive the load, and every load hands out a fresh 10 seeds. It’s the same bug as Save Point’s infinite coin glitch: something that changes wasn’t in the save.',
+  },
+  {
+    id: 'c2c', part: 'C', problem: 'p2', label: '2c', type: 'multi', pts: 10, topic: 'Save files',
+    prompt: 'What has to be added to `data` so loading gives back exactly the game that was saved? Tick every one.',
+    options: [
+      { t: '`"seeds"`', yes: true, why: 'It changes as you play, and `new_game()` can’t know it.' },
+      { t: '`"crops"`', yes: true, why: 'What’s planted where changes as you play. Leave it out and every crop vanishes on load.' },
+      { t: '`"day"`', yes: false, why: 'It’s already in `data`.' },
+      { t: 'The farm map: where the fences and the river are', yes: false, why: 'That’s the game’s LEVEL. It ships with the game and never changes.' },
+      { t: 'The picture of a tomato', yes: false, why: 'Game files, the same for every player.' },
+    ],
+    why: 'A save has to hold everything that can change while you play. `seeds` and `crops` change and aren’t saved yet.',
+  },
+  {
+    id: 'c2w', part: 'C', problem: 'p2', label: '2d', type: 'write', pts: 0, topic: 'Explain',
+    prompt: 'In one or two sentences: what rule about save files did your teammate break, and what’s the simplest fix?',
+    placeholder: 'The rule they broke is…',
+    rubric: ['A save has to hold everything that can change while you play. Anything left out gets reset by `new_game()` when you load.', 'Simplest fix: save the whole thing with `json.dumps(state)` and load it back with `json.loads(...)`.'],
+  },
+];
+QUESTIONS.forEach((q) => { if (!q.label) q.label = q.id.toUpperCase(); });
+const byId = Object.fromEntries(QUESTIONS.map((q) => [q.id, q]));
+const optText = (q, i) => (typeof q.options[i] === 'string' ? q.options[i] : q.options[i].t);
+
+/* ---------- state ---------- */
+const S = { name: '', deadline: 0, ans: {}, order: {}, leaves: 0, pastes: [], running: false, submitted: false, timedOut: false, secondsLeft: null, timer: null, announced: {} };
+
+/* seeded shuffle so each student gets their own option order */
+function seeded(str) {
+  let h = 1779033703 ^ str.length;
+  for (let i = 0; i < str.length; i++) { h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); }
+  return function () { h = Math.imul(h ^ (h >>> 16), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
+}
+function shuffled(n, rnd) { const a = [...Array(n).keys()]; for (let i = n - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+/* ---------- intro ---------- */
+$('intro-parts').innerHTML = PARTS.map((p) => `<li><span class="n">${p.id}</span><span><b>${esc(p.title)}.</b> <span class="muted">${esc(p.blurb)}</span></span><span class="pts">${p.pts} pts</span></li>`).join('');
+$('start').onclick = () => {
+  const n = $('name').value.trim();
+  if (n.length < 2) { $('name-err').hidden = false; $('name').focus(); return; }
+  $('name-err').hidden = true;
+  S.name = n;
+  const rnd = seeded(n + '|' + Date.now());
+  QUESTIONS.forEach((q) => { if (q.options) S.order[q.id] = shuffled(q.options.length, rnd); });
+  HSCT.start(n);
+  HSCT.log('order', { order: S.order });
+  renderQuiz();
+  show('view-work');
+  S.running = true;
+  S.deadline = Date.now() + CONFIG.MINUTES * 60 * 1000;
+  $('timer').hidden = false;
+  updateProgress();
+  tick(); S.timer = setInterval(tick, 500);
+  window.addEventListener('beforeunload', guard);
+};
+$('name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('start').click(); });
+function show(id) { document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === id)); window.scrollTo(0, 0); }
+function guard(e) { if (S.running && !S.submitted) { e.preventDefault(); e.returnValue = ''; } }
+
+/* ---------- render ---------- */
+function qHead(q) {
+  return `<div class="qhead"><span class="qnum">${esc(q.label)}</span><span class="tag">${esc(q.topic)}</span><span class="grow"></span><span class="qpts">${q.type === 'write' ? 'required · Mr. Cruz reads it' : q.pts + ' pts'}</span></div>`;
+}
+function renderQ(q) {
+  const cls = 'q' + (q.problem ? ' sub' : '');
+  if (q.type === 'mc' || q.type === 'multi') {
+    const kind = q.type === 'mc' ? 'radio' : 'checkbox';
+    const opts = S.order[q.id].map((i) => `<label class="opt"><input type="${kind}" name="${q.id}" value="${i}"><span>${fmt(optText(q, i))}</span></label>`).join('');
+    return `<div class="${cls}" id="q-${q.id}" data-q="${q.id}">${qHead(q)}<fieldset><legend>${fmt(q.prompt)}</legend>${q.code ? py(q.code) : ''}${q.type === 'multi' ? '<p class="tip">Exactly right: ' + q.pts + ' points. One wrong tick or one miss: ' + Math.floor(q.pts / 2) + '.</p>' : ''}<div class="opts">${opts}</div></fieldset></div>`;
+  }
+  if (q.type === 'text') {
+    return `<div class="${cls}" id="q-${q.id}" data-q="${q.id}">${qHead(q)}<p class="qt" id="qt-${q.id}">${fmt(q.prompt)}</p>${q.code ? py(q.code) : ''}${q.tip ? `<p class="tip">${esc(q.tip)}</p>` : ''}<div class="answer"><label for="in-${q.id}">${esc(q.label2 || 'Answer:')}</label><input id="in-${q.id}" data-q="${q.id}" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="60" aria-describedby="qt-${q.id}"></div></div>`;
+  }
+  /* write */
+  return `<div class="${cls} write" id="q-${q.id}" data-q="${q.id}">${qHead(q)}<label class="qt" for="in-${q.id}" style="display:block">${fmt(q.prompt)}</label><textarea id="in-${q.id}" data-q="${q.id}" placeholder="${esc(q.placeholder || '')}" spellcheck="true" maxlength="1200"></textarea><div class="row"><span class="count" id="count-${q.id}">0 words · at least ${CONFIG.MIN_WORDS}</span></div></div>`;
+}
+function renderQuiz() {
+  let h = '';
+  for (const p of PARTS) {
+    h += `<section class="part" id="part-${p.id}"><div class="part-head"><p class="kicker">${esc(p.kicker)}</p><h2>${esc(p.title)}</h2><p class="lede">${esc(p.lede)}</p></div>`;
+    if (p.id !== 'C') h += QUESTIONS.filter((q) => q.part === p.id).map(renderQ).join('');
+    else for (const pr of PROBLEMS) {
+      h += `<div class="problem" id="${pr.id}"><p class="kicker">Problem ${pr.n} · ${esc(pr.topic)} · ${pr.pts} points</p><h3>${esc(pr.title)}</h3><div class="story">`
+        + pr.body.map((b) => (b.code ? py(b.code) : b.html)).join('') + '</div>'
+        + QUESTIONS.filter((q) => q.problem === pr.id).map(renderQ).join('') + '</div>';
+    }
+    h += '</section>';
+  }
+  $('quiz').innerHTML = h;
+  $('progress').innerHTML = QUESTIONS.map((q, i) => `<button type="button" data-jump="${q.id}" class="${i && QUESTIONS[i - 1].part !== q.part ? 'gap' : ''}" aria-label="${esc(q.label)}"></button>`).join('');
+  $('progress').querySelectorAll('[data-jump]').forEach((b) => b.addEventListener('click', () => jump(b.dataset.jump)));
+  updateProgress();
+}
+function jump(id) {
+  const el = $('q-' + id); if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const inp = el.querySelector('input,textarea'); if (inp) setTimeout(() => inp.focus({ preventScroll: true }), 350);
+}
+
+/* ---------- answers ---------- */
+function isAnswered(q) {
+  const a = S.ans[q.id];
+  if (q.type === 'write') return words(a) >= CONFIG.MIN_WORDS;
+  if (q.type === 'multi') return Array.isArray(a) && a.length > 0;
+  if (q.type === 'text') return typeof a === 'string' && a.trim() !== '';
+  return a != null;
+}
+function updateProgress() {
+  let n = 0;
+  QUESTIONS.forEach((q) => {
+    const done = isAnswered(q); if (done) n++;
+    const b = $('progress').querySelector(`[data-jump="${q.id}"]`);
+    if (b) { b.classList.toggle('done', done); b.setAttribute('aria-label', q.label + (done ? ', answered' : ', blank')); }
+    const card = $('q-' + q.id); if (card) card.classList.toggle('answered', done);
+  });
+  $('stat-answered').innerHTML = S.running || S.submitted ? `<b>${n}</b>/${QUESTIONS.length} answered` : '';
+  $('submit-status').textContent = n === QUESTIONS.length ? 'Everything is answered.' : `${QUESTIONS.length - n} of ${QUESTIONS.length} still blank.`;
+}
+$('quiz').addEventListener('change', (e) => {
+  const t = e.target, card = t.closest('[data-q]'); if (!card || S.submitted) return;
+  const q = byId[card.dataset.q];
+  if (q.type === 'mc') { S.ans[q.id] = +t.value; HSCT.log('answer', { q: q.id, pick: +t.value }); }
+  else if (q.type === 'multi') { S.ans[q.id] = [...card.querySelectorAll('input:checked')].map((x) => +x.value).sort(); HSCT.log('answer', { q: q.id, picks: S.ans[q.id].join(',') }); }
+  else if (q.type === 'text') HSCT.log('answer', { q: q.id, text: String(S.ans[q.id] || '').slice(0, 60) });
+  else if (q.type === 'write') HSCT.log('write', { q: q.id, words: words(S.ans[q.id]) });
+  updateProgress(); clearConfirm();
+});
+$('quiz').addEventListener('input', (e) => {
+  const t = e.target; if (!t.dataset.q || S.submitted) return;
+  const q = byId[t.dataset.q];
+  S.ans[q.id] = t.value;
+  if (q.type === 'write') {
+    const n = words(t.value), c = $('count-' + q.id);
+    c.textContent = n + ' word' + (n === 1 ? '' : 's') + ' · at least ' + CONFIG.MIN_WORDS;
+    c.classList.toggle('ok', n >= CONFIG.MIN_WORDS);
+  }
+  updateProgress();
+});
+$('quiz').addEventListener('paste', (e) => {
+  const t = e.target; if (!t.dataset || !t.dataset.q) return;
+  const chars = ((e.clipboardData && e.clipboardData.getData('text')) || '').length;
+  S.pastes.push({ q: t.dataset.q, chars });
+  HSCT.log('paste', { q: t.dataset.q, chars });
+});
+document.addEventListener('visibilitychange', () => {
+  if (!S.running || S.submitted) return;
+  if (document.visibilityState === 'hidden') { S.leaves++; HSCT.log('left-tab', { n: S.leaves }); }
+  else HSCT.log('back-to-tab', {});
+});
+
+/* ---------- timer ---------- */
+function tick() {
+  if (!S.running || S.submitted) return;
+  const left = Math.max(0, S.deadline - Date.now());
+  const sec = Math.ceil(left / 1000);
+  const t = $('timer');
+  t.textContent = Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
+  t.classList.toggle('warn', sec <= 300 && sec > 60);
+  t.classList.toggle('low', sec <= 60);
+  for (const mark of [300, 60]) if (sec <= mark && !S.announced[mark]) { S.announced[mark] = true; if (sec > mark - 5) $('live').textContent = (mark / 60) + (mark === 60 ? ' minute' : ' minutes') + ' left.'; }
+  if (left <= 0) { S.timedOut = true; HSCT.log('time-up', {}); finish(); }
+}
+
+/* ---------- submit ---------- */
+function clearConfirm() { $('confirm').innerHTML = ''; }
+$('submit').onclick = () => {
+  const blank = QUESTIONS.filter((q) => !isAnswered(q));
+  let h = '<div class="confirm">';
+  if (blank.length) {
+    h += `<p><b>${blank.length} still blank.</b> Blank answers get 0 points${blank.some((q) => q.type === 'write') ? ', and written answers need at least ' + CONFIG.MIN_WORDS + ' words' : ''}. Jump to one:</p>`
+      + '<div class="blank-list">' + blank.map((q) => `<button type="button" data-jump="${q.id}">${esc(q.label)}</button>`).join('') + '</div>'
+      + '<div class="row"><button class="btn maroon small" id="sure">Submit anyway</button><button class="btn ghost small" id="back">Keep working</button></div>';
+  } else {
+    h += '<p>Submit now? You can’t change your answers after this.</p><div class="row"><button class="btn maroon small" id="sure">Yes, submit</button><button class="btn ghost small" id="back">Keep working</button></div>';
+  }
+  $('confirm').innerHTML = h + '</div>';
+  $('confirm').querySelectorAll('[data-jump]').forEach((b) => b.addEventListener('click', () => jump(b.dataset.jump)));
+  $('sure').onclick = () => finish();
+  $('back').onclick = clearConfirm;
+  $('sure').focus();
+};
+
+/* ---------- grading ---------- */
+function gradeQ(q) {
+  const a = S.ans[q.id];
+  if (q.type === 'write') return { pts: 0, status: isAnswered(q) ? 'read' : 'blank' };
+  if (!isAnswered(q)) return { pts: 0, status: 'blank' };
+  if (q.type === 'mc') return a === q.answer ? { pts: q.pts, status: 'ok' } : { pts: 0, status: 'bad' };
+  if (q.type === 'multi') {
+    const picked = new Set(a);
+    const misses = q.options.reduce((m, o, i) => m + (o.yes !== picked.has(i) ? 1 : 0), 0);
+    return misses === 0 ? { pts: q.pts, status: 'ok' } : misses === 1 ? { pts: Math.floor(q.pts / 2), status: 'part' } : { pts: 0, status: 'bad' };
+  }
+  /* text */
+  const s = String(a).trim();
+  const nums = (s.match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
+  let ok = false;
+  if (q.check.number != null) ok = nums.length > 0 && nums[0] === q.check.number;
+  else if (q.check.numbers) ok = nums.length === q.check.numbers.length && nums.every((v, i) => v === q.check.numbers[i]);
+  else if (q.check.exact) ok = q.check.exact.includes(s.replace(/^["'`“‘]+|["'`”’]+$/g, '').trim());
+  return ok ? { pts: q.pts, status: 'ok' } : { pts: 0, status: 'bad' };
+}
+function readable(q) {
+  const a = S.ans[q.id];
+  if (q.type === 'mc') return a == null ? '' : plain(optText(q, a));
+  if (q.type === 'multi') return (a || []).map((i) => plain(optText(q, i))).join(' · ');
+  return a == null ? '' : String(a);
+}
+function keyText(q) {
+  if (q.type === 'mc') return fmt(optText(q, q.answer));
+  if (q.type === 'multi') return q.options.filter((o) => o.yes).map((o) => fmt(o.t)).join(' and ');
+  if (q.type === 'text') return '<code>' + esc(q.show) + '</code>';
+  return '';
+}
+
+/* ---------- end ---------- */
+function finish() {
+  if (S.submitted) return;
+  S.submitted = true; S.running = false;
+  clearInterval(S.timer);
+  window.removeEventListener('beforeunload', guard);
+  S.secondsLeft = Math.max(0, Math.round((S.deadline - Date.now()) / 1000));
+  $('quiz').querySelectorAll('input,textarea').forEach((x) => { x.disabled = true; });
+  const res = Object.fromEntries(QUESTIONS.map((q) => [q.id, gradeQ(q)]));
+  const sum = (list) => list.reduce((s, q) => s + res[q.id].pts, 0);
+  const groups = [
+    { id: 'A', title: 'Part A · Quick checks', qs: QUESTIONS.filter((q) => q.part === 'A'), possible: 30 },
+    { id: 'B', title: 'Part B · Trace the code', qs: QUESTIONS.filter((q) => q.part === 'B'), possible: 20 },
+    ...PROBLEMS.map((p) => ({ id: p.id, title: 'Problem ' + p.n + ' · ' + p.title, qs: QUESTIONS.filter((q) => q.problem === p.id && q.type !== 'write'), possible: p.pts })),
+  ];
+  groups.forEach((g) => { g.earned = sum(g.qs); });
+  const total = groups.reduce((s, g) => s + g.earned, 0);
+  const writes = QUESTIONS.filter((q) => q.type === 'write');
+  const written = writes.filter((q) => res[q.id].status === 'read').length;
+  HSCT.log('submit', { earned: total, timedOut: S.timedOut, secondsLeft: S.secondsLeft, leftTab: S.leaves });
+
+  show('view-end');
+  updateProgress(); $('timer').hidden = true;
+  $('end-h1').textContent = S.timedOut ? 'Time’s up. Quiz submitted.' : 'Quiz submitted.';
+  $('end-lede').textContent = 'You scored ' + total + ' out of 100. Mr. Cruz reads your ' + (written === 2 ? 'two written answers' : written === 1 ? 'written answer (one of the two is blank)' : 'written answers (both are blank)') + '. Download your result file below and submit it in Google Classroom.';
+  $('end-banner').innerHTML = S.timedOut ? '<div class="banner">The timer hit 0:00, so your answers were submitted automatically.</div>' : '';
+  $('recap').innerHTML = '<tr><th>Part</th><th style="text-align:right">Points</th></tr>'
+    + groups.map((g) => `<tr><td>${esc(g.title)}</td><td class="p">${g.earned} / ${g.possible}</td></tr>`).join('')
+    + `<tr><td>Written answers (Mr. Cruz reads these)</td><td class="p">${written} of 2 written</td></tr>`
+    + `<tr><td><b>Total</b></td><td class="p"><b>${total} / 100</b></td></tr>`;
+  const mark = { ok: '✓', bad: '✗', part: '½', blank: '–', read: '✎' };
+  const cls = { ok: 'ok', bad: 'bad', part: 'part-ok', blank: 'bad', read: 'read' };
+  $('review').innerHTML = QUESTIONS.map((q) => {
+    const r = res[q.id], yours = readable(q);
+    const ptsCell = q.type === 'write' ? (r.status === 'read' ? 'for Mr. Cruz' : 'blank') : `${r.pts} / ${q.pts}`;
+    let h = `<li class="${cls[r.status]}"><span class="m" aria-hidden="true">${mark[r.status]}</span><span><span class="id">${esc(q.label)}</span>${fmt(q.prompt)}</span><span class="p">${ptsCell}</span>`;
+    h += `<span class="yours">Your answer: ${yours ? '<code>' + esc(yours.length > 220 ? yours.slice(0, 220) + '…' : yours) + '</code>' : '<i>blank</i>'}</span>`;
+    if (CONFIG.REVEAL_ANSWERS) {
+      if (q.type === 'write') h += `<span class="key"><b>A strong answer says:</b> ${q.rubric.map(fmt).join(' ')}</span>`;
+      else h += `<span class="key"><b>Answer:</b> ${keyText(q)}. ${fmt(q.why)}</span>`;
+    }
+    return h + '</li>';
+  }).join('');
+
+  HSCT.endScreen('#hsct-result', {
+    earned: total, possible: 100,
+    tier: total >= 90 ? 'Nailed it' : total >= 70 ? 'Solid' : total >= 50 ? 'Getting there' : 'Review both lessons',
+    sections: groups.map((g) => ({ id: g.id, title: g.title, earned: g.earned, possible: g.possible }))
+      .concat([{ id: 'written', title: 'Written answers (Mr. Cruz reads these)', status: written + ' of 2 written' }]),
+    extra: {
+      answers: QUESTIONS.map((q) => ({ id: q.label, topic: q.topic, type: q.type, answer: readable(q), raw: S.ans[q.id] == null ? null : S.ans[q.id], points: res[q.id].pts, possible: q.pts, status: res[q.id].status })),
+      written: Object.fromEntries(writes.map((q) => [q.label, { prompt: plain(q.prompt), text: String(S.ans[q.id] || ''), words: words(S.ans[q.id]) }])),
+      optionOrder: S.order,
+      leftTab: S.leaves, pastes: S.pastes,
+      timedOut: S.timedOut, secondsLeft: S.secondsLeft, timeLimitMinutes: CONFIG.MINUTES,
+    },
+  }).catch(() => {});
+}
+</script>
+</body>
+</html>

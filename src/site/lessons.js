@@ -232,6 +232,22 @@ export const CATEGORIES = [
           },
         ],
       },
+            {
+        id: 'python',
+        title: 'Python',
+        lessons: [
+          {
+            slug: 'pop-quiz-think-it-save-it',
+            title: 'Pop quiz: think it, then save it',
+            description: 'A 15-minute timed quiz on Think it, then code it and Save Point. Six quick checks, four short programs to trace by hand, and two bug reports to reason through: a store discount that never gives 20% off, and a farming game with a free-money save glitch. It submits itself at 0:00.',
+            file: 'pop-quiz-think-it-save-it.html',
+            kind: 'quiz',
+            minutes: 15,
+            added: '2026-09-25',
+            tags: ['quiz', 'pop quiz', 'timed', 'Python', 'variables', 'input', 'print', 'loops', 'for', 'while', 'range', 'strings', 'split', 'if', 'elif', 'else', 'logic', 'debugging', 'state', 'save file', 'JSON', 'json.dumps', 'json.loads', 'dict', 'references', 'game design'],
+          },
+        ],
+      },
       { id: 'data-structures', title: 'Data structures', lessons: [] },
     ],
   },
