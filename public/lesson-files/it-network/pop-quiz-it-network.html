@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pop quiz: addresses, packets, listeners — HSCT</title>
+<!--
+  HSCT POP QUIZ: IT Network (it-network)
+  Covers three lessons: "How the internet works" (addresses, packets, routing, DNS, ports, TCP/UDP),
+  "Set up the room" (WAN/LAN ports, DHCP, static, 169.254, gateway, writing packets by hand)
+  and "Packet Run" (routes, default route, TTL loops, Wi-Fi vs switch, encryption and headers).
+  Three screens, in the template's order:
+    1. #view-intro   what the quiz is, the rules, the student's name   -> HSCT.start(name)
+    2. #view-work    Part A quick checks, Part B write four packets, Part C two think-it-through problems
+    3. #view-end     score breakdown + the standard result card        -> HSCT.endScreen(...)
+  Settings are in CONFIG at the top of the quiz script (time limit, whether to reveal answers after submitting).
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f7fc; --paper:#fff; --bench:#eef1f8; --ink:#101a3f; --muted:#5b6485; --line:#d3d9ee;
+  --blue:#1f3fae; --blue-soft:#e9edf8; --green:#1f7a3d; --green-soft:#e1f2e6; --red:#b3261e; --red-soft:#fbe3e1;
+  --amber:#8a5a00; --amber-soft:#fff4d6; --maroon:#7a1f3d; --maroon-soft:#f6e6ec;
+  --code-bg:#0f1533; --code-ink:#e6e9f5;
+  --sans:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --hsct-color: var(--blue);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.5}
+h1,h2,h3,h4{margin:0;line-height:1.2}
+p{margin:0 0 .75rem}
+button{font:inherit;cursor:pointer}
+input,textarea{font:inherit;color:inherit}
+button:focus-visible,textarea:focus-visible,input:focus-visible{outline:3px solid #a9b7ea;outline-offset:2px}
+code{font-family:var(--mono);font-size:.92em;background:var(--blue-soft);padding:.05em .35em;border-radius:3px}
+pre{font-family:var(--mono);font-size:.9rem;line-height:1.5;background:var(--code-bg);color:var(--code-ink);padding:.75rem .9rem;border-radius:8px;overflow-x:auto;margin:.5rem 0 .9rem;white-space:pre}
+pre .c{color:#8b95c9}pre .s{color:#ffd166}pre .k{color:#8ec5ff}
+[hidden]{display:none!important}
+.btn{border:2px solid var(--blue);background:var(--blue);color:#fff;border-radius:8px;padding:.6rem 1.1rem;font-weight:600}
+.btn:hover{filter:brightness(.92)}.btn.ghost{background:transparent;color:var(--blue)}.btn.small{padding:.4rem .8rem;font-size:.9rem}
+.btn.maroon{background:var(--maroon);border-color:var(--maroon)}
+.btn:disabled{opacity:.5;cursor:not-allowed;filter:none}
+.view{display:none}.view.active{display:block}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* topbar */
+.topbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:1rem;padding:.6rem 1.2rem;background:var(--paper);border-bottom:1px solid var(--line)}
+.topbar .brand{font-weight:700;white-space:nowrap}.topbar .brand span{color:var(--muted);font-weight:400}
+.progress{display:flex;gap:3px;flex-wrap:wrap}
+.progress button{display:block;width:16px;height:8px;border-radius:2px;background:var(--line);border:0;padding:0}
+.progress button.done{background:var(--blue)}.progress button.gap{margin-left:6px}
+.topbar .grow{flex:1}
+.stat{font-family:var(--mono);font-size:.85rem;color:var(--muted);white-space:nowrap}.stat b{color:var(--ink)}
+.timer{font-family:var(--mono);font-weight:600;font-size:1rem;padding:.2rem .6rem;border-radius:6px;background:var(--blue-soft);color:var(--blue);min-width:4.2em;text-align:center}
+.timer.warn{background:var(--amber-soft);color:var(--amber)}
+.timer.low{background:var(--red-soft);color:var(--red)}
+
+/* intro */
+.wrap{max-width:820px;margin:0 auto;padding:2.5rem 1.2rem 5rem}
+.kicker{font-family:var(--mono);font-size:.8rem;color:var(--muted);letter-spacing:.03em;margin-bottom:.35rem}
+.wrap > h1{font-size:2.1rem;letter-spacing:-.01em;margin-bottom:.4rem}
+.lede{font-size:1.12rem;color:var(--muted);margin-bottom:1.4rem}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:1.1rem 1.3rem;margin-bottom:1rem}
+.card h3{font-size:1.05rem;margin-bottom:.5rem}
+.rules{margin:0;padding-left:1.2rem}.rules li{margin:.3rem 0}
+.parts{list-style:none;margin:.2rem 0 0;padding:0;display:grid;gap:.5rem}
+.parts li{display:grid;grid-template-columns:2.2rem minmax(0,1fr) auto;gap:.7rem;align-items:baseline}
+.parts .n{font-family:var(--mono);font-weight:600;color:var(--blue)}
+.parts .pts{font-family:var(--mono);font-size:.85rem;color:var(--muted);white-space:nowrap}
+.parts .muted{color:var(--muted)}
+.name-row{display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap}
+.name-row input{flex:1;min-width:220px;padding:.7rem .8rem;border:1.5px solid var(--line);border-radius:8px}
+.err{color:var(--red);margin-top:.5rem}
+
+/* parts + questions */
+.part{margin:2.2rem 0 0}
+.part:first-child{margin-top:0}
+.part-head{margin-bottom:1rem}
+.part-head h2{font-size:1.6rem;margin-bottom:.3rem}
+.part-head .lede{font-size:1rem;margin-bottom:0}
+.q{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:1rem 1.2rem 1.1rem;margin-bottom:.9rem;scroll-margin-top:80px}
+.q.sub{border-radius:10px;background:var(--paper);margin:.8rem 0 0}
+.qhead{display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem;flex-wrap:wrap}
+.qnum{font-family:var(--mono);font-weight:600;font-size:.85rem;background:var(--blue);color:#fff;border-radius:5px;padding:.05rem .45rem}
+.q.answered .qnum{background:var(--green)}
+.tag{font-size:.8rem;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:0 .55rem}
+.qhead .grow{flex:1}
+.qpts{font-family:var(--mono);font-size:.8rem;color:var(--muted)}
+.qt{font-weight:600;margin:0 0 .5rem}
+.q fieldset{border:0;margin:0;padding:0;min-width:0}
+.q legend{padding:0;margin:0 0 .5rem;font-weight:600}
+.opts{display:grid;gap:.4rem}
+.opt{display:grid;grid-template-columns:1.3rem minmax(0,1fr);gap:.55rem;align-items:start;padding:.55rem .7rem;border:1.5px solid var(--line);border-radius:8px;cursor:pointer;background:var(--paper)}
+.opt:hover{border-color:#a9b7ea}
+.opt input{margin:.2rem 0 0;width:1.05rem;height:1.05rem;accent-color:var(--blue)}
+.opt:has(input:checked){border-color:var(--blue);background:var(--blue-soft)}
+.opt:has(input:focus-visible){outline:3px solid #a9b7ea;outline-offset:2px}
+.opt input:focus-visible{outline:none}
+.opt.disabled{cursor:default}
+.tip{font-size:.88rem;color:var(--muted);margin:.1rem 0 .5rem}
+.answer{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+.answer label{font-size:.9rem;color:var(--muted)}
+.answer input{font-family:var(--mono);font-size:1rem;padding:.55rem .7rem;border:1.5px solid var(--line);border-radius:8px;width:14rem;max-width:100%;background:#fff}
+.answer input:focus{border-color:var(--blue)}
+
+/* problems */
+.problem{background:var(--bench);border:1px solid var(--line);border-radius:14px;padding:1.2rem 1.3rem 1.3rem;margin-bottom:1.3rem;scroll-margin-top:80px}
+.problem > h3{font-size:1.25rem;margin-bottom:.5rem}
+.problem .story ul{margin:.2rem 0 .7rem;padding-left:1.2rem}.problem .story li{margin:.15rem 0}
+.problem .note{font-size:.95rem}
+.write textarea{width:100%;min-height:110px;padding:.65rem .75rem;border:1.5px solid var(--line);border-radius:8px;resize:vertical;background:#fff;font-size:.98rem}
+.write textarea:focus{border-color:var(--blue)}
+.write .row{display:flex;justify-content:space-between;gap:.8rem;margin-top:.35rem;flex-wrap:wrap}
+.count{font-family:var(--mono);font-size:.82rem;color:var(--muted)}
+.count.ok{color:var(--green)}
+
+/* network bits */
+pre.plain{background:#fff;color:var(--ink);border:1px solid var(--line);font-size:.85rem}
+.ctx{background:var(--bench);border:1px solid var(--line);border-radius:14px;padding:1.1rem 1.3rem;margin-bottom:1rem}
+.ctx h3{font-size:1.1rem;margin-bottom:.4rem}
+.ctx .two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.8rem}
+.ctx h4{font-size:.78rem;font-family:var(--mono);font-weight:500;color:var(--muted);margin:.3rem 0 .1rem;letter-spacing:.03em}
+.ctx pre{margin:.2rem 0 .4rem}
+.envelope{font-family:var(--mono);font-size:.86rem;background:var(--blue-soft);border:1px dashed #a9b7ea;border-radius:8px;padding:.5rem .7rem;margin:0 0 .7rem;overflow-wrap:anywhere}
+.pform{display:grid;grid-template-columns:9.5rem minmax(0,1fr);gap:.45rem .7rem;align-items:center;max-width:32rem}
+.pform label{font-size:.9rem;color:var(--muted)}
+.pform input,.pform select{font-family:var(--mono);font-size:.95rem;padding:.45rem .6rem;border:1.5px solid var(--line);border-radius:8px;background:#fff;width:100%}
+.pform input:focus,.pform select:focus{border-color:var(--blue)}
+.pform input:disabled,.pform select:disabled{background:var(--bench)}
+table.facts{width:100%;border-collapse:collapse;font-size:.92rem;margin:.3rem 0 .8rem;background:#fff;border-radius:8px;overflow:hidden}
+table.facts th,table.facts td{text-align:left;padding:.4rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+table.facts th{font-size:.78rem;color:var(--muted);font-weight:600;background:var(--paper)}
+table.facts td:first-child{white-space:nowrap;font-weight:600}
+table.facts tr.flag td{background:var(--amber-soft)}
+.mapwrap{overflow-x:auto;margin:.4rem 0 .8rem;background:#fff;border:1px solid var(--line);border-radius:10px}
+.mapwrap svg{display:block;width:100%;min-width:600px;height:auto}
+.mapwrap .box{fill:#fff;stroke:#a9b7ea;stroke-width:1.5}
+.mapwrap .netA{fill:#e9edf8}.mapwrap .netB{fill:#fff4d6;stroke:#d9b45a}.mapwrap .netC{fill:#e1f2e6;stroke:#8cc79d}
+.mapwrap .rtr{fill:#101a3f}
+.mapwrap .rl{fill:#fff;font:600 13px var(--sans)}
+.mapwrap .t{fill:#101a3f;font:600 13px var(--sans)}
+.mapwrap .s{fill:#5b6485;font:12px var(--mono)}
+.mapwrap .w{stroke:#5b6485;stroke-width:2.5}
+.mapwrap .hk{fill:#b3261e;font:600 12px var(--sans)}
+
+/* submit */
+.submit-card{background:var(--paper);border:1px solid var(--line);border-left:6px solid var(--maroon);border-radius:12px;padding:1.1rem 1.3rem;margin-top:1.6rem}
+.submit-card .row{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap}
+.submit-card .grow{flex:1}
+.confirm{margin-top:.8rem;padding:.8rem .9rem;border-radius:8px;background:var(--amber-soft)}
+.confirm p{margin-bottom:.6rem}
+.confirm .row{gap:.5rem}
+.blank-list{display:flex;flex-wrap:wrap;gap:.35rem;margin:.2rem 0 .6rem}
+.blank-list button{font-family:var(--mono);font-size:.82rem;border:1px solid var(--amber);background:#fff;color:var(--amber);border-radius:5px;padding:.05rem .45rem}
+
+/* end */
+.recap{width:100%;border-collapse:collapse;font-size:.95rem;margin:.2rem 0 .2rem}
+.recap th,.recap td{text-align:left;padding:.45rem .5rem;border-bottom:1px solid var(--line);vertical-align:top}
+.recap th{font-size:.78rem;color:var(--muted);font-weight:600}
+.recap td.p{font-family:var(--mono);text-align:right;white-space:nowrap}
+.review{list-style:none;margin:0;padding:0}
+.review li{padding:.7rem 0;border-top:1px solid var(--line);display:grid;grid-template-columns:2rem minmax(0,1fr) auto;gap:.2rem .7rem;align-items:baseline}
+.review li:first-child{border-top:0}
+.review .m{font-family:var(--mono);font-weight:700}
+.review .ok .m,.review li.ok .m{color:var(--green)}
+.review li.bad .m{color:var(--red)}
+.review li.part-ok .m{color:var(--amber)}
+.review li.read .m{color:var(--muted)}
+.review .id{font-family:var(--mono);font-size:.8rem;color:var(--muted);margin-right:.3rem}
+.review .yours{font-size:.9rem;color:var(--muted);grid-column:2/-1}
+.review .yours code{white-space:pre-wrap}
+.review .key{font-size:.9rem;grid-column:2/-1;background:var(--green-soft);border-radius:6px;padding:.4rem .6rem;margin-top:.2rem}
+.review .p{font-family:var(--mono);font-size:.85rem;white-space:nowrap}
+.banner{padding:.7rem .9rem;border-radius:8px;background:var(--amber-soft);color:var(--amber);font-weight:600;margin-bottom:1rem}
+.teacher{margin-top:2rem;font-size:.9rem;color:var(--muted)}
+.teacher summary{cursor:pointer}
+.teacher ul{padding-left:1.2rem}
+
+@media (max-width:700px){
+  .topbar{gap:.6rem;padding:.5rem 1rem}
+  .topbar .brand span{display:none}
+  .progress{display:none}
+  .wrap{padding:1.6rem 1rem 4rem}
+  .wrap > h1{font-size:1.7rem}
+  .q{padding:.9rem 1rem 1rem}
+  .problem{padding:1rem 1rem 1.1rem}
+  .parts li{grid-template-columns:1.8rem minmax(0,1fr)}
+  .parts .pts{grid-column:2}
+  .review li{grid-template-columns:1.6rem minmax(0,1fr) auto}
+  .ctx{padding:1rem}
+  .ctx .two{grid-template-columns:minmax(0,1fr)}
+  .pform{grid-template-columns:minmax(0,1fr)}
+  .pform label{margin-top:.2rem}
+  table.facts td:first-child{white-space:normal}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+@media print{.topbar,.teacher,.submit-card{display:none!important}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">Pop quiz <span>— HSCT IT Network</span></div>
+  <div class="progress" id="progress" aria-label="Questions answered"></div>
+  <div class="grow"></div>
+  <div class="stat" id="stat-answered"></div>
+  <div class="timer" id="timer" hidden role="timer" aria-label="Time left">15:00</div>
+</header>
+<div class="sr" id="live" aria-live="assertive"></div>
+
+<!-- ===== 1. INTRO ===== -->
+<section class="view active" id="view-intro">
+  <div class="wrap">
+    <p class="kicker">IT Network · Pop quiz · 15 minutes</p>
+    <h1>Pop quiz: addresses, packets, and who’s listening.</h1>
+    <p class="lede">Everything from the last three lessons: <b>How the internet works</b>, <b>Set up the room</b> and <b>Packet Run</b>. Quick checks, four packets written by hand, and two broken networks where you get the details and work out what’s really wrong.</p>
+
+    <div class="card">
+      <h3>Three parts, 100 points</h3>
+      <ol class="parts" id="intro-parts"></ol>
+    </div>
+
+    <div class="card">
+      <h3>How this works</h3>
+      <ul class="rules">
+        <li>You have <b>15 minutes</b>. The clock starts when you press Start, and the quiz submits itself at <b>0:00</b> with whatever you have.</li>
+        <li>You can change any answer until you submit. Everything you need for Parts B and C is on the page: read the ipconfig output, the config pages and the routing tables carefully.</li>
+        <li>Each problem in Part C ends with a short written answer. The computer doesn't grade it, but it's required and Mr. Cruz reads it.</li>
+        <li>Leaving this tab and pasting into your answers are both recorded in your result file. Refreshing the page erases your answers.</li>
+        <li>At the end you download a result file and submit it in Google Classroom.</li>
+      </ul>
+      <div class="name-row">
+        <input id="name" type="text" placeholder="Your full name (goes on your result)" autocomplete="off" maxlength="60" aria-label="Your full name">
+        <button class="btn" id="start">Start the quiz</button>
+      </div>
+      <div class="err" id="name-err" hidden>Enter your name first. It goes on your result file.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 2. QUIZ ===== -->
+<section class="view" id="view-work">
+  <div class="wrap">
+    <div id="quiz"></div>
+    <div class="submit-card" id="submit-card">
+      <div class="row">
+        <span id="submit-status"></span>
+        <span class="grow"></span>
+        <button class="btn maroon" id="submit">Submit the quiz</button>
+      </div>
+      <div id="confirm"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 3. END ===== -->
+<section class="view" id="view-end">
+  <div class="wrap">
+    <p class="kicker">Pop quiz · submitted</p>
+    <h1 id="end-h1">Quiz submitted.</h1>
+    <p class="lede" id="end-lede"></p>
+    <div id="end-banner"></div>
+    <div class="card">
+      <h3>By part</h3>
+      <table class="recap" id="recap"></table>
+    </div>
+    <div class="card">
+      <h3>Question by question</h3>
+      <ul class="review" id="review"></ul>
+    </div>
+    <!-- The kit renders the standard result card (score, time, code, download) into this element. -->
+    <div id="hsct-result"></div>
+    <details class="teacher">
+      <summary>Teachers</summary>
+      <ul>
+        <li>The result file holds every answer (including every packet field and the two written ticket notes), the points for each question, how many times the student left the tab, any pastes into answers, the order their options were shuffled into, and whether the timer ran out. Open files at <b>hsct.tech/lessons/verify</b>.</li>
+        <li>Answer choices are shuffled per student, so neighbors see different letters in different spots.</li>
+        <li>After submitting, students see ✓ or ✗ per question but not the right answers. To go over it in class, set <code>REVEAL_ANSWERS: true</code> in <code>CONFIG</code> at the top of the quiz script.</li>
+      </ul>
+    </details>
+  </div>
+</section>
+
+<!-- HSCT KIT START — do not edit; copy the whole block from lesson-template/hsct-lesson.js -->
+<script>
+/* ============================================================================
+   HSCT LESSON KIT  v1.0
+   Every lesson on HSCT TechHub inlines this block unchanged (between the
+   <!-- HSCT KIT START --> and <!-- HSCT KIT END --> markers). It gives a
+   lesson three things:
+
+     1. A clock.   HSCT.start(name) when the student begins. The kit records
+                   wall-clock time and "active" time (tab visible).
+     2. A log.     HSCT.log(type, data) for anything worth remembering —
+                   answers, hints, retries. Ends up inside the result file.
+     3. A result.  HSCT.endScreen(el, {...scores}) renders the standard result
+                   card: name, score, time taken, badge code, and a button
+                   that downloads the encrypted result file the student
+                   submits in Google Classroom.
+
+   The file is encrypted with the teacher's PUBLIC key below (RSA-OAEP wrapping
+   an AES-256-GCM key). It can only be opened with the matching private key,
+   on the site's /lessons/verify page. Students can't read or edit it.
+
+   API (all on window.HSCT):
+     HSCT.lesson({ id, title, version, course, possible })   once, at load
+     HSCT.start(name)                                        when work begins
+     HSCT.log(type, data)                                    any time
+     HSCT.elapsed()   -> { seconds, activeSeconds }
+     HSCT.finish({ earned, possible, sections, tier, extra }) -> Promise<result>
+     HSCT.endScreen(el, { earned, possible, sections, tier, extra, note })
+                      -> Promise<result>   (calls finish, renders the card)
+     HSCT.download()  / HSCT.copyCode()                      after finish
+   ========================================================================== */
+(function () {
+  'use strict';
+  var KIT = '1.0';
+
+  /* Mr. Cruz's public key. Replace the whole object if the key pair is ever
+     regenerated on /lessons/verify — and keep the private key out of git. */
+  var PUBLIC_KEY = {"kty":"RSA","n":"rZUBRxn7dUikufJq7z2XVn-on4Of0IyQr_YaPSTgIUaGsYKcrZ4FNROL4A_ZM5JShLf6OVp2ZeAI7XN_7iX0tvd79RqAWRM9an6rx-s6bMYSW1wmtRxZyL-BX56vTtikVRLNO7uyzCb8kevJE71Fi6nlPhdXa-iS4vtIEm2Wjh4cLPinAKhMnkO3BpGHUhtFw7Hyus1w04EdLxowk4UcN7d0w4MQRnBV8ehXQVoLVQ0_QtfrtPTQOpScHuwyaw9nwnTA7h7BEOv1ZkbEyq2N4TFixSSCsneUsc3PlbZOndDzMGMmdMr00ulntRZBfyioFzRcsRUGGwAqpB9SuH7XGQ","e":"AQAB","alg":"RSA-OAEP-256","ext":true};
+
+  var VERIFY_URL = 'hsct.tech/lessons/verify';
+
+  var cfg = null;      // lesson config
+  var ses = null;      // current session
+  var ticker = null;   // active-time interval
+  var result = null;   // { badge, filename, text, envelope, payload }
+
+  /* ---------- small helpers ---------- */
+  var enc = new TextEncoder();
+  function b64(buf) {
+    var bytes = new Uint8Array(buf), s = '';
+    for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return btoa(s);
+  }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function fmtDuration(sec) {
+    sec = Math.max(0, Math.round(sec || 0));
+    var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+    if (h) return h + ' h ' + pad(m) + ' min';
+    if (m) return m + ' min ' + pad(s) + ' s';
+    return s + ' s';
+  }
+  function fmtDate(iso) {
+    try { return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+    catch (e) { return iso; }
+  }
+  function slug(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'student'; }
+  function stamp(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes()); }
+
+  /* Badge code: 8 characters from a SHA-256 of the result, shown on screen
+     so a screenshot can be matched to its file. */
+  var ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ23456789';
+  function badgeFrom(hashBuf) {
+    var bytes = new Uint8Array(hashBuf), out = '';
+    for (var i = 0; i < 8; i++) out += ALPHABET[bytes[i] % ALPHABET.length];
+    return out.slice(0, 4) + '-' + out.slice(4);
+  }
+
+  function needSubtle() {
+    if (!(window.crypto && crypto.subtle)) {
+      throw new Error('Result files need a secure page (https). Open this lesson from the TechHub site and finish again.');
+    }
+  }
+
+  /* ---------- public API ---------- */
+  function lesson(c) {
+    if (!c || !c.id || !c.title) throw new Error('HSCT.lesson needs { id, title }');
+    cfg = { version: '1.0', course: '', possible: 100 };
+    for (var k in c) cfg[k] = c[k];
+    return HSCT;
+  }
+
+  function start(name) {
+    if (!cfg) throw new Error('Call HSCT.lesson({...}) before HSCT.start(name)');
+    name = String(name || '').trim().replace(/\s+/g, ' ');
+    if (name.length < 2) throw new Error('HSCT.start needs the student\'s name');
+    ses = { name: name, started: new Date().toISOString(), t0: Date.now(), active: 0, events: [] };
+    result = null;
+    clearInterval(ticker);
+    ticker = setInterval(function () { if (document.visibilityState === 'visible') ses.active += 1; }, 1000);
+    log('start');
+    return HSCT;
+  }
+
+  function log(type, data) {
+    if (!ses) return HSCT;
+    var e = { t: Math.round((Date.now() - ses.t0) / 100) / 10, type: String(type) };
+    if (data && typeof data === 'object') for (var k in data) if (k !== 't' && k !== 'type') e[k] = data[k];
+    if (ses.events.length < 800) ses.events.push(e);
+    return HSCT;
+  }
+
+  function elapsed() {
+    if (!ses) return { seconds: 0, activeSeconds: 0 };
+    return { seconds: Math.round((Date.now() - ses.t0) / 1000), activeSeconds: ses.active };
+  }
+
+  /* Build, seal, and keep the result. Resolves to { badge, filename, text, payload }. */
+  async function finish(opts) {
+    if (!cfg || !ses) throw new Error('HSCT.start(name) was never called');
+    needSubtle();
+    opts = opts || {};
+    clearInterval(ticker);
+    var finished = new Date();
+    var el = elapsed();
+    var earned = Number(opts.earned || 0), possible = Number(opts.possible || cfg.possible || 0);
+    var payload = {
+      kit: KIT,
+      lesson: { id: cfg.id, title: cfg.title, version: cfg.version, course: cfg.course },
+      student: { name: ses.name },
+      started: ses.started,
+      finished: finished.toISOString(),
+      seconds: el.seconds,
+      activeSeconds: el.activeSeconds,
+      score: { earned: earned, possible: possible, percent: possible ? Math.round(1000 * earned / possible) / 10 : null },
+      tier: opts.tier || null,
+      sections: (opts.sections || []).map(function (s) { return { id: s.id, title: s.title, earned: s.earned, possible: s.possible, status: s.status }; }),
+      extra: opts.extra || null,
+      events: ses.events,
+      env: { tz: Intl.DateTimeFormat().resolvedOptions().timeZone, ua: navigator.userAgent, url: location.href.split('?')[0] },
+    };
+    var hash = await crypto.subtle.digest('SHA-256', enc.encode(JSON.stringify(payload)));
+    var badge = badgeFrom(hash);
+    payload.badge = badge;
+
+    /* header travels in the clear but is authenticated (AES-GCM additional data) */
+    var header = { hsct: 1, kit: KIT, lesson: cfg.id, title: cfg.title, student: ses.name, finished: payload.finished, badge: badge };
+    var pub = await crypto.subtle.importKey('jwk', PUBLIC_KEY, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['wrapKey']);
+    var aes = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt']);
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    var data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv, additionalData: enc.encode(JSON.stringify(header)) }, aes, enc.encode(JSON.stringify(payload)));
+    var wrapped = await crypto.subtle.wrapKey('raw', aes, pub, { name: 'RSA-OAEP' });
+    var envelope = {};
+    for (var k in header) envelope[k] = header[k];
+    envelope.key = b64(wrapped); envelope.iv = b64(iv); envelope.data = b64(data);
+
+    result = {
+      badge: badge,
+      filename: 'HSCT_' + cfg.id + '_' + slug(ses.name) + '_' + stamp(finished) + '.hsct',
+      text: JSON.stringify(envelope),
+      payload: payload,
+    };
+    return result;
+  }
+
+  function download() {
+    if (!result) throw new Error('Nothing to download yet — call HSCT.finish first');
+    var blob = new Blob([result.text], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = result.filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+    return result.filename;
+  }
+
+  async function copyCode() {
+    if (!result) throw new Error('Nothing to copy yet — call HSCT.finish first');
+    try { await navigator.clipboard.writeText(result.text); return true; }
+    catch (e) {
+      var ta = document.createElement('textarea'); ta.value = result.text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      var ok = false; try { ok = document.execCommand('copy'); } catch (e2) {}
+      ta.remove(); return ok;
+    }
+  }
+
+  /* ---------- the standard end screen ---------- */
+  var CSS = '.hsct-card{--hsct-ink:#101a3f;--hsct-mute:#5b6485;--hsct-line:#d3d9ee;--hsct-accent:var(--hsct-color,#1f3fae);--hsct-ok:#1f7a3d;--hsct-bad:#b3261e;'
+    + 'font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;color:var(--hsct-ink);background:#fff;border:1px solid var(--hsct-line);border-left:6px solid var(--hsct-accent);border-radius:12px;padding:20px 22px;margin:20px 0;line-height:1.45}'
+    + '.hsct-card *{box-sizing:border-box}.hsct-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--hsct-mute)}.hsct-head b{color:var(--hsct-accent)}'
+    + '.hsct-name{font-size:22px;font-weight:700;margin:6px 0 2px}.hsct-score{font-size:15px;margin:0 0 12px}.hsct-score b{font-size:28px;font-weight:700}.hsct-score .hsct-tier{display:inline-block;margin-left:8px;padding:2px 10px;border-radius:999px;background:var(--hsct-accent);color:#fff;font-size:13px;font-weight:600;vertical-align:middle}'
+    + '.hsct-facts{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0 0 14px;font-size:14px}.hsct-facts dt{color:var(--hsct-mute)}.hsct-facts dd{margin:0}.hsct-facts code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;letter-spacing:.08em;font-weight:600}'
+    + '.hsct-secs{width:100%;border-collapse:collapse;font-size:14px;margin:0 0 14px}.hsct-secs td{padding:5px 0;border-top:1px solid var(--hsct-line)}.hsct-secs td:last-child{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}'
+    + '.hsct-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.hsct-btn{font:600 15px "IBM Plex Sans","Segoe UI",system-ui,sans-serif;padding:11px 18px;border-radius:8px;border:2px solid var(--hsct-accent);background:var(--hsct-accent);color:#fff;cursor:pointer}.hsct-btn:hover{filter:brightness(.92)}.hsct-btn.hsct-alt{background:transparent;color:var(--hsct-accent)}.hsct-btn:focus-visible{outline:3px solid #a9b7ea;outline-offset:2px}.hsct-btn:disabled{opacity:.55;cursor:wait}'
+    + '.hsct-note{margin:12px 0 0;font-size:13.5px;color:var(--hsct-mute)}.hsct-status{margin:8px 0 0;font-size:14px;min-height:1.4em}.hsct-status.ok{color:var(--hsct-ok)}.hsct-status.bad{color:var(--hsct-bad)}'
+    + '@media print{.hsct-actions,.hsct-note,.hsct-status{display:none}}';
+
+  function injectCss() {
+    if (document.getElementById('hsct-kit-css')) return;
+    var s = document.createElement('style'); s.id = 'hsct-kit-css'; s.textContent = CSS; document.head.appendChild(s);
+  }
+
+  /* Renders the card into `el` and seals the result. Resolves with the result. */
+  async function endScreen(el, opts) {
+    if (typeof el === 'string') el = document.querySelector(el);
+    if (!el) throw new Error('HSCT.endScreen needs an element');
+    injectCss();
+    opts = opts || {};
+    var elp = elapsed();
+    var possible = Number(opts.possible || cfg.possible || 0), earned = Number(opts.earned || 0);
+    var pct = possible ? Math.round(100 * earned / possible) : null;
+    var secs = (opts.sections || []).map(function (s) {
+      var right = s.status != null ? esc(s.status) : (s.possible != null ? esc(s.earned) + ' / ' + esc(s.possible) : esc(s.earned));
+      return '<tr><td>' + esc(s.title) + '</td><td>' + right + '</td></tr>';
+    }).join('');
+    el.innerHTML = '<div class="hsct-card">'
+      + '<div class="hsct-head"><span><b>HSCT TechHub</b> result</span><span>' + esc(cfg.title) + '</span></div>'
+      + '<div class="hsct-name">' + esc(ses ? ses.name : '') + '</div>'
+      + '<div class="hsct-score"><b>' + esc(earned) + '</b> / ' + esc(possible) + (pct != null ? ' <span>(' + pct + '%)</span>' : '') + (opts.tier ? '<span class="hsct-tier">' + esc(opts.tier) + '</span>' : '') + '</div>'
+      + '<dl class="hsct-facts"><dt>Finished</dt><dd>' + esc(fmtDate(new Date().toISOString())) + '</dd>'
+      + '<dt>Time taken</dt><dd>' + esc(fmtDuration(elp.seconds)) + (elp.activeSeconds < elp.seconds - 60 ? ' <span style="color:var(--hsct-mute)">(' + esc(fmtDuration(elp.activeSeconds)) + ' with the tab open)</span>' : '') + '</dd>'
+      + '<dt>Code</dt><dd><code class="hsct-badge">........</code></dd></dl>'
+      + (secs ? '<table class="hsct-secs"><tbody>' + secs + '</tbody></table>' : '')
+      + '<div class="hsct-actions"><button type="button" class="hsct-btn hsct-dl" disabled>Download your result file</button><button type="button" class="hsct-btn hsct-alt hsct-copy" disabled>Copy result code</button></div>'
+      + '<p class="hsct-note">' + esc(opts.note || 'Submit the file in Google Classroom. If downloads are blocked, copy the code and paste it instead. The file is encrypted: only your teacher can open it.') + '</p>'
+      + '<p class="hsct-status" aria-live="polite">Preparing your result file…</p>'
+      + '</div>';
+    var status = el.querySelector('.hsct-status'), dl = el.querySelector('.hsct-dl'), cp = el.querySelector('.hsct-copy');
+    try {
+      var r = await finish(opts);
+      el.querySelector('.hsct-badge').textContent = r.badge;
+      status.textContent = 'Ready: ' + r.filename;
+      dl.disabled = false; cp.disabled = false;
+      dl.onclick = function () { try { download(); status.className = 'hsct-status ok'; status.textContent = 'Downloaded ' + r.filename + ' — now submit it.'; } catch (e) { status.className = 'hsct-status bad'; status.textContent = e.message; } };
+      cp.onclick = async function () { var ok = await copyCode(); status.className = 'hsct-status ' + (ok ? 'ok' : 'bad'); status.textContent = ok ? 'Code copied — paste it into your submission.' : 'Copy failed. Use the download instead.'; };
+      return r;
+    } catch (e) {
+      status.className = 'hsct-status bad';
+      status.textContent = e.message || String(e);
+      throw e;
+    }
+  }
+
+  var HSCT = {
+    kit: KIT, verifyUrl: VERIFY_URL,
+    lesson: lesson, start: start, log: log, elapsed: elapsed,
+    finish: finish, download: download, copyCode: copyCode, endScreen: endScreen,
+    get result() { return result; },
+    get session() { return ses ? { name: ses.name, started: ses.started } : null; },
+    fmtDuration: fmtDuration,
+  };
+  window.HSCT = HSCT;
+})();
+</script>
+<!-- HSCT KIT END -->
+
+<script>
+/* ============================================================================
+   POP QUIZ: IT Network (How the internet works · Set up the room · Packet Run)
+   Everything a teacher might want to change is in CONFIG.
+   ========================================================================== */
+const CONFIG = {
+  MINUTES: 15,            // time limit; the quiz submits itself at 0:00
+  REVEAL_ANSWERS: false,  // true = after submitting, students see the right answer and why for every question
+  MIN_WORDS: 10,          // written answers in Part C need at least this many words to count as answered
+};
+
+HSCT.lesson({ id: 'pop-quiz-it-network', title: 'Pop quiz: addresses, packets, and who’s listening', version: '1.0', course: 'it-network', possible: 100 });
+
+/* ---------- helpers ---------- */
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+/* `code` and **bold** inside question text */
+const fmt = (s) => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+const plain = (s) => String(s == null ? '' : s).replace(/`/g, '').replace(/\*\*/g, '');
+const pre = (s) => '<pre class="plain">' + esc(s) + '</pre>';
+const words = (t) => String(t || '').trim().split(/\s+/).filter(Boolean).length;
+
+/* ---------- the room used in Part B ---------- */
+const ROOM = { laptop: '10.10.33.112', printer: '10.10.33.20', router: '10.10.33.1', qport: 51734 };
+
+/* ---------- the quiz ---------- */
+const PARTS = [
+  { id: 'A', title: 'Quick checks', pts: 30, kicker: 'Part A · 6 questions · 30 points · about 4 minutes',
+    lede: 'Pick one answer for each.', blurb: 'Six multiple-choice questions from all three lessons.' },
+  { id: 'B', title: 'Write the packets', pts: 20, kicker: 'Part B · 4 packets · 20 points · about 5 minutes',
+    lede: 'Same job as Set up the room, in a different room. Fill in every field of each packet. Each field is worth 1 point.',
+    blurb: 'Room 333 is up and running. Write four packets by hand, field by field.',
+    ctx: '<div class="ctx"><h3>Room 333 is set up and working</h3><p>Everything you need is right here. Read it the way a technician would.</p><div class="two"><div><h4>THE LAPTOP · C:\\&gt; ipconfig /all</h4>'
+      + pre('IPv4 Address. . . : ' + ROOM.laptop + ' (DHCP)\nSubnet Mask . . . : 255.255.255.0\nDefault Gateway . : ' + ROOM.router + '\nDNS Servers . . . : ' + ROOM.router)
+      + '</div><div><h4>THE PRINTER · config page</h4>'
+      + pre('IP address  . . : ' + ROOM.printer + ' (manual)\nSubnet mask . . : 255.255.255.0\n\nSERVICES\n  Raw printing  : TCP port 9100  ON\n  IPP . . . . . : TCP port 631   off\n  Web admin . . : TCP port 80    ON\n  Ping (ICMP) . : answers')
+      + '</div></div><p class="tip" style="margin:.3rem 0 0">When the laptop starts a conversation, it picks its own source port: any high number, like 50000. Ping (ICMP) has no ports, so leave both port boxes empty.</p></div>' },
+  { id: 'C', title: 'Think it through', pts: 50, kicker: 'Part C · 2 problems · 50 points · about 6 minutes',
+    lede: 'Two broken networks. You get the details a technician would see. Work out what’s really wrong, then write the ticket note.',
+    blurb: 'Two broken networks. Work out what’s wrong, then write the ticket note.' },
+];
+
+const PROBLEMS = [
+  {
+    id: 'p1', n: 1, title: 'Room 216 on Monday morning', topic: 'Set up the room', pts: 25,
+    body: [
+      { html: '<p>Over the weekend someone “tidied up” the cables in Room 216. On Monday the teacher’s laptop says <b>Unidentified network</b>, and nobody in the room has internet. Here’s what you find.</p>'
+        + '<table class="facts"><tr><th colspan="2">The plan (sticky note)</th></tr><tr><td>Room network</td><td><code>192.168.1.0/24</code>, mask <code>255.255.255.0</code></td></tr><tr><td>Router LAN</td><td><code>192.168.1.1</code></td></tr><tr><td>DHCP</td><td>on, <code>192.168.1.100</code> to <code>192.168.1.199</code></td></tr><tr><td>Laptop</td><td>DHCP</td></tr><tr><td>Printer</td><td>static, outside the DHCP range</td></tr></table>'
+        + '<table class="facts"><tr><th colspan="2">The cables, as you found them</th></tr><tr><td>Wall jack</td><td>router port LAN 3</td></tr><tr><td>Laptop</td><td>router port WAN</td></tr><tr><td>Printer</td><td>router port LAN 1</td></tr></table>' },
+      { html: '<h4 style="margin:.2rem 0 0;font-size:.85rem">The laptop</h4>' },
+      { pre: 'C:\\> ipconfig /all\n\nIPv4 Address. . . : 169.254.17.42 (Autoconfiguration)\nSubnet Mask . . . : 255.255.0.0\nDefault Gateway . :\nDNS Servers . . . :' },
+      { html: '<h4 style="margin:.2rem 0 0;font-size:.85rem">The printer’s config page</h4>' },
+      { pre: 'HSCT-PRINT 4200     NETWORK CONFIGURATION\nMethod  . . . . : Manual\nIP address  . . : 192.168.1.150\nSubnet mask . . : 255.255.255.0\nGateway . . . . : 192.168.1.1' },
+    ],
+  },
+  {
+    id: 'p2', n: 2, title: 'The score that never arrives', topic: 'Packet Run', pts: 25,
+    body: [
+      { html: '<p>The school has three networks in a row. The front office laptop sends game scores to the gym scoreboard on <b>port 7777</b>, and they never show up. The network team says “every router has a route.” A hacker is sitting on the library’s open Wi-Fi.</p>' },
+      { html: '<div class="mapwrap"><svg viewBox="0 0 820 250" role="img" aria-label="Network A, the office, connects to Router 1. Router 1 connects to Router 2. Router 2 connects to Router 3 and to Network B, the library Wi-Fi, where a hacker is. Router 3 connects to Network C, the gym.">'
+        + '<line class="w" x1="220" y1="70" x2="250" y2="70"/><line class="w" x1="334" y1="70" x2="370" y2="70"/><line class="w" x1="454" y1="70" x2="490" y2="70"/><line class="w" x1="574" y1="70" x2="604" y2="70"/><line class="w" x1="412" y1="86" x2="412" y2="146"/>'
+        + '<rect class="box netA" x="10" y="16" width="210" height="108" rx="10"/><text class="t" x="24" y="40">Network A · office</text><text class="s" x="24" y="60">10.0.1.x</text><text class="s" x="24" y="86">Office laptop 10.0.1.10</text><text class="s" x="24" y="106">Grades server 10.0.1.11</text>'
+        + '<rect class="rtr" x="250" y="54" width="84" height="32" rx="16"/><text class="rl" x="292" y="75" text-anchor="middle">Router 1</text>'
+        + '<rect class="rtr" x="370" y="54" width="84" height="32" rx="16"/><text class="rl" x="412" y="75" text-anchor="middle">Router 2</text>'
+        + '<rect class="rtr" x="490" y="54" width="84" height="32" rx="16"/><text class="rl" x="532" y="75" text-anchor="middle">Router 3</text>'
+        + '<rect class="box netC" x="604" y="16" width="206" height="108" rx="10"/><text class="t" x="618" y="40">Network C · gym</text><text class="s" x="618" y="60">10.0.3.x</text><text class="s" x="618" y="86">Scoreboard 10.0.3.10</text><text class="s" x="618" y="106">listens on port 7777</text>'
+        + '<rect class="box netB" x="292" y="146" width="240" height="92" rx="10"/><text class="t" x="306" y="170">Network B · library Wi-Fi</text><text class="s" x="306" y="190">10.0.2.x · open Wi-Fi</text><text class="s" x="306" y="210">Library laptop 10.0.2.10</text><text class="hk" x="306" y="229">Hacker on the Wi-Fi</text>'
+        + '</svg></div>' },
+      { html: '<table class="facts"><tr><th>Router</th><th>Plugged straight into</th><th>Its routes</th></tr><tr><td>Router 1</td><td>Network A</td><td>Network B → Router 2<br>Network C → Router 2</td></tr><tr><td>Router 2</td><td>Network B</td><td>Network A → Router 1<br>Network C → Router 1</td></tr><tr><td>Router 3</td><td>Network C</td><td>Anything else → Router 2</td></tr></table><p class="note">Every packet starts with a <b>TTL of 8</b>. Each router it passes takes 1 off.</p>' },
+    ],
+  },
+];
+
+/* type: mc (one answer) · multi (tick all) · packet (five fields, 1 point each) · write (read by the teacher, 0 auto points) */
+const QUESTIONS = [
+  /* ----- Part A ----- */
+  {
+    id: 'a1', part: 'A', type: 'mc', pts: 5, topic: 'Addresses',
+    prompt: 'Every house on your block has a laptop at `192.168.1.23`. Why doesn’t that cause a problem?',
+    options: ['It does: the laptops keep knocking each other offline', '`192.168.x.x` addresses are private. They only have to be unique inside each house, and each house’s router shares one public address with the internet', 'Only one of those laptops can be online at a time', 'The internet adds the house number to the end of each address'],
+    answer: 1,
+    why: 'Private addresses only have to be unique inside one building. The router faces the internet with one public address for the whole house and remembers which inside device asked for what. That’s NAT.',
+  },
+  {
+    id: 'a2', part: 'A', type: 'mc', pts: 5, topic: 'Packets',
+    prompt: 'The packets of one web page arrive in the order 2, 1, 4, 3. How does your computer put the page back together?',
+    options: ['It reads the payloads and guesses the order', 'Each packet’s header carries a sequence number', 'It waits, because routers always keep packets in order', 'It can’t, so it asks for the whole page again'],
+    answer: 1,
+    why: 'Packets take different routes and arrive out of order all the time. The sequence number in each header lets the receiver sort them and spot a missing one.',
+  },
+  {
+    id: 'a3', part: 'A', type: 'mc', pts: 5, topic: 'TCP / UDP',
+    prompt: 'Which of these should use **UDP** instead of TCP?',
+    options: ['Downloading your homework PDF', 'Sending a print job to the printer', 'Live voice on a video call', 'Loading a web page'],
+    answer: 2,
+    why: 'A voice packet that shows up late is useless, so skip it and keep talking: that’s UDP. Files, print jobs and pages need every byte, in order, so they use TCP.',
+  },
+  {
+    id: 'a4', part: 'A', type: 'mc', pts: 5, topic: 'Ports',
+    prompt: 'One server runs a website, email and DNS, all on the same IP address. What gets each packet to the right program?',
+    options: ['The TTL', 'The destination port number', 'The subnet mask', 'The sequence number'],
+    answer: 1,
+    why: 'The IP address is the building; the port is the apartment. The website answers on 443 (or 80), DNS on 53.',
+  },
+  {
+    id: 'a5', part: 'A', type: 'mc', pts: 5, topic: 'Security',
+    prompt: 'One hacker plugs a laptop into the school’s switch. Another joins the library’s open Wi-Fi. Who catches other people’s packets?',
+    options: ['Both of them', 'Only the one on the switch', 'Only the one on the Wi-Fi: Wi-Fi sends every packet through the air, but a switch sends each packet only out the port it’s meant for', 'Neither, unless they know the router’s password'],
+    answer: 2,
+    why: 'Radio reaches every device in range. A switch delivers each packet only where it’s addressed, so the switch hacker hears nothing. (A tap right on a cable is a different story.)',
+  },
+  {
+    id: 'a6', part: 'A', type: 'mc', pts: 5, topic: 'The whole trip',
+    prompt: 'You type `hsct.tech` and press Enter. What happens **first**?',
+    options: ['Your computer opens a TCP connection to port 443', 'Your computer asks a DNS server for hsct.tech’s IP address', 'The request is cut into packets and sent to the router', 'The server sends the page back'],
+    answer: 1,
+    why: 'Routers only understand numbers, so nothing can go to the site until DNS turns the name into an address. Name → number → connection → packets out → packets back → page.',
+  },
+
+  /* ----- Part B ----- */
+  {
+    id: 'b1', part: 'B', type: 'packet', pts: 5, topic: 'Printing',
+    prompt: '**Print a test page.** The laptop sends a page to the printer.',
+    want: { src: ROOM.laptop, dst: ROOM.printer, proto: 'TCP', sport: 'high', dport: '9100' },
+    show: ROOM.laptop + ' → ' + ROOM.printer + ' · TCP · any high source port → 9100',
+    why: 'A page needs every byte, in order: TCP. The printer’s config page says raw printing listens on 9100 (631 is off, and 80 is its web page).',
+  },
+  {
+    id: 'b2', part: 'B', type: 'packet', pts: 5, topic: 'DNS',
+    prompt: '**Ask for a name.** The laptop wants the address of `hsct.tech`.',
+    want: { src: ROOM.laptop, dst: ROOM.router, proto: 'UDP', sport: 'high', dport: '53' },
+    show: ROOM.laptop + ' → ' + ROOM.router + ' · UDP · any high source port → 53',
+    why: 'The laptop asks the DNS server that ipconfig shows (' + ROOM.router + ', the router). Lookups are one small question and one small answer: UDP, port 53.',
+  },
+  {
+    id: 'b3', part: 'B', type: 'packet', pts: 5, topic: 'DNS',
+    prompt: '**Answer as the DNS server.** This question just arrived. Write the answer that goes back.',
+    incoming: ROOM.laptop + ':' + ROOM.qport + ' → ' + ROOM.router + ':53 · UDP · query hsct.tech',
+    want: { src: ROOM.router, dst: ROOM.laptop, proto: 'UDP', sport: '53', dport: String(ROOM.qport) },
+    show: ROOM.router + ':53 → ' + ROOM.laptop + ':' + ROOM.qport + ' · UDP',
+    why: 'A reply flips the addresses and the ports. It leaves from port 53 and has to land on the exact port the laptop asked from (' + ROOM.qport + '), or the laptop never matches it to its question.',
+  },
+  {
+    id: 'b4', part: 'B', type: 'packet', pts: 5, topic: 'Ping',
+    prompt: '**Answer as the printer.** A ping just arrived. Write the reply.',
+    incoming: ROOM.laptop + ' → ' + ROOM.printer + ' · ICMP echo request',
+    want: { src: ROOM.printer, dst: ROOM.laptop, proto: 'ICMP', sport: 'none', dport: 'none' },
+    show: ROOM.printer + ' → ' + ROOM.laptop + ' · ICMP · no ports',
+    why: 'The reply goes from the printer back to the laptop. Ping is ICMP, a bare “are you there?”, and ICMP has no ports at all.',
+  },
+
+  /* ----- Part C, problem 1 ----- */
+  {
+    id: 'c1a', part: 'C', problem: 'p1', label: '1a', type: 'mc', pts: 7, topic: 'DHCP',
+    prompt: 'The laptop’s address is `169.254.17.42`. What does that tell you?',
+    options: ['It asked for an address with DHCP, nothing answered, so it gave itself one', 'The router gave it a public address', 'Someone typed it in by hand as a static address', 'It’s connected fine: 169.254 is the school’s range'],
+    answer: 0,
+    why: 'A `169.254.x.x` address is what a device gives itself when its DHCP request gets no answer. Windows calls that “Unidentified network.” The laptop is in the WAN port, which faces the school, so the room’s DHCP never hears it.',
+  },
+  {
+    id: 'c1b', part: 'C', problem: 'p1', label: '1b', type: 'multi', pts: 10, topic: 'WAN / LAN',
+    prompt: 'Which cable changes does the room need? Tick every one.',
+    options: [
+      { t: 'Laptop: move it from WAN to any LAN port', yes: true, why: 'WAN faces the school, not the room. In a LAN port the router’s DHCP answers it.' },
+      { t: 'Wall jack: move it from LAN 3 to WAN', yes: true, why: 'The router only looks for the school network on WAN. Without that, nobody in the room has internet.' },
+      { t: 'Printer: move it from LAN 1 to LAN 4', yes: false, why: 'The four LAN ports are one switch. LAN 1 and LAN 4 are the same thing.' },
+      { t: 'Swap the laptop’s and the printer’s cables', yes: false, why: 'That fixes the laptop but puts the printer in the WAN port, outside the room.' },
+    ],
+    why: 'The laptop belongs in a LAN port and the wall jack belongs in WAN. Moving the printer between LAN ports changes nothing.',
+  },
+  {
+    id: 'c1c', part: 'C', problem: 'p1', label: '1c', type: 'mc', pts: 8, topic: 'Static addresses',
+    prompt: 'Once the cables are fixed, the printer prints. Why is its address still a problem waiting to happen?',
+    options: ['`192.168.1.150` is inside the DHCP range, so some day the router can hand that same address to a phone, and the two will clash', 'Static addresses expire after 24 hours', 'Its gateway should be its own address, `192.168.1.150`', 'Printers should use DHCP so their address can change'],
+    answer: 0,
+    why: 'The pool is .100 to .199, and .150 is inside it. Static addresses belong outside the pool (like `192.168.1.50`) so the router never gives them away. And a printer should stay static: every laptop finds it by its address.',
+  },
+  {
+    id: 'c1w', part: 'C', problem: 'p1', label: '1d', type: 'write', pts: 0, topic: 'Ticket note',
+    prompt: 'Write the ticket note: what was wrong in Room 216, and what did you change?',
+    placeholder: 'The laptop said Unidentified network because…',
+    rubric: ['The laptop was in the WAN port, so the room’s DHCP never answered it and it gave itself a 169.254 address. It goes in a LAN port.', 'The wall jack goes in WAN, or the router has no internet. The printer gets a static address outside .100–.199, like 192.168.1.50.'],
+  },
+
+  /* ----- Part C, problem 2 ----- */
+  {
+    id: 'c2a', part: 'C', problem: 'p2', label: '2a', type: 'mc', pts: 8, topic: 'Routing',
+    prompt: 'The office laptop (`10.0.1.10`) sends a score to the scoreboard (`10.0.3.10`, port 7777). What happens to that packet?',
+    options: ['It’s delivered to the scoreboard', 'Router 1 drops it right away: it has no route for Network C', 'It bounces between Router 1 and Router 2 until its TTL hits 0, then it’s dropped', 'It reaches the scoreboard, which refuses it: wrong port'],
+    answer: 2,
+    why: 'Router 1 sends Network C to Router 2. Router 2 sends Network C back to Router 1. Around it goes, losing 1 TTL at each router, until the TTL hits 0 and the packet is thrown away. It never reaches Router 3.',
+  },
+  {
+    id: 'c2b', part: 'C', problem: 'p2', label: '2b', type: 'mc', pts: 7, topic: 'Routing',
+    prompt: 'Which **one** change gets the score to the gym?',
+    options: ['Router 2: change “Network C → Router 1” to “Network C → Router 3”', 'Router 1: delete its route for Network C', 'Send the packet with a bigger TTL, like 64', 'Router 3: add a route “Network A → Router 2”'],
+    answer: 0,
+    why: 'Router 2 is the one pointing the wrong way. Deleting Router 1’s route leaves it with no route and no default, so it drops the packet. A bigger TTL just lets it circle longer. Router 3 is never reached, so its table doesn’t matter yet.',
+  },
+  {
+    id: 'c2c', part: 'C', problem: 'p2', label: '2c', type: 'multi', pts: 10, topic: 'Encryption',
+    prompt: 'The library laptop logs in to the grades server (`10.0.1.11`) with **HTTPS: port 443, with the lock**. What can the hacker on the library Wi-Fi see? Tick every one.',
+    options: [
+      { t: 'The grades server’s address, `10.0.1.11`', yes: true, why: 'It’s in the header. Every router needs it, so it can’t be scrambled.' },
+      { t: 'The port, `443`', yes: true, why: 'Also in the header.' },
+      { t: 'The library laptop’s address', yes: true, why: 'The From address is in the header too.' },
+      { t: 'The username and password', yes: false, why: 'They’re in the payload, and the lock scrambles the payload.' },
+      { t: 'The grades on the page that comes back', yes: false, why: 'The page comes back encrypted too.' },
+    ],
+    why: 'Encryption hides the payload, not the header. The hacker learns who talked to whom, on which port, and when, but not what was said.',
+  },
+  {
+    id: 'c2w', part: 'C', problem: 'p2', label: '2d', type: 'write', pts: 0, topic: 'Ticket note',
+    prompt: 'Write the ticket note for the network team: why did the score never arrive, and why does your fix work? Use the word TTL.',
+    placeholder: 'Router 2 sent the packet…',
+    rubric: ['Router 1 and Router 2 each sent Network C to the other, so the packet went in a circle and every router took 1 off its TTL until it hit 0 and was dropped.', 'Pointing Router 2’s Network C route at Router 3 (the gym’s router) breaks the loop, so the packet reaches Router 3 and then the scoreboard.'],
+  },
+];
+QUESTIONS.forEach((q) => { if (!q.label) q.label = q.id.toUpperCase(); });
+const byId = Object.fromEntries(QUESTIONS.map((q) => [q.id, q]));
+const optText = (q, i) => (typeof q.options[i] === 'string' ? q.options[i] : q.options[i].t);
+const FIELDS = [['src', 'Source IP', 'who is sending'], ['dst', 'Destination IP', 'who should get it'], ['proto', 'Protocol'], ['sport', 'Source port', 'ICMP: none'], ['dport', 'Destination port', 'ICMP: none']];
+
+/* ---------- state ---------- */
+const S = { name: '', deadline: 0, ans: {}, order: {}, leaves: 0, pastes: [], running: false, submitted: false, timedOut: false, secondsLeft: null, timer: null, announced: {} };
+
+/* seeded shuffle so each student gets their own option order */
+function seeded(str) {
+  let h = 1779033703 ^ str.length;
+  for (let i = 0; i < str.length; i++) { h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); }
+  return function () { h = Math.imul(h ^ (h >>> 16), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
+}
+function shuffled(n, rnd) { const a = [...Array(n).keys()]; for (let i = n - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+/* ---------- intro ---------- */
+$('intro-parts').innerHTML = PARTS.map((p) => `<li><span class="n">${p.id}</span><span><b>${esc(p.title)}.</b> <span class="muted">${esc(p.blurb)}</span></span><span class="pts">${p.pts} pts</span></li>`).join('');
+$('start').onclick = () => {
+  const n = $('name').value.trim();
+  if (n.length < 2) { $('name-err').hidden = false; $('name').focus(); return; }
+  $('name-err').hidden = true;
+  S.name = n;
+  const rnd = seeded(n + '|' + Date.now());
+  QUESTIONS.forEach((q) => { if (q.options) S.order[q.id] = shuffled(q.options.length, rnd); });
+  HSCT.start(n);
+  HSCT.log('order', { order: S.order });
+  renderQuiz();
+  show('view-work');
+  S.running = true;
+  S.deadline = Date.now() + CONFIG.MINUTES * 60 * 1000;
+  $('timer').hidden = false;
+  updateProgress();
+  tick(); S.timer = setInterval(tick, 500);
+  window.addEventListener('beforeunload', guard);
+};
+$('name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('start').click(); });
+function show(id) { document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === id)); window.scrollTo(0, 0); }
+function guard(e) { if (S.running && !S.submitted) { e.preventDefault(); e.returnValue = ''; } }
+
+/* ---------- render ---------- */
+function qHead(q) {
+  return `<div class="qhead"><span class="qnum">${esc(q.label)}</span><span class="tag">${esc(q.topic)}</span><span class="grow"></span><span class="qpts">${q.type === 'write' ? 'required · Mr. Cruz reads it' : q.type === 'packet' ? q.pts + ' pts · 1 per field' : q.pts + ' pts'}</span></div>`;
+}
+function renderQ(q) {
+  const cls = 'q' + (q.problem ? ' sub' : '');
+  if (q.type === 'mc' || q.type === 'multi') {
+    const kind = q.type === 'mc' ? 'radio' : 'checkbox';
+    const opts = S.order[q.id].map((i) => `<label class="opt"><input type="${kind}" name="${q.id}" value="${i}"><span>${fmt(optText(q, i))}</span></label>`).join('');
+    return `<div class="${cls}" id="q-${q.id}" data-q="${q.id}">${qHead(q)}<fieldset><legend>${fmt(q.prompt)}</legend>${q.type === 'multi' ? '<p class="tip">Exactly right: ' + q.pts + ' points. One wrong tick or one miss: ' + Math.floor(q.pts / 2) + '.</p>' : ''}<div class="opts">${opts}</div></fieldset></div>`;
+  }
+  if (q.type === 'packet') {
+    const f = FIELDS.map(([k, label, ph]) => k === 'proto'
+      ? `<label for="in-${q.id}-${k}">${label}</label><select id="in-${q.id}-${k}" data-q="${q.id}" data-f="${k}"><option value="">— choose —</option><option>ICMP</option><option>TCP</option><option>UDP</option></select>`
+      : `<label for="in-${q.id}-${k}">${label}</label><input id="in-${q.id}-${k}" data-q="${q.id}" data-f="${k}" type="text" placeholder="${esc(ph)}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="20" inputmode="${k.endsWith('port') ? 'numeric' : 'decimal'}">`).join('');
+    return `<div class="${cls}" id="q-${q.id}" data-q="${q.id}">${qHead(q)}<p class="qt">${fmt(q.prompt)}</p>${q.incoming ? `<div class="envelope">Incoming: <b>${esc(q.incoming)}</b></div>` : ''}<div class="pform" role="group" aria-label="Packet fields for ${esc(q.label)}">${f}</div></div>`;
+  }
+  /* write */
+  return `<div class="${cls} write" id="q-${q.id}" data-q="${q.id}">${qHead(q)}<label class="qt" for="in-${q.id}" style="display:block">${fmt(q.prompt)}</label><textarea id="in-${q.id}" data-q="${q.id}" placeholder="${esc(q.placeholder || '')}" spellcheck="true" maxlength="1200"></textarea><div class="row"><span class="count" id="count-${q.id}">0 words · at least ${CONFIG.MIN_WORDS}</span></div></div>`;
+}
+function renderBody(b) { return b.pre != null ? pre(b.pre) : b.html; }
+function renderQuiz() {
+  let h = '';
+  for (const p of PARTS) {
+    h += `<section class="part" id="part-${p.id}"><div class="part-head"><p class="kicker">${esc(p.kicker)}</p><h2>${esc(p.title)}</h2><p class="lede">${esc(p.lede)}</p></div>${p.ctx || ''}`;
+    if (p.id !== 'C') h += QUESTIONS.filter((q) => q.part === p.id).map(renderQ).join('');
+    else for (const pr of PROBLEMS) {
+      h += `<div class="problem" id="${pr.id}"><p class="kicker">Problem ${pr.n} · ${esc(pr.topic)} · ${pr.pts} points</p><h3>${esc(pr.title)}</h3><div class="story">`
+        + pr.body.map(renderBody).join('') + '</div>'
+        + QUESTIONS.filter((q) => q.problem === pr.id).map(renderQ).join('') + '</div>';
+    }
+    h += '</section>';
+  }
+  $('quiz').innerHTML = h;
+  $('progress').innerHTML = QUESTIONS.map((q, i) => `<button type="button" data-jump="${q.id}" class="${i && QUESTIONS[i - 1].part !== q.part ? 'gap' : ''}" aria-label="${esc(q.label)}"></button>`).join('');
+  $('progress').querySelectorAll('[data-jump]').forEach((b) => b.addEventListener('click', () => jump(b.dataset.jump)));
+  updateProgress();
+}
+function jump(id) {
+  const el = $('q-' + id); if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const inp = el.querySelector('input,textarea,select'); if (inp) setTimeout(() => inp.focus({ preventScroll: true }), 350);
+}
+
+/* ---------- answers ---------- */
+function isAnswered(q) {
+  const a = S.ans[q.id];
+  if (q.type === 'write') return words(a) >= CONFIG.MIN_WORDS;
+  if (q.type === 'multi') return Array.isArray(a) && a.length > 0;
+  if (q.type === 'packet') return !!(a && String(a.src || '').trim() && String(a.dst || '').trim() && a.proto);
+  return a != null;
+}
+function updateProgress() {
+  let n = 0;
+  QUESTIONS.forEach((q) => {
+    const done = isAnswered(q); if (done) n++;
+    const b = $('progress').querySelector(`[data-jump="${q.id}"]`);
+    if (b) { b.classList.toggle('done', done); b.setAttribute('aria-label', q.label + (done ? ', answered' : ', blank')); }
+    const card = $('q-' + q.id); if (card) card.classList.toggle('answered', done);
+  });
+  $('stat-answered').innerHTML = S.running || S.submitted ? `<b>${n}</b>/${QUESTIONS.length} answered` : '';
+  $('submit-status').textContent = n === QUESTIONS.length ? 'Everything is answered.' : `${QUESTIONS.length - n} of ${QUESTIONS.length} still blank.`;
+}
+function packetField(t) {
+  const q = byId[t.dataset.q];
+  const a = S.ans[q.id] || (S.ans[q.id] = { src: '', dst: '', proto: '', sport: '', dport: '' });
+  a[t.dataset.f] = t.value;
+  if (t.dataset.f === 'proto') {
+    /* same as the lesson's packet form: ICMP has no ports, so the port boxes switch off */
+    const icmp = t.value === 'ICMP';
+    ['sport', 'dport'].forEach((k) => { const el = $(`in-${q.id}-${k}`); el.disabled = icmp; if (icmp) { el.value = ''; a[k] = ''; } });
+  }
+  return q;
+}
+$('quiz').addEventListener('change', (e) => {
+  const t = e.target, card = t.closest('[data-q]'); if (!card || S.submitted) return;
+  const q = byId[card.dataset.q];
+  if (q.type === 'mc') { S.ans[q.id] = +t.value; HSCT.log('answer', { q: q.id, pick: +t.value }); }
+  else if (q.type === 'multi') { S.ans[q.id] = [...card.querySelectorAll('input:checked')].map((x) => +x.value).sort(); HSCT.log('answer', { q: q.id, picks: S.ans[q.id].join(',') }); }
+  else if (q.type === 'packet') { packetField(t); HSCT.log('field', { q: q.id, f: t.dataset.f, v: String(t.value).slice(0, 20) }); }
+  else if (q.type === 'write') HSCT.log('write', { q: q.id, words: words(S.ans[q.id]) });
+  updateProgress(); clearConfirm();
+});
+$('quiz').addEventListener('input', (e) => {
+  const t = e.target; if (!t.dataset.q || S.submitted) return;
+  const q = byId[t.dataset.q];
+  if (q.type === 'packet') { packetField(t); updateProgress(); return; }
+  if (q.type !== 'write') return;
+  S.ans[q.id] = t.value;
+  const n = words(t.value), c = $('count-' + q.id);
+  c.textContent = n + ' word' + (n === 1 ? '' : 's') + ' · at least ' + CONFIG.MIN_WORDS;
+  c.classList.toggle('ok', n >= CONFIG.MIN_WORDS);
+  updateProgress();
+});
+$('quiz').addEventListener('paste', (e) => {
+  const t = e.target; if (!t.dataset || !t.dataset.q) return;
+  const chars = ((e.clipboardData && e.clipboardData.getData('text')) || '').length;
+  S.pastes.push({ q: t.dataset.q, f: t.dataset.f || null, chars });
+  HSCT.log('paste', { q: t.dataset.q, chars });
+});
+document.addEventListener('visibilitychange', () => {
+  if (!S.running || S.submitted) return;
+  if (document.visibilityState === 'hidden') { S.leaves++; HSCT.log('left-tab', { n: S.leaves }); }
+  else HSCT.log('back-to-tab', {});
+});
+
+/* ---------- timer ---------- */
+function tick() {
+  if (!S.running || S.submitted) return;
+  const left = Math.max(0, S.deadline - Date.now());
+  const sec = Math.ceil(left / 1000);
+  const t = $('timer');
+  t.textContent = Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
+  t.classList.toggle('warn', sec <= 300 && sec > 60);
+  t.classList.toggle('low', sec <= 60);
+  for (const mark of [300, 60]) if (sec <= mark && !S.announced[mark]) { S.announced[mark] = true; if (sec > mark - 5) $('live').textContent = (mark / 60) + (mark === 60 ? ' minute' : ' minutes') + ' left.'; }
+  if (left <= 0) { S.timedOut = true; HSCT.log('time-up', {}); finish(); }
+}
+
+/* ---------- submit ---------- */
+function clearConfirm() { $('confirm').innerHTML = ''; }
+$('submit').onclick = () => {
+  const blank = QUESTIONS.filter((q) => !isAnswered(q));
+  let h = '<div class="confirm">';
+  if (blank.length) {
+    h += `<p><b>${blank.length} still blank.</b> Blank answers get 0 points${blank.some((q) => q.type === 'write') ? ', and written answers need at least ' + CONFIG.MIN_WORDS + ' words' : ''}. Jump to one:</p>`
+      + '<div class="blank-list">' + blank.map((q) => `<button type="button" data-jump="${q.id}">${esc(q.label)}</button>`).join('') + '</div>'
+      + '<div class="row"><button class="btn maroon small" id="sure">Submit anyway</button><button class="btn ghost small" id="back">Keep working</button></div>';
+  } else {
+    h += '<p>Submit now? You can’t change your answers after this.</p><div class="row"><button class="btn maroon small" id="sure">Yes, submit</button><button class="btn ghost small" id="back">Keep working</button></div>';
+  }
+  $('confirm').innerHTML = h + '</div>';
+  $('confirm').querySelectorAll('[data-jump]').forEach((b) => b.addEventListener('click', () => jump(b.dataset.jump)));
+  $('sure').onclick = () => finish();
+  $('back').onclick = clearConfirm;
+  $('sure').focus();
+};
+
+/* ---------- grading ---------- */
+const NONE = /^(|none|n\/a|na|-|—|no|no port|x)$/i;
+function fieldOk(want, got, a) {
+  const g = String(got == null ? '' : got).trim();
+  if (want === 'none') return a.proto === 'ICMP' && NONE.test(g);   /* empty ports only count if they chose ICMP */
+  if (want === 'high') return /^\d+$/.test(g) && +g >= 1024 && +g <= 65535;
+  return g === want;
+}
+function gradePacket(q) {
+  const a = S.ans[q.id] || {};
+  const fields = Object.fromEntries(FIELDS.map(([k]) => [k, fieldOk(q.want[k], a[k], a)]));
+  const right = Object.values(fields).filter(Boolean).length;
+  return { right, fields };
+}
+function gradeQ(q) {
+  const a = S.ans[q.id];
+  if (q.type === 'write') return { pts: 0, status: isAnswered(q) ? 'read' : 'blank' };
+  const started = q.type === 'packet' && a && Object.values(a).some((v) => String(v || '').trim());
+  if (!isAnswered(q) && !started) return { pts: 0, status: 'blank' };   /* a half-filled packet still earns its right fields */
+  if (q.type === 'mc') return a === q.answer ? { pts: q.pts, status: 'ok' } : { pts: 0, status: 'bad' };
+  if (q.type === 'multi') {
+    const picked = new Set(a);
+    const misses = q.options.reduce((m, o, i) => m + (o.yes !== picked.has(i) ? 1 : 0), 0);
+    return misses === 0 ? { pts: q.pts, status: 'ok' } : misses === 1 ? { pts: Math.floor(q.pts / 2), status: 'part' } : { pts: 0, status: 'bad' };
+  }
+  /* packet: 1 point per field */
+  const g = gradePacket(q);
+  const pts = Math.round(q.pts * g.right / FIELDS.length);
+  return { pts, status: g.right === FIELDS.length ? 'ok' : g.right === 0 ? 'bad' : 'part', fields: g.fields };
+}
+function readable(q) {
+  const a = S.ans[q.id];
+  if (q.type === 'mc') return a == null ? '' : plain(optText(q, a));
+  if (q.type === 'multi') return (a || []).map((i) => plain(optText(q, i))).join(' · ');
+  if (q.type === 'packet') {
+    if (!a) return '';
+    const v = (k) => String(a[k] || '').trim();
+    return (v('src') || '?') + (v('sport') ? ':' + v('sport') : '') + ' → ' + (v('dst') || '?') + (v('dport') ? ':' + v('dport') : '') + ' · ' + (a.proto || '?');
+  }
+  return a == null ? '' : String(a);
+}
+function keyText(q) {
+  if (q.type === 'mc') return fmt(optText(q, q.answer));
+  if (q.type === 'multi') return q.options.filter((o) => o.yes).map((o) => fmt(o.t)).join(' and ');
+  if (q.type === 'packet') return '<code>' + esc(q.show) + '</code>';
+  return '';
+}
+
+/* ---------- end ---------- */
+function finish() {
+  if (S.submitted) return;
+  S.submitted = true; S.running = false;
+  clearInterval(S.timer);
+  window.removeEventListener('beforeunload', guard);
+  S.secondsLeft = Math.max(0, Math.round((S.deadline - Date.now()) / 1000));
+  $('quiz').querySelectorAll('input,textarea,select').forEach((x) => { x.disabled = true; });
+  const res = Object.fromEntries(QUESTIONS.map((q) => [q.id, gradeQ(q)]));
+  const sum = (list) => list.reduce((s, q) => s + res[q.id].pts, 0);
+  const groups = [
+    { id: 'A', title: 'Part A · Quick checks', qs: QUESTIONS.filter((q) => q.part === 'A'), possible: 30 },
+    { id: 'B', title: 'Part B · Write the packets', qs: QUESTIONS.filter((q) => q.part === 'B'), possible: 20 },
+    ...PROBLEMS.map((p) => ({ id: p.id, title: 'Problem ' + p.n + ' · ' + p.title, qs: QUESTIONS.filter((q) => q.problem === p.id && q.type !== 'write'), possible: p.pts })),
+  ];
+  groups.forEach((g) => { g.earned = sum(g.qs); });
+  const total = groups.reduce((s, g) => s + g.earned, 0);
+  const writes = QUESTIONS.filter((q) => q.type === 'write');
+  const written = writes.filter((q) => res[q.id].status === 'read').length;
+  HSCT.log('submit', { earned: total, timedOut: S.timedOut, secondsLeft: S.secondsLeft, leftTab: S.leaves });
+
+  show('view-end');
+  updateProgress(); $('timer').hidden = true;
+  $('end-h1').textContent = S.timedOut ? 'Time’s up. Quiz submitted.' : 'Quiz submitted.';
+  $('end-lede').textContent = 'You scored ' + total + ' out of 100. Mr. Cruz reads your ' + (written === 2 ? 'two ticket notes' : written === 1 ? 'ticket note (one of the two is blank)' : 'ticket notes (both are blank)') + '. Download your result file below and submit it in Google Classroom.';
+  $('end-banner').innerHTML = S.timedOut ? '<div class="banner">The timer hit 0:00, so your answers were submitted automatically.</div>' : '';
+  $('recap').innerHTML = '<tr><th>Part</th><th style="text-align:right">Points</th></tr>'
+    + groups.map((g) => `<tr><td>${esc(g.title)}</td><td class="p">${g.earned} / ${g.possible}</td></tr>`).join('')
+    + `<tr><td>Ticket notes (Mr. Cruz reads these)</td><td class="p">${written} of 2 written</td></tr>`
+    + `<tr><td><b>Total</b></td><td class="p"><b>${total} / 100</b></td></tr>`;
+  const mark = { ok: '✓', bad: '✗', part: '½', blank: '–', read: '✎' };
+  const cls = { ok: 'ok', bad: 'bad', part: 'part-ok', blank: 'bad', read: 'read' };
+  const FNAME = { src: 'source IP', dst: 'destination IP', proto: 'protocol', sport: 'source port', dport: 'destination port' };
+  $('review').innerHTML = QUESTIONS.map((q) => {
+    const r = res[q.id], yours = readable(q);
+    const ptsCell = q.type === 'write' ? (r.status === 'read' ? 'for Mr. Cruz' : 'blank') : `${r.pts} / ${q.pts}`;
+    let h = `<li class="${cls[r.status]}"><span class="m" aria-hidden="true">${mark[r.status]}</span><span><span class="id">${esc(q.label)}</span>${fmt(q.prompt)}</span><span class="p">${ptsCell}</span>`;
+    h += `<span class="yours">Your answer: ${yours ? '<code>' + esc(yours.length > 220 ? yours.slice(0, 220) + '…' : yours) + '</code>' : '<i>blank</i>'}`;
+    if (q.type === 'packet' && r.fields && r.status === 'part') h += ` · wrong: ${Object.keys(r.fields).filter((k) => !r.fields[k]).map((k) => FNAME[k]).join(', ')}`;
+    h += '</span>';
+    if (CONFIG.REVEAL_ANSWERS) {
+      if (q.type === 'write') h += `<span class="key"><b>A strong answer says:</b> ${q.rubric.map(fmt).join(' ')}</span>`;
+      else h += `<span class="key"><b>Answer:</b> ${keyText(q)}. ${fmt(q.why)}</span>`;
+    }
+    return h + '</li>';
+  }).join('');
+
+  HSCT.endScreen('#hsct-result', {
+    earned: total, possible: 100,
+    tier: total >= 90 ? 'Nailed it' : total >= 70 ? 'Solid' : total >= 50 ? 'Getting there' : 'Review all three lessons',
+    sections: groups.map((g) => ({ id: g.id, title: g.title, earned: g.earned, possible: g.possible }))
+      .concat([{ id: 'written', title: 'Ticket notes (Mr. Cruz reads these)', status: written + ' of 2 written' }]),
+    extra: {
+      answers: QUESTIONS.map((q) => ({ id: q.label, topic: q.topic, type: q.type, answer: readable(q), raw: S.ans[q.id] == null ? null : S.ans[q.id], fields: res[q.id].fields || null, points: res[q.id].pts, possible: q.pts, status: res[q.id].status })),
+      written: Object.fromEntries(writes.map((q) => [q.label, { prompt: plain(q.prompt), text: String(S.ans[q.id] || ''), words: words(S.ans[q.id]) }])),
+      optionOrder: S.order,
+      leftTab: S.leaves, pastes: S.pastes,
+      timedOut: S.timedOut, secondsLeft: S.secondsLeft, timeLimitMinutes: CONFIG.MINUTES,
+    },
+  }).catch(() => {});
+}
+</script>
+</body>
+</html>
