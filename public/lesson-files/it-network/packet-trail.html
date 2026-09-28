@@ -1,0 +1,1700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Packet Trail: where is my packet? — HSCT</title>
+<!--
+  HSCT LESSON: Packet Trail (it-network / network security). Follows "Packet Run".
+  Three screens, in the template's order:
+    1. #view-intro   what the lesson is, the rules, the student's name   -> HSCT.start(name)
+    2. #view-work    five scenarios, 25 sequential multiple-choice questions with a live network map
+    3. #view-end     wrap-up + the standard result card                   -> HSCT.endScreen(...)
+  Scripts after the kit: sprites (from Packet Run), the scenarios and questions, the map renderer, the lesson flow.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f7fc; --paper:#fff; --ink:#101a3f; --muted:#5b6485; --line:#d3d9ee; --line-2:#e6eaf5;
+  --blue:#1f3fae; --blue-soft:#e9edf8; --green:#1f7a3d; --green-soft:#e1f2e6; --red:#b3261e; --red-soft:#fbe3e1;
+  --maroon:#7a1f3d; --maroon-soft:#f6e6ec; --amber:#8a5a00; --amber-soft:#fff4d6;
+  --screen:#100d22; --code-bg:#0f1530; --code-ink:#dfe6ff; --code-mute:#7d88b3;
+  --hsct-color: var(--blue);
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:17px;line-height:1.55}
+h1,h2,h3,h4{margin:0;line-height:1.15}
+p{margin:0 0 .8rem}
+button{font:inherit;cursor:pointer;color:inherit}
+input,select,textarea{font:inherit;color:inherit}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,canvas:focus-visible,[tabindex]:focus-visible,summary:focus-visible{outline:3px solid #1f3fae;outline-offset:2px}
+.gscreen :focus-visible,.fchip :focus-visible{outline-color:#ffe066}
+code,kbd,pre{font-family:var(--mono)}
+code{font-size:.92em;background:var(--blue-soft);padding:.05em .35em;border-radius:5px}
+kbd{font-size:.82em;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:.05em .4em;background:#fff}
+[hidden]{display:none !important}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.view{display:none}.view.active{display:block}
+.wrap{max-width:760px;margin:0 auto;padding:40px 20px 80px}
+.wrap.wide{max-width:1220px;padding-top:0}
+.kicker{color:var(--muted);font-size:14px;margin-bottom:6px}
+h1{font-size:2.1rem;font-weight:700;letter-spacing:-.015em;margin-bottom:.45rem}
+h2{font-size:1.6rem;font-weight:700;letter-spacing:-.01em;margin-bottom:.4rem}
+h3{font-size:1.1rem;font-weight:700;margin-bottom:.5rem}
+.lede{color:var(--muted);font-size:1.08rem;margin-bottom:1.2rem;max-width:62ch}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-bottom:16px}
+.card.tight{padding:14px 16px}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+.btn{border:2px solid var(--blue);background:var(--blue);color:#fff;border-radius:8px;padding:10px 16px;font-weight:600;line-height:1.2}
+.btn:hover{filter:brightness(.93)}
+.btn.ghost{background:transparent;color:var(--blue)}
+.btn.small{padding:6px 11px;font-size:14px;border-width:1.5px}
+.btn.maroon{border-color:var(--maroon);background:var(--maroon)}
+.btn.maroon.ghost{background:transparent;color:var(--maroon)}
+.btn.green{border-color:var(--green);background:var(--green)}
+.btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.err{color:var(--red);margin-top:8px}
+.rules{margin:0;padding-left:1.2rem}.rules li{margin:.3rem 0}
+.name-row{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.name-row input{flex:1;min-width:220px;padding:11px 12px;border:1.5px solid var(--line);border-radius:8px}
+.stoplist{list-style:none;margin:0 0 4px;padding:0;display:grid;gap:8px}
+.stoplist li{display:grid;grid-template-columns:30px 1fr auto;gap:10px;align-items:baseline}
+.stoplist .n{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--blue-soft);color:var(--blue);font-weight:700;font-size:14px}
+.stoplist .pts{color:var(--muted);font-size:14px;white-space:nowrap}
+.hero-art{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 18px}
+.hero-art img{width:40px;height:40px;image-rendering:pixelated}
+img.spr{image-rendering:pixelated;image-rendering:crisp-edges;width:24px;height:24px;vertical-align:middle}
+
+/* ---------- stepper ---------- */
+.stepper{position:sticky;top:0;z-index:30;background:rgba(245,247,252,.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);margin:0 -20px 22px;padding:10px 20px}
+.stepper-in{display:flex;gap:6px;align-items:center;overflow-x:auto;scrollbar-width:thin}
+.step{flex:0 0 auto;display:flex;align-items:center;gap:7px;border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:5px 12px 5px 6px;font-size:14px;font-weight:600;color:var(--muted);white-space:nowrap}
+.step .num{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--line-2);color:var(--muted);font-size:12.5px}
+.step.current{border-color:var(--blue);color:var(--ink)}
+.step.current .num{background:var(--blue);color:#fff}
+.step.done .num{background:var(--green);color:#fff}
+.step:disabled{opacity:.55;cursor:not-allowed}
+.step .spts{font-weight:500;color:var(--muted);font-size:12.5px}
+.points{margin-left:auto;flex:0 0 auto;font-size:14px;color:var(--muted);padding-left:10px;white-space:nowrap;position:sticky;right:0;background:rgba(245,247,252,.97);box-shadow:-10px 0 8px -4px rgba(245,247,252,.97)}
+.points b{color:var(--ink);font-size:16px}
+
+.stop{animation:fadein .25s ease}
+@keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.stop-head{margin-bottom:14px}
+.stop-foot{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:22px;padding-top:16px;border-top:1px solid var(--line)}
+.grid2{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:18px;align-items:start}
+.grid-ed{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:900px){.grid2,.grid-ed{grid-template-columns:minmax(0,1fr)}}
+
+/* ---------- task checklist ---------- */
+.tasks{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.tasks li{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:start;font-size:15px}
+.tasks .box{width:20px;height:20px;border-radius:6px;border:2px solid var(--line);display:inline-grid;place-items:center;margin-top:2px;font-size:13px;color:#fff;transition:background .2s}
+.tasks li.ok .box{background:var(--green);border-color:var(--green)}
+.tasks li.ok .box::after{content:"✓";font-weight:700}
+.tasks li.bad .box{background:var(--red);border-color:var(--red)}
+.tasks li.bad .box::after{content:"✕";font-weight:700}
+.tasks .tp{color:var(--muted);font-size:13.5px;white-space:nowrap}
+
+/* ---------- anatomy diagram ---------- */
+.anat{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:10px}
+.anat .part{background:#fff;border:1px solid var(--line);border-top:4px solid var(--c,var(--blue));border-radius:10px;padding:10px 12px}
+.anat .part h4{font-family:var(--mono);font-size:15px;margin-bottom:4px;color:var(--c,var(--blue))}
+.anat .part p{font-size:14px;margin:0;color:var(--muted)}
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:14px;margin:0 0 16px;color:var(--muted)}
+.flow span.f{background:#fff;border:1px solid var(--line);border-radius:999px;padding:3px 10px;color:var(--ink)}
+.flow span.a{color:var(--muted)}
+@media (max-width:700px){.anat{grid-template-columns:1fr 1fr}}
+
+/* ---------- questions ---------- */
+.q{margin-bottom:14px}
+.q .qt{font-weight:600;margin-bottom:8px}
+.choices{display:grid;gap:7px}
+.choice{text-align:left;padding:10px 13px;border:1.5px solid var(--line);border-radius:10px;background:#fff;font-size:15.5px}
+.choice:hover:not(:disabled){border-color:var(--blue)}
+.choice.right{border-color:var(--green);background:var(--green-soft)}
+.choice.wrong{border-color:var(--red);background:var(--red-soft)}
+.choice:disabled{cursor:default;color:var(--ink)}
+.fb{padding:10px 13px;border-radius:10px;background:var(--blue-soft);margin-top:8px;font-size:15px}
+.fb.good{background:var(--green-soft)}
+.fb.bad{background:var(--red-soft)}
+.fb.warn{background:var(--amber-soft)}
+.checks{display:grid;gap:6px}
+.checks label{display:flex;gap:10px;align-items:flex-start;padding:8px 11px;border:1.5px solid var(--line);border-radius:10px;background:#fff;font-size:15px;cursor:pointer}
+.checks label.right{border-color:var(--green);background:var(--green-soft)}
+.checks label.wrong{border-color:var(--red);background:var(--red-soft)}
+.checks input{margin-top:4px;width:17px;height:17px;flex:0 0 auto}
+.checks .why{display:block;font-size:13.5px;color:var(--muted);margin-top:2px}
+
+.panel{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);background:var(--line-2);padding:5px 5px 0;overflow-x:auto}
+.tab{border:0;background:transparent;padding:8px 13px;border-radius:8px 8px 0 0;font-size:14px;font-weight:600;color:var(--muted);white-space:nowrap}
+.tab[aria-selected="true"]{background:#fff;color:var(--ink)}
+.tabpanel{padding:12px 14px}
+.tabpanel.code{padding:0}
+.state-cap{font-size:13.5px;color:var(--muted);margin-bottom:8px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.state{font-family:var(--mono);font-size:12.5px;line-height:1.55;background:var(--code-bg);color:var(--code-ink);border-radius:10px;padding:10px 0;max-height:430px;overflow:auto;margin:0}
+.state .l{display:block;padding:0 12px 0 calc(12px + 4ch);text-indent:-4ch;white-space:pre-wrap;overflow-wrap:anywhere}
+.state .l.chg{background:rgba(255,214,90,.20);box-shadow:inset 3px 0 0 #ffd65a}
+.state .l.add{background:rgba(92,220,140,.16);box-shadow:inset 3px 0 0 #5cdc8c}
+.state .l.gone{color:#ff8fa3;text-decoration:line-through;opacity:.8}
+@media (prefers-reduced-motion:no-preference){.state .l.chg,.state .l.add{animation:glow 1.6s ease-out}}
+@keyframes glow{from{background:rgba(255,214,90,.55)}}
+.k-key{color:#9fd3ff}.k-str{color:#b5f0a8}.k-num{color:#ffc27a}.k-kw{color:#ff9bd2}.k-mute{color:var(--code-mute)}
+
+.callout{border-left:4px solid var(--maroon);background:var(--maroon-soft);padding:10px 13px;border-radius:0 10px 10px 0;font-size:15px;margin:10px 0}
+.callout.blue{border-color:var(--blue);background:var(--blue-soft)}
+.callout.green{border-color:var(--green);background:var(--green-soft)}
+.callout.amber{border-color:#c98a10;background:var(--amber-soft)}
+
+/* ---------- code views + editor ---------- */
+.code{font-family:var(--mono);font-size:13px;line-height:1.6;background:var(--code-bg);color:var(--code-ink);border-radius:10px;margin:0;overflow:auto;max-height:460px;padding:10px 0;tab-size:4}
+.code .ln{display:block;padding:0 14px;white-space:pre;min-height:1.6em}
+.code.num{counter-reset:ln}
+.code.num .ln::before{counter-increment:ln;content:counter(ln);display:inline-block;width:2.4em;margin-right:12px;text-align:right;color:#4d5780;user-select:none}
+.code .ln.hl{background:rgba(255,214,90,.14)}
+.code .ln.errl{background:rgba(255,90,110,.22)}
+.t-kw{color:#ff9bd2}.t-str{color:#b5f0a8}.t-num{color:#ffc27a}.t-com{color:#7d88b3;font-style:italic}.t-fn{color:#8fd0ff}.t-bi{color:#c9b3ff}.t-st{color:#ffe08a}.t-op{color:#dfe6ff}
+.ed{display:grid;grid-template-columns:auto minmax(0,1fr);background:var(--code-bg);border-radius:10px;overflow:hidden;border:2px solid transparent}
+.ed:focus-within{border-color:#6f86e8}
+.ed-gut{font-family:var(--mono);font-size:13.5px;line-height:1.6;color:#4d5780;text-align:right;padding:10px 8px 10px 12px;user-select:none;white-space:pre;overflow:hidden;background:#0c1128}
+.ed-main{position:relative;min-height:120px;overflow:hidden}
+.ed-hl,.ed-ta{font-family:var(--mono);font-size:13.5px;line-height:1.6;padding:10px 12px;margin:0;white-space:pre;tab-size:4;letter-spacing:0;word-spacing:0}
+.ed-hl{position:absolute;inset:0;color:var(--code-ink);pointer-events:none;overflow:hidden}
+.ed-hl .ln{display:block;min-height:1.6em}
+.ed-hl .ln.errl{background:rgba(255,90,110,.25)}
+.ed-ta{position:relative;display:block;width:100%;height:100%;min-height:120px;border:0;outline:0;resize:none;background:transparent;color:transparent;caret-color:#fff;overflow:auto;-webkit-text-fill-color:transparent}
+.ed-ta::selection{background:rgba(120,150,255,.45);-webkit-text-fill-color:transparent}
+.ed-note{font-size:12.5px;color:var(--muted);margin-top:4px}
+.console{font-family:var(--mono);font-size:13px;background:#070a18;color:#d6ddff;border-radius:10px;padding:10px 12px;white-space:pre-wrap;min-height:44px;max-height:240px;overflow:auto;margin:8px 0 0}
+.console .e{color:#ff9aa8}
+.console .o{color:#b5f0a8}
+.explain{font-size:14.5px;background:var(--amber-soft);border-radius:10px;padding:9px 12px;margin-top:8px}
+
+/* ---------- labs ---------- */
+.lab{margin-bottom:22px}
+.labgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:18px;align-items:start}
+.labgrid .code{font-size:12.5px}
+@media (max-width:1100px){.labgrid{grid-template-columns:minmax(0,1fr)}}
+.labgrid>div,.grid2>div,.grid-ed>div{min-width:0}
+.lab-head{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px}
+.lab-head .badge{font-size:12.5px;font-weight:700;border-radius:999px;padding:2px 10px;background:var(--line-2);color:var(--muted)}
+.lab-head .badge.pass{background:var(--green-soft);color:var(--green)}
+.results{list-style:none;padding:0;margin:8px 0 0;display:grid;gap:5px}
+.results li{display:grid;grid-template-columns:22px 1fr;gap:8px;font-size:14.5px;align-items:start}
+.results .ic{font-weight:700}
+.results li.ok .ic{color:var(--green)}
+.results li.no .ic{color:var(--red)}
+.results li.skip{color:var(--muted)}
+.mem{display:flex;flex-wrap:wrap;gap:18px;align-items:center;background:#fbfcff;border:1.5px dashed var(--line);border-radius:12px;padding:12px 14px;margin-top:10px;font-size:14px}
+.mem .names{display:grid;gap:10px}
+.mem .nm{font-family:var(--mono);font-weight:700;background:#fff;border:1.5px solid var(--ink);border-radius:6px;padding:2px 9px;display:inline-block}
+.mem .arrow{font-size:20px;color:var(--muted)}
+.mem .obj{border:2px solid var(--blue);border-radius:10px;background:#fff;padding:6px 10px;font-family:var(--mono);font-size:12.5px;min-width:150px}
+.mem .obj .oid{font-size:11px;color:var(--muted);display:block}
+.mem .obj.text{border-color:var(--green);word-break:break-all;max-width:320px}
+.mem .shared{border-color:var(--red)}
+.mem .col{display:grid;gap:8px;justify-items:start}
+.mem .cap{flex-basis:100%;margin:0;color:var(--muted)}
+.hint{font-size:14.5px;background:var(--amber-soft);border-radius:10px;padding:9px 12px;margin-top:8px}
+/* ---------- rulebook ---------- */
+.recipe{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:15px;margin:0}
+.recipe dt{font-family:var(--mono);font-weight:700;color:var(--blue)}
+.recipe dd{margin:0;color:var(--ink)}
+.field{display:grid;gap:4px;margin-bottom:12px}
+.field label{font-weight:600;font-size:15px}
+.field .help{font-size:13px;color:var(--muted)}
+.field input,.field textarea{border:1.5px solid var(--line);border-radius:8px;padding:9px 11px;background:#fff}
+.field textarea{min-height:64px;resize:vertical}
+.auto-rules{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:15px}
+.auto-rules li{display:grid;grid-template-columns:28px 1fr;gap:8px;align-items:center}
+.auto-rules img{width:24px;height:24px;image-rendering:pixelated}
+.game-q{margin-bottom:18px}
+.game-q h4{font-size:1.02rem;margin-bottom:6px}
+.status-pill{display:inline-block;font-size:12.5px;font-weight:700;border-radius:999px;padding:2px 10px;background:var(--line-2);color:var(--muted)}
+.status-pill.ok{background:var(--green-soft);color:var(--green)}
+
+/* ---------- end ---------- */
+.endgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:760px){.endgrid{grid-template-columns:1fr}}
+.breakdown{width:100%;border-collapse:collapse;font-size:14.5px}
+.breakdown td{padding:5px 0;border-top:1px solid var(--line)}
+.breakdown td:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.confirm{border:1.5px solid var(--amber);background:var(--amber-soft);border-radius:12px;padding:12px 14px;margin-top:10px}
+
+@media (max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:28px 16px 70px}
+  h1{font-size:1.7rem}
+  h2{font-size:1.35rem}
+  .stepper{margin:0 -16px 18px;padding:8px 16px}
+  .step .sname{display:none}
+  .step{padding:4px 8px 4px 5px}
+  .points{font-size:13px}
+  .card{padding:14px 14px}
+  .hero-art img{width:32px;height:32px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
+
+
+/* =================== Packet Trail =================== */
+.qgrid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:900px){.qgrid{grid-template-columns:minmax(0,1fr)}}
+.qgrid>div{min-width:0}
+.mapcard{position:sticky;top:66px;padding:12px}
+@media (max-width:900px){.mapcard{position:static}}
+.map-h{font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:0 0 8px}
+.map-wrap{background:var(--screen);border-radius:12px;padding:6px;overflow:hidden}
+svg.netmap{display:block;width:100%;height:auto;max-height:52vh}
+.netmap .ln{stroke:#8a93ad;stroke-width:4;stroke-linecap:round}
+.netmap .ln.air{stroke:#2cc0ff;stroke-width:3;stroke-dasharray:3 7}
+.netmap .ln.trail{stroke:#ffe066}
+.netmap .ln.ahead{stroke:#ffe066;stroke-width:2;stroke-dasharray:8 6;opacity:.8}
+.netmap .tile{fill:#1d1838;stroke:#5b6485;stroke-width:2.5}
+.netmap .t-router .tile,.netmap .t-internet .tile{stroke:#c9d1e6}
+.netmap .t-hacker .tile,.netmap .evil .tile{stroke:#ef3b4f}
+.netmap .t-laptop .tile,.netmap .t-phone .tile,.netmap .t-server .tile,.netmap .t-printer .tile{stroke:#3f7cff}
+.netmap .hi .tile{stroke:#ffe066;stroke-width:4}
+.netmap .warn .tile{stroke:#ff9f43;stroke-width:4}
+.netmap .warn .ip{fill:#ff9f43}
+.netmap image{image-rendering:pixelated}
+.netmap .nm{fill:#fff;font:700 17px "IBM Plex Sans",sans-serif;text-anchor:middle;paint-order:stroke;stroke:#100d22;stroke-width:4px}
+.netmap .ip{fill:#9fd3ff;font:600 14.5px var(--mono);text-anchor:middle;paint-order:stroke;stroke:#100d22;stroke-width:4px}
+.netmap .evil .nm,.netmap .t-hacker .ip{fill:#ff8fa3}
+.netmap .eye circle,.netmap .tapmark circle{fill:#ef3b4f}
+.netmap .mark circle{fill:#ffe066;stroke:#100d22;stroke-width:2}
+.netmap .mark text{font:800 14px "IBM Plex Sans",sans-serif;fill:#100d22}
+.netmap .wlock{font-size:14px}
+.netmap .pk-ring{fill:rgba(255,224,102,.25);stroke:#ffe066;stroke-width:2}
+@media (prefers-reduced-motion:no-preference){.netmap .pk-ring{animation:pulse 1.4s ease-in-out infinite}}
+@keyframes pulse{50%{fill:rgba(255,224,102,.05)}}
+.netmap .bub rect{fill:#fff;stroke:#100d22;stroke-width:1.5}
+.netmap .bub text{font:600 15px var(--mono);fill:#101a3f}
+.netmap .bub.bad rect{fill:#ffd9dd;stroke:#b3261e}
+.netmap .bub.meh rect{fill:#fff4d6;stroke:#8a5a00}
+.netmap .bub.end-delivered rect{fill:#e1f2e6;stroke:#1f7a3d}
+.netmap .bub.end-dropped rect,.netmap .bub.end-refused rect{fill:#fbe3e1;stroke:#b3261e}
+.netmap .bub.end-at rect{fill:#e9edf8;stroke:#1f3fae}
+.map-note{margin:6px 2px 0;color:var(--muted)}
+.env{border:2px solid #d6b65a;background:#fffaf0;border-radius:12px;padding:10px 12px;margin-top:10px}
+.env.locked{border-color:#2f9e5b;background:#f3fbf5}
+.env-h{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.env-h img{width:26px;height:26px;image-rendering:pixelated}
+.env-h .small{color:var(--muted)}
+.env-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+@media (max-width:560px){.env-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.hf,.env-pay{background:#fff;border:1px solid var(--line);border-radius:8px;padding:4px 8px;min-width:0}
+.hl{display:block;font:700 10.5px var(--mono);color:var(--muted);letter-spacing:.06em}
+.hv{display:block;font:600 13.5px var(--mono);overflow-wrap:anywhere}
+.env-pay{margin-top:6px}
+.hf.chg,.env-pay.chg{background:#fff0b8;border-color:#e0a100}
+@media (prefers-reduced-motion:no-preference){.hf.chg{animation:glowy 1s ease-out}}
+@keyframes glowy{from{background:#ffe066}}
+.rtables{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.rtab{border:1px solid var(--line);border-radius:8px;background:#fff;font-size:13px;min-width:180px}
+.rtab.fixed{border-color:var(--green)}
+.rt-h{font-weight:700;padding:4px 8px;background:var(--line-2);border-radius:8px 8px 0 0}
+.rtab table{border-collapse:collapse;width:100%;font-family:var(--mono);font-size:12.5px}
+.rtab td{padding:3px 8px;border-top:1px solid var(--line-2)}
+.rtab tr.bad td{background:var(--red-soft);color:var(--red);font-weight:700}
+.qtop{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.dots{display:flex;gap:6px}
+.dot{width:32px;height:32px;border-radius:50%;border:2px solid var(--line);background:#fff;font-weight:700;font-size:14px;color:var(--muted)}
+.dot.cur{border-color:var(--blue);color:var(--blue)}
+.dot.ok{background:var(--green);border-color:var(--green);color:#fff}
+.dot.half{background:#e0a100;border-color:#e0a100;color:#fff}
+.dot.miss{background:var(--red);border-color:var(--red);color:#fff}
+.dot:disabled{opacity:.45;cursor:not-allowed}
+.qnum{margin:12px 0 4px}
+.qtext{font-size:1.08rem;font-weight:600;line-height:1.5;margin-bottom:12px}
+.qtext:focus{outline:none}
+.opts{display:grid;gap:8px}
+.opt{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start;text-align:left;padding:11px 13px;border:1.5px solid var(--line);border-radius:10px;background:#fff;font-size:15.5px;line-height:1.45}
+.opt .ol{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--line-2);font-weight:700;font-size:13.5px;color:var(--muted)}
+.opt:hover:not(:disabled){border-color:var(--blue)}
+.opt:disabled{cursor:default;color:var(--ink)}
+.opt.right{border-color:var(--green);background:var(--green-soft)}
+.opt.right .ol{background:var(--green);color:#fff}
+.opt.wrong{border-color:var(--red);background:var(--red-soft);opacity:.85}
+.opt.wrong .ol{background:var(--red);color:#fff}
+.opt.reveal{border-color:var(--green);border-style:dashed}
+.qbtns{margin-top:12px;justify-content:flex-end}
+.fb:focus{outline:2px solid var(--blue);outline-offset:2px}
+
+#map-card,#qcard{scroll-margin-top:64px}
+@media (max-width:760px){
+  .map-wrap{overflow-x:auto;overscroll-behavior-x:contain}
+  svg.netmap{min-width:720px;max-height:none}
+  .map-wrap::after{content:"swipe the map sideways ↔";display:block;text-align:center;font-size:11.5px;color:#9d97c9;padding:2px 0 0;position:sticky;left:0;width:100%}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ===== 1. INTRO ===== -->
+  <section class="view active" id="view-intro">
+    <div class="wrap">
+      <p class="kicker">IT Network · Network security</p>
+      <h1>Packet Trail: where is my packet?</h1>
+      <div class="hero-art" id="intro-art" aria-hidden="true"></div>
+      <p class="lede">In Packet Run you built a network and caught a hacker. Now follow single packets through it, one decision at a time: which address goes where, which router sends it on, where it gets lost, and exactly what a hacker on the path gets to see. Every question shows you where the packet is right now, and what's written on it.</p>
+      <div class="card">
+        <h3>Five scenarios</h3>
+        <ol class="stoplist" id="intro-chapters"></ol>
+      </div>
+      <div class="card">
+        <ul class="rules">
+          <li>25 questions, one at a time, each worth 4 points. They build on each other, so they unlock in order.</li>
+          <li>Wrong answer? You get a hint about what you missed and one more try, for 2 points. After that, the answer and the reason are shown.</li>
+          <li>After each question, watch the packet actually take the trip.</li>
+          <li>The clock starts when you click Start. Refreshing the page wipes your answers, so finish in one sitting. At the end you download a result file and submit it in Google Classroom.</li>
+        </ul>
+        <div class="name-row">
+          <input id="name" type="text" placeholder="Your full name (goes on your result)" autocomplete="off" maxlength="60" aria-label="Your full name">
+          <button class="btn" id="start">Start</button>
+        </div>
+        <div class="err" id="name-err" hidden>Enter your name first. It goes on your result file.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 2. WORK ===== -->
+  <section class="view" id="view-work">
+    <div class="wrap wide">
+      <nav class="stepper" aria-label="Scenarios"><div class="stepper-in" id="stepper"></div></nav>
+      <div class="stop-head">
+        <p class="kicker" id="ch-kicker"></p>
+        <h2 id="ch-title" tabindex="-1"></h2>
+        <p class="lede" id="ch-story"></p>
+      </div>
+      <div class="qgrid">
+        <div class="card mapcard" id="map-card">
+          <h3 class="map-h"><span id="map-title"></span></h3>
+          <div id="map"></div>
+        </div>
+        <div class="card qcard" id="qcard">
+          <div class="qtop"><div class="dots" id="q-dots" role="group" aria-label="Questions in this scenario"></div><span class="small muted" id="q-pts"></span></div>
+          <p class="small muted qnum" id="q-num"></p>
+          <p class="qtext" id="q-text" tabindex="-1"></p>
+          <div class="opts" id="q-opts"></div>
+          <div id="q-fb" aria-live="polite"></div>
+          <div class="row qbtns"><button class="btn ghost" id="q-watch" type="button" hidden>▶ Watch the packet</button><button class="btn" id="q-next" type="button" hidden>Next question →</button></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 3. END ===== -->
+  <section class="view" id="view-end">
+    <div class="wrap">
+      <p class="kicker">Packet Trail · complete</p>
+      <h1 id="end-h1" tabindex="-1">Every packet traced.</h1>
+      <p class="lede" id="end-lede"></p>
+      <div class="card"><table class="breakdown"><tbody id="end-breakdown"></tbody></table></div>
+      <!-- The kit renders the standard result card (score, time, code, download) into this element. -->
+      <div id="hsct-result"></div>
+      <div class="row"><button class="btn ghost" id="again">Try again</button></div>
+      <div id="again-confirm"></div>
+    </div>
+  </section>
+</div>
+
+<!-- HSCT KIT START — do not edit; copy the whole block from lesson-template/hsct-lesson.js -->
+<script>
+/* ============================================================================
+   HSCT LESSON KIT  v1.0
+   Every lesson on HSCT TechHub inlines this block unchanged (between the
+   <!-- HSCT KIT START --> and <!-- HSCT KIT END --> markers). It gives a
+   lesson three things:
+
+     1. A clock.   HSCT.start(name) when the student begins. The kit records
+                   wall-clock time and "active" time (tab visible).
+     2. A log.     HSCT.log(type, data) for anything worth remembering —
+                   answers, hints, retries. Ends up inside the result file.
+     3. A result.  HSCT.endScreen(el, {...scores}) renders the standard result
+                   card: name, score, time taken, badge code, and a button
+                   that downloads the encrypted result file the student
+                   submits in Google Classroom.
+
+   The file is encrypted with the teacher's PUBLIC key below (RSA-OAEP wrapping
+   an AES-256-GCM key). It can only be opened with the matching private key,
+   on the site's /lessons/verify page. Students can't read or edit it.
+
+   API (all on window.HSCT):
+     HSCT.lesson({ id, title, version, course, possible })   once, at load
+     HSCT.start(name)                                        when work begins
+     HSCT.log(type, data)                                    any time
+     HSCT.elapsed()   -> { seconds, activeSeconds }
+     HSCT.finish({ earned, possible, sections, tier, extra }) -> Promise<result>
+     HSCT.endScreen(el, { earned, possible, sections, tier, extra, note })
+                      -> Promise<result>   (calls finish, renders the card)
+     HSCT.download()  / HSCT.copyCode()                      after finish
+   ========================================================================== */
+(function () {
+  'use strict';
+  var KIT = '1.0';
+
+  /* Mr. Cruz's public key. Replace the whole object if the key pair is ever
+     regenerated on /lessons/verify — and keep the private key out of git. */
+  var PUBLIC_KEY = {"kty":"RSA","n":"rZUBRxn7dUikufJq7z2XVn-on4Of0IyQr_YaPSTgIUaGsYKcrZ4FNROL4A_ZM5JShLf6OVp2ZeAI7XN_7iX0tvd79RqAWRM9an6rx-s6bMYSW1wmtRxZyL-BX56vTtikVRLNO7uyzCb8kevJE71Fi6nlPhdXa-iS4vtIEm2Wjh4cLPinAKhMnkO3BpGHUhtFw7Hyus1w04EdLxowk4UcN7d0w4MQRnBV8ehXQVoLVQ0_QtfrtPTQOpScHuwyaw9nwnTA7h7BEOv1ZkbEyq2N4TFixSSCsneUsc3PlbZOndDzMGMmdMr00ulntRZBfyioFzRcsRUGGwAqpB9SuH7XGQ","e":"AQAB","alg":"RSA-OAEP-256","ext":true};
+
+  var VERIFY_URL = 'hsct.tech/lessons/verify';
+
+  var cfg = null;      // lesson config
+  var ses = null;      // current session
+  var ticker = null;   // active-time interval
+  var result = null;   // { badge, filename, text, envelope, payload }
+
+  /* ---------- small helpers ---------- */
+  var enc = new TextEncoder();
+  function b64(buf) {
+    var bytes = new Uint8Array(buf), s = '';
+    for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return btoa(s);
+  }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function fmtDuration(sec) {
+    sec = Math.max(0, Math.round(sec || 0));
+    var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+    if (h) return h + ' h ' + pad(m) + ' min';
+    if (m) return m + ' min ' + pad(s) + ' s';
+    return s + ' s';
+  }
+  function fmtDate(iso) {
+    try { return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+    catch (e) { return iso; }
+  }
+  function slug(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'student'; }
+  function stamp(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes()); }
+
+  /* Badge code: 8 characters from a SHA-256 of the result, shown on screen
+     so a screenshot can be matched to its file. */
+  var ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ23456789';
+  function badgeFrom(hashBuf) {
+    var bytes = new Uint8Array(hashBuf), out = '';
+    for (var i = 0; i < 8; i++) out += ALPHABET[bytes[i] % ALPHABET.length];
+    return out.slice(0, 4) + '-' + out.slice(4);
+  }
+
+  function needSubtle() {
+    if (!(window.crypto && crypto.subtle)) {
+      throw new Error('Result files need a secure page (https). Open this lesson from the TechHub site and finish again.');
+    }
+  }
+
+  /* ---------- public API ---------- */
+  function lesson(c) {
+    if (!c || !c.id || !c.title) throw new Error('HSCT.lesson needs { id, title }');
+    cfg = { version: '1.0', course: '', possible: 100 };
+    for (var k in c) cfg[k] = c[k];
+    return HSCT;
+  }
+
+  function start(name) {
+    if (!cfg) throw new Error('Call HSCT.lesson({...}) before HSCT.start(name)');
+    name = String(name || '').trim().replace(/\s+/g, ' ');
+    if (name.length < 2) throw new Error('HSCT.start needs the student\'s name');
+    ses = { name: name, started: new Date().toISOString(), t0: Date.now(), active: 0, events: [] };
+    result = null;
+    clearInterval(ticker);
+    ticker = setInterval(function () { if (document.visibilityState === 'visible') ses.active += 1; }, 1000);
+    log('start');
+    return HSCT;
+  }
+
+  function log(type, data) {
+    if (!ses) return HSCT;
+    var e = { t: Math.round((Date.now() - ses.t0) / 100) / 10, type: String(type) };
+    if (data && typeof data === 'object') for (var k in data) if (k !== 't' && k !== 'type') e[k] = data[k];
+    if (ses.events.length < 800) ses.events.push(e);
+    return HSCT;
+  }
+
+  function elapsed() {
+    if (!ses) return { seconds: 0, activeSeconds: 0 };
+    return { seconds: Math.round((Date.now() - ses.t0) / 1000), activeSeconds: ses.active };
+  }
+
+  /* Build, seal, and keep the result. Resolves to { badge, filename, text, payload }. */
+  async function finish(opts) {
+    if (!cfg || !ses) throw new Error('HSCT.start(name) was never called');
+    needSubtle();
+    opts = opts || {};
+    clearInterval(ticker);
+    var finished = new Date();
+    var el = elapsed();
+    var earned = Number(opts.earned || 0), possible = Number(opts.possible || cfg.possible || 0);
+    var payload = {
+      kit: KIT,
+      lesson: { id: cfg.id, title: cfg.title, version: cfg.version, course: cfg.course },
+      student: { name: ses.name },
+      started: ses.started,
+      finished: finished.toISOString(),
+      seconds: el.seconds,
+      activeSeconds: el.activeSeconds,
+      score: { earned: earned, possible: possible, percent: possible ? Math.round(1000 * earned / possible) / 10 : null },
+      tier: opts.tier || null,
+      sections: (opts.sections || []).map(function (s) { return { id: s.id, title: s.title, earned: s.earned, possible: s.possible, status: s.status }; }),
+      extra: opts.extra || null,
+      events: ses.events,
+      env: { tz: Intl.DateTimeFormat().resolvedOptions().timeZone, ua: navigator.userAgent, url: location.href.split('?')[0] },
+    };
+    var hash = await crypto.subtle.digest('SHA-256', enc.encode(JSON.stringify(payload)));
+    var badge = badgeFrom(hash);
+    payload.badge = badge;
+
+    /* header travels in the clear but is authenticated (AES-GCM additional data) */
+    var header = { hsct: 1, kit: KIT, lesson: cfg.id, title: cfg.title, student: ses.name, finished: payload.finished, badge: badge };
+    var pub = await crypto.subtle.importKey('jwk', PUBLIC_KEY, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['wrapKey']);
+    var aes = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt']);
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    var data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv, additionalData: enc.encode(JSON.stringify(header)) }, aes, enc.encode(JSON.stringify(payload)));
+    var wrapped = await crypto.subtle.wrapKey('raw', aes, pub, { name: 'RSA-OAEP' });
+    var envelope = {};
+    for (var k in header) envelope[k] = header[k];
+    envelope.key = b64(wrapped); envelope.iv = b64(iv); envelope.data = b64(data);
+
+    result = {
+      badge: badge,
+      filename: 'HSCT_' + cfg.id + '_' + slug(ses.name) + '_' + stamp(finished) + '.hsct',
+      text: JSON.stringify(envelope),
+      payload: payload,
+    };
+    return result;
+  }
+
+  function download() {
+    if (!result) throw new Error('Nothing to download yet — call HSCT.finish first');
+    var blob = new Blob([result.text], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = result.filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+    return result.filename;
+  }
+
+  async function copyCode() {
+    if (!result) throw new Error('Nothing to copy yet — call HSCT.finish first');
+    try { await navigator.clipboard.writeText(result.text); return true; }
+    catch (e) {
+      var ta = document.createElement('textarea'); ta.value = result.text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      var ok = false; try { ok = document.execCommand('copy'); } catch (e2) {}
+      ta.remove(); return ok;
+    }
+  }
+
+  /* ---------- the standard end screen ---------- */
+  var CSS = '.hsct-card{--hsct-ink:#101a3f;--hsct-mute:#5b6485;--hsct-line:#d3d9ee;--hsct-accent:var(--hsct-color,#1f3fae);--hsct-ok:#1f7a3d;--hsct-bad:#b3261e;'
+    + 'font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;color:var(--hsct-ink);background:#fff;border:1px solid var(--hsct-line);border-left:6px solid var(--hsct-accent);border-radius:12px;padding:20px 22px;margin:20px 0;line-height:1.45}'
+    + '.hsct-card *{box-sizing:border-box}.hsct-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--hsct-mute)}.hsct-head b{color:var(--hsct-accent)}'
+    + '.hsct-name{font-size:22px;font-weight:700;margin:6px 0 2px}.hsct-score{font-size:15px;margin:0 0 12px}.hsct-score b{font-size:28px;font-weight:700}.hsct-score .hsct-tier{display:inline-block;margin-left:8px;padding:2px 10px;border-radius:999px;background:var(--hsct-accent);color:#fff;font-size:13px;font-weight:600;vertical-align:middle}'
+    + '.hsct-facts{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0 0 14px;font-size:14px}.hsct-facts dt{color:var(--hsct-mute)}.hsct-facts dd{margin:0}.hsct-facts code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;letter-spacing:.08em;font-weight:600}'
+    + '.hsct-secs{width:100%;border-collapse:collapse;font-size:14px;margin:0 0 14px}.hsct-secs td{padding:5px 0;border-top:1px solid var(--hsct-line)}.hsct-secs td:last-child{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}'
+    + '.hsct-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.hsct-btn{font:600 15px "IBM Plex Sans","Segoe UI",system-ui,sans-serif;padding:11px 18px;border-radius:8px;border:2px solid var(--hsct-accent);background:var(--hsct-accent);color:#fff;cursor:pointer}.hsct-btn:hover{filter:brightness(.92)}.hsct-btn.hsct-alt{background:transparent;color:var(--hsct-accent)}.hsct-btn:focus-visible{outline:3px solid #a9b7ea;outline-offset:2px}.hsct-btn:disabled{opacity:.55;cursor:wait}'
+    + '.hsct-note{margin:12px 0 0;font-size:13.5px;color:var(--hsct-mute)}.hsct-status{margin:8px 0 0;font-size:14px;min-height:1.4em}.hsct-status.ok{color:var(--hsct-ok)}.hsct-status.bad{color:var(--hsct-bad)}'
+    + '@media print{.hsct-actions,.hsct-note,.hsct-status{display:none}}';
+
+  function injectCss() {
+    if (document.getElementById('hsct-kit-css')) return;
+    var s = document.createElement('style'); s.id = 'hsct-kit-css'; s.textContent = CSS; document.head.appendChild(s);
+  }
+
+  /* Renders the card into `el` and seals the result. Resolves with the result. */
+  async function endScreen(el, opts) {
+    if (typeof el === 'string') el = document.querySelector(el);
+    if (!el) throw new Error('HSCT.endScreen needs an element');
+    injectCss();
+    opts = opts || {};
+    var elp = elapsed();
+    var possible = Number(opts.possible || cfg.possible || 0), earned = Number(opts.earned || 0);
+    var pct = possible ? Math.round(100 * earned / possible) : null;
+    var secs = (opts.sections || []).map(function (s) {
+      var right = s.status != null ? esc(s.status) : (s.possible != null ? esc(s.earned) + ' / ' + esc(s.possible) : esc(s.earned));
+      return '<tr><td>' + esc(s.title) + '</td><td>' + right + '</td></tr>';
+    }).join('');
+    el.innerHTML = '<div class="hsct-card">'
+      + '<div class="hsct-head"><span><b>HSCT TechHub</b> result</span><span>' + esc(cfg.title) + '</span></div>'
+      + '<div class="hsct-name">' + esc(ses ? ses.name : '') + '</div>'
+      + '<div class="hsct-score"><b>' + esc(earned) + '</b> / ' + esc(possible) + (pct != null ? ' <span>(' + pct + '%)</span>' : '') + (opts.tier ? '<span class="hsct-tier">' + esc(opts.tier) + '</span>' : '') + '</div>'
+      + '<dl class="hsct-facts"><dt>Finished</dt><dd>' + esc(fmtDate(new Date().toISOString())) + '</dd>'
+      + '<dt>Time taken</dt><dd>' + esc(fmtDuration(elp.seconds)) + (elp.activeSeconds < elp.seconds - 60 ? ' <span style="color:var(--hsct-mute)">(' + esc(fmtDuration(elp.activeSeconds)) + ' with the tab open)</span>' : '') + '</dd>'
+      + '<dt>Code</dt><dd><code class="hsct-badge">........</code></dd></dl>'
+      + (secs ? '<table class="hsct-secs"><tbody>' + secs + '</tbody></table>' : '')
+      + '<div class="hsct-actions"><button type="button" class="hsct-btn hsct-dl" disabled>Download your result file</button><button type="button" class="hsct-btn hsct-alt hsct-copy" disabled>Copy result code</button></div>'
+      + '<p class="hsct-note">' + esc(opts.note || 'Submit the file in Google Classroom. If downloads are blocked, copy the code and paste it instead. The file is encrypted: only your teacher can open it.') + '</p>'
+      + '<p class="hsct-status" aria-live="polite">Preparing your result file…</p>'
+      + '</div>';
+    var status = el.querySelector('.hsct-status'), dl = el.querySelector('.hsct-dl'), cp = el.querySelector('.hsct-copy');
+    try {
+      var r = await finish(opts);
+      el.querySelector('.hsct-badge').textContent = r.badge;
+      status.textContent = 'Ready: ' + r.filename;
+      dl.disabled = false; cp.disabled = false;
+      dl.onclick = function () { try { download(); status.className = 'hsct-status ok'; status.textContent = 'Downloaded ' + r.filename + ' — now submit it.'; } catch (e) { status.className = 'hsct-status bad'; status.textContent = e.message; } };
+      cp.onclick = async function () { var ok = await copyCode(); status.className = 'hsct-status ' + (ok ? 'ok' : 'bad'); status.textContent = ok ? 'Code copied — paste it into your submission.' : 'Copy failed. Use the download instead.'; };
+      return r;
+    } catch (e) {
+      status.className = 'hsct-status bad';
+      status.textContent = e.message || String(e);
+      throw e;
+    }
+  }
+
+  var HSCT = {
+    kit: KIT, verifyUrl: VERIFY_URL,
+    lesson: lesson, start: start, log: log, elapsed: elapsed,
+    finish: finish, download: download, copyCode: copyCode, endScreen: endScreen,
+    get result() { return result; },
+    get session() { return ses ? { name: ses.name, started: ses.started } : null; },
+    fmtDuration: fmtDuration,
+  };
+  window.HSCT = HSCT;
+})();
+</script>
+<!-- HSCT KIT END -->
+
+<script>
+/* ---------- pixel sprites (12 x 12). Each letter is a color; '.' is empty. ---------- */
+const PAL = {
+  k: '#1b1530', w: '#ffffff', a: '#c9d1e6', A: '#8a93ad', z: '#4a5270', h: '#2c3350',
+  B: '#3f7cff', N: '#1d45b8', f: '#2cc0ff', F: '#1789c7', g: '#35e07a', G: '#1f8f4a',
+  y: '#f2c230', Y: '#c98a10', r: '#ef3b4f', R: '#b3172d', p: '#6d5a8c', P: '#3b2f52', e: '#7dff9b',
+  s: '#f5c7a0', o: '#ff9f43', c: '#e8ecf7',
+};
+const SPRITES = {
+  laptop: [
+    '............',
+    '.kkkkkkkkkk.',
+    '.kBBBBBBBBk.',
+    '.kBfBBBBBBk.',
+    '.kBBfBBBBBk.',
+    '.kBBBBBBBBk.',
+    '.kBBBBBBBBk.',
+    '.kkkkkkkkkk.',
+    'kaaaaaaaaaak',
+    'kaAAzzzzAAak',
+    '.kkkkkkkkkk.',
+    '............',
+  ],
+  phone: [
+    '...kkkkkk...',
+    '...khhhhk...',
+    '...kBBBBk...',
+    '...kBfBBk...',
+    '...kBBfBk...',
+    '...kBBBBk...',
+    '...kBBBBk...',
+    '...kBBBBk...',
+    '...kBBBBk...',
+    '...khaahk...',
+    '...khhhhk...',
+    '...kkkkkk...',
+  ],
+  server: [
+    '..kkkkkkkk..',
+    '..khhhhhhk..',
+    '..khgGhzhk..',
+    '..kkkkkkkk..',
+    '..khhhhhhk..',
+    '..khgGhzhk..',
+    '..kkkkkkkk..',
+    '..khhhhhhk..',
+    '..khgGhzhk..',
+    '..kkkkkkkk..',
+    '..kz....zk..',
+    '..kk....kk..',
+  ],
+  printer: [
+    '............',
+    '...kkkkkk...',
+    '...kwwwwk...',
+    '...kwAAwk...',
+    '.kkkkkkkkkk.',
+    '.kaaaaaaaak.',
+    '.kaaaaagyak.',
+    '.kAAAAAAAAk.',
+    '.kkwwwwwwkk.',
+    '...kwAAwk...',
+    '...kwwwwk...',
+    '...kkkkkk...',
+  ],
+  switch: [
+    '............',
+    '............',
+    '............',
+    'kkkkkkkkkkkk',
+    'khhhhhhhhhhk',
+    'khkgkgkgkgGk',
+    'khkzkzkzkzhk',
+    'khhhhhhhhhhk',
+    'kkkkkkkkkkkk',
+    '.kk......kk.',
+    '............',
+    '............',
+  ],
+  wifi: [
+    '............',
+    '..ffffffff..',
+    '.f........f.',
+    'f..ffffff..f',
+    '..f......f..',
+    '....ffff....',
+    '.....kk.....',
+    '.....ak.....',
+    '.kkkkkkkkkk.',
+    '.kaaaaaaaak.',
+    '.kagaaaaaak.',
+    '.kkkkkkkkkk.',
+  ],
+  router: [
+    '...kkkkkk...',
+    '..kRRRRRRk..',
+    '.kRRRwRRRRk.',
+    'kRRRwwwRRRRk',
+    'kRwRRwRRwRRk',
+    'kwwwRRRRwwwk',
+    'kRwRRwRRwRRk',
+    'kRRRRwRRRRRk',
+    '.kRRwwwRRRk.',
+    '..kRRwRRRk..',
+    '...kkkkkk...',
+    '............',
+  ],
+  internet: [
+    '............',
+    '....kkkk....',
+    '...kccccck..',
+    '..kcccccccck',
+    '.kkcccfccccck'.slice(0, 12),
+    'kcccccccccck',
+    'kccfccccfcck',
+    'kcccccccccck',
+    '.kccccccccck'.slice(0, 12),
+    '..kkkkkkkkk.',
+    '............',
+    '............',
+  ],
+  hacker: [
+    '....kkkk....',
+    '...kPPPPk...',
+    '..kPPPPPPk..',
+    '..kPkkkkPk..',
+    '..kPkekePk..',
+    '..kPkkkkPk..',
+    '..kPPPPPPk..',
+    '.kPPPPPPPPk.',
+    'kPPkkkkkkPPk',
+    'kPkaaaaaakPk',
+    'kPkaAAAAakPk',
+    'kkkkkkkkkkkk',
+  ],
+  lock: [
+    '....kkkk....',
+    '...kaaaak...',
+    '..kak..kak..',
+    '..kak..kak..',
+    '..kak..kak..',
+    '.kkkkkkkkkk.',
+    '.kyyyyyyyyk.',
+    '.kyyykkyyyk.',
+    '.kyyykkyyyk.',
+    '.kyyyykyyyk.',
+    '.kYYYYYYYYk.',
+    '.kkkkkkkkkk.',
+  ],
+  packet: [
+    '............',
+    '............',
+    'kkkkkkkkkkkk',
+    'kwkwwwwwwkwk',
+    'kwwkwwwwkwwk',
+    'kwwwkwwkwwwk',
+    'kwwwwkkwwwwk',
+    'kwwwwwwwwwwk',
+    'kwwwwwwwwwwk',
+    'kkkkkkkkkkkk',
+    '............',
+    '............',
+  ],
+  lockedpacket: [
+    '............',
+    '............',
+    'kkkkkkkkkkkk',
+    'kykyyyyyykyk',
+    'kyykyyyykyyk',
+    'kyyykkkkyyyk',
+    'kyyyykkyyyyk',
+    'kyyyykkyyyyk',
+    'kyyyyyyyyyyk',
+    'kkkkkkkkkkkk',
+    '............',
+    '............',
+  ],
+};
+
+/* =====================================================================
+   DATA: the networks (same world as Packet Run) and the questions
+   ===================================================================== */
+const PORT_NAME = { 80: 'Web (HTTP)', 443: 'Web (HTTPS)', 53: 'DNS', 9100: 'Printing', 5000: 'Chat', 7777: 'Game' };
+
+const SCENES = {
+  library: {
+    title: 'The library and the school',
+    nodes: [
+      { id: 'maya', type: 'laptop', name: "Maya's laptop", ip: '10.0.1.10', x: 0, y: 1 },
+      { id: 'jay', type: 'phone', name: "Jay's phone", ip: '10.0.1.11', x: 0, y: 5 },
+      { id: 'hacker', type: 'hacker', name: 'Hacker', ip: '10.0.1.66', x: 3, y: 5 },
+      { id: 'wifi', type: 'wifi', name: 'Library Wi-Fi', x: 2, y: 3 },
+      { id: 'lrouter', type: 'router', name: 'Library router', ip: '10.0.1.1', x: 4, y: 3 },
+      { id: 'internet', type: 'internet', name: 'Internet', x: 6, y: 3 },
+      { id: 'srouter', type: 'router', name: 'School router', ip: '10.0.2.1', x: 8, y: 3 },
+      { id: 'sswitch', type: 'switch', name: 'School switch', x: 10, y: 3 },
+      { id: 'grades', type: 'server', name: 'Grades server', ip: '10.0.2.10', x: 11, y: 1 },
+      { id: 'printer', type: 'printer', name: 'Office printer', ip: '10.0.2.11', x: 11, y: 5 },
+    ],
+    links: [['maya', 'wifi', 1], ['jay', 'wifi', 1], ['hacker', 'wifi', 1], ['wifi', 'lrouter'], ['lrouter', 'internet'], ['internet', 'srouter'], ['srouter', 'sswitch'], ['sswitch', 'grades'], ['sswitch', 'printer']],
+    tables: {
+      lrouter: [['10.0.1.x', 'deliver here (Wi-Fi)'], ['anything else', 'Internet']],
+      srouter: [['10.0.2.x', 'deliver here (switch)'], ['anything else', 'Internet']],
+    },
+  },
+  loop: {
+    title: 'The game-night network',
+    nodes: [
+      { id: 'jay', type: 'phone', name: "Jay's phone", ip: '10.0.1.11', x: 0, y: 3 },
+      { id: 'wifi', type: 'wifi', name: 'Library Wi-Fi', x: 2, y: 3 },
+      { id: 'r1', type: 'router', name: 'Router 1', ip: '10.0.1.1', x: 4, y: 3 },
+      { id: 'r2', type: 'router', name: 'Router 2', x: 7, y: 3 },
+      { id: 'r3', type: 'router', name: 'Router 3', ip: '10.0.3.1', x: 9, y: 3 },
+      { id: 'game', type: 'server', name: 'Game server', ip: '10.0.3.10', x: 11, y: 3 },
+    ],
+    links: [['jay', 'wifi', 1], ['wifi', 'r1'], ['r1', 'r2'], ['r2', 'r3'], ['r3', 'game']],
+    tables: {
+      r1: [['10.0.1.x', 'deliver here (Wi-Fi)'], ['10.0.3.x', 'Router 2']],
+      r2: [['10.0.3.x', 'Router 1', 'bad']],
+      r3: [['10.0.3.x', 'deliver here (Game server)']],
+    },
+  },
+  room333: {
+    title: 'Room 333',
+    nodes: [
+      { id: 'l1', type: 'laptop', name: 'Laptop 1', ip: '10.0.1.10', x: 0, y: 1 },
+      { id: 'l2', type: 'laptop', name: 'Laptop 2', ip: '10.0.1.11', x: 0, y: 5 },
+      { id: 'sw', type: 'switch', name: 'Room 333 switch', x: 3, y: 3 },
+      { id: 'hacker', type: 'hacker', name: 'Hacker', ip: '10.0.1.66', x: 3, y: 0 },
+      { id: 'printer', type: 'printer', name: 'Printer 1', ip: '10.0.1.12', x: 3, y: 6 },
+      { id: 'router', type: 'router', name: 'Router 1', ip: '10.0.1.1', x: 6, y: 3 },
+      { id: 'internet', type: 'internet', name: 'Internet', x: 9, y: 3 },
+    ],
+    links: [['l1', 'sw'], ['l2', 'sw'], ['hacker', 'sw'], ['printer', 'sw'], ['sw', 'router'], ['router', 'internet']],
+  },
+  airport: {
+    title: 'The airport',
+    nodes: [
+      { id: 'trav', type: 'laptop', name: 'Traveler', ip: '10.0.3.10', x: 0, y: 1 },
+      { id: 'hackerA', type: 'hacker', name: 'Hacker A', ip: '10.0.3.66', x: 0, y: 5 },
+      { id: 'wifi', type: 'wifi', name: 'Airport Wi-Fi', x: 2, y: 3 },
+      { id: 'arouter', type: 'router', name: 'Airport router', ip: '10.0.3.1', x: 4, y: 3 },
+      { id: 'internet', type: 'internet', name: 'Internet', x: 7, y: 3 },
+      { id: 'srouter', type: 'router', name: 'School router', ip: '10.0.2.1', x: 9, y: 3 },
+      { id: 'grades', type: 'server', name: 'Grades server', ip: '10.0.2.10', x: 11, y: 3 },
+    ],
+    links: [['trav', 'wifi', 1], ['hackerA', 'wifi', 1], ['wifi', 'arouter'], ['arouter', 'internet', 0, 'tap'], ['internet', 'srouter'], ['srouter', 'grades']],
+  },
+  eviltwin: {
+    title: 'The airport, again',
+    nodes: [
+      { id: 'trav', type: 'laptop', name: 'Traveler', ip: '192.168.66.20', x: 0, y: 3 },
+      { id: 'evil', type: 'wifi', name: 'Airport_Free_WiFi', x: 2, y: 3, evil: true },
+      { id: 'hackerA', type: 'hacker', name: "Hacker A's laptop", ip: '192.168.66.1', x: 4, y: 3 },
+      { id: 'internet', type: 'internet', name: 'Internet', x: 7, y: 3 },
+      { id: 'srouter', type: 'router', name: 'School router', x: 9, y: 3 },
+      { id: 'grades', type: 'server', name: 'Grades server', x: 11, y: 3 },
+    ],
+    links: [['trav', 'evil', 1], ['evil', 'hackerA'], ['hackerA', 'internet'], ['internet', 'srouter'], ['srouter', 'grades']],
+  },
+  home: {
+    title: 'The real internet',
+    nodes: [
+      { id: 'maya', type: 'laptop', name: "Maya's laptop", ip: '192.168.1.23', x: 0, y: 1 },
+      { id: 'bro', type: 'laptop', name: "Her brother's laptop", ip: '192.168.1.24', x: 0, y: 3 },
+      { id: 'mhome', type: 'router', name: "Maya's home router", ip: 'inside 192.168.1.1', ip2: 'public 198.51.100.23', x: 3, y: 2 },
+      { id: 'jay', type: 'laptop', name: "Jay's laptop", ip: '192.168.1.23', x: 0, y: 6 },
+      { id: 'jhome', type: 'router', name: "Jay's home router", ip: 'public 198.51.100.77', x: 3, y: 6 },
+      { id: 'dns', type: 'server', name: 'DNS server', ip: '8.8.8.8', x: 6, y: 0 },
+      { id: 'internet', type: 'internet', name: 'Internet', x: 6, y: 3 },
+      { id: 'srouter', type: 'router', name: 'School router', ip: 'public 203.0.113.5', x: 9, y: 3 },
+      { id: 'grades', type: 'server', name: 'Grades server', ip: '10.0.2.10', x: 11, y: 3 },
+    ],
+    links: [['maya', 'mhome'], ['bro', 'mhome'], ['jay', 'jhome'], ['mhome', 'internet'], ['jhome', 'internet'], ['internet', 'dns'], ['internet', 'srouter'], ['srouter', 'grades']],
+  },
+};
+
+const LOGIN = 'user=maya.r&pw=tacocat22';
+const H = (from, to, port, ttl, lock, data) => ({ from, to, port, ttl, lock: !!lock, data: data || '' });
+
+const CHAPTERS = [
+  {
+    id: 'c1', title: "Maya's login, hop by hop", short: 'Hop by hop', scene: 'library',
+    story: 'Back in the Packet Run library. Maya opens the school\'s grades website and logs in. Her login leaves her laptop as one packet. Follow it, one decision at a time.',
+    qs: [
+      {
+        id: 'q1', show: { at: 'maya', hdr: H('10.0.1.10', '10.0.2.10', 443, 8, 1, LOGIN) },
+        q: 'Maya\'s laptop is <b>10.0.1.10</b>. The grades server is <b>10.0.2.10</b>. Before the packet leaves, what does her laptop figure out?',
+        a: [
+          { t: 'The server is on the same network, so it can send the packet straight to it.', hint: 'Look at the first three numbers of each address. In this lesson (like Packet Run), those three numbers name the network. Are they the same?' },
+          { t: 'The server is on a different network (10.0.2, not 10.0.1), so the packet goes to her default gateway: the library router.' },
+          { t: 'It asks the other laptops on the Wi-Fi which way to go.', hint: 'Other laptops don\'t give directions. There\'s exactly one device on her network whose job is to connect it to other networks. Which one?' },
+          { t: 'It sends a copy to every device on the Wi-Fi and lets the right one answer.', hint: 'That\'s a broadcast, and none of those devices is the grades server anyway. For an address on another network, the laptop always hands the packet to the same place.' },
+        ],
+        right: 1,
+        why: 'A device compares the network part of the two addresses. Same network: deliver it directly. Different network: hand it to the <b>default gateway</b> (10.0.1.1), the router whose whole job is getting packets off this network.',
+        after: { path: ['maya', 'wifi', 'lrouter'], end: { kind: 'at', node: 'lrouter', text: 'Handed to the library router.' } },
+      },
+      {
+        id: 'q2', show: { at: ['wifi', 'lrouter'], trail: [['maya', 'wifi']], hdr: H('10.0.1.10', '?', 443, 8, 1, LOGIN) },
+        q: 'The packet is on its way to the library router, <b>10.0.1.1</b>. What does the <b>To</b> field in its header say right now?',
+        a: [
+          { t: '10.0.1.1, the router, because that\'s where it\'s going next.', hint: 'The router is the next stop. Is it the destination? Think back to Packet Run: what happened when you sent a packet To a router\'s .1 address?' },
+          { t: '10.0.2.10, the grades server.' },
+          { t: '10.0.1.10, Maya\'s laptop.', hint: 'That\'s the From field. The To field says where the packet is trying to end up.' },
+          { t: 'Nothing yet. The router fills it in.', hint: 'Routers read the To address to decide where to send a packet. If it were empty, what would the router go by? Who wrote it?' },
+        ],
+        right: 1,
+        why: 'The To address is the <b>final destination</b>, and it stays the same for the whole trip. The router is only the <b>next hop</b>. (Underneath, Wi-Fi and Ethernet stick a separate hardware address on for each hop, but the IP address in To doesn\'t change.)',
+        after: { hdr: { to: '10.0.2.10' }, path: ['wifi', 'lrouter'], end: { kind: 'at', node: 'lrouter', text: 'At the library router. To still says 10.0.2.10.' } },
+      },
+      {
+        id: 'q3', show: { at: 'lrouter', trail: [['maya', 'wifi'], ['wifi', 'lrouter']], hdr: H('10.0.1.10', '10.0.2.10', 443, 8, 1, LOGIN), tables: ['lrouter'] },
+        q: 'The library router isn\'t connected to network 10.0.2. Its routing table is shown under the map. What does it do with Maya\'s packet?',
+        a: [
+          { t: 'Drops it, because it has no line for 10.0.2.', hint: 'Read the second line of the table again. Which addresses does "anything else" match?' },
+          { t: 'Sends it back to Maya so she can try another way.', hint: 'Routers only ever forward packets toward the destination. They don\'t hand them back.' },
+          { t: 'Follows the default route: passes it to the Internet, and the TTL goes down by 1.' },
+          { t: 'Sends a copy out of every cable it has, just in case.', hint: 'If every router copied every packet everywhere, the internet would drown. A router picks exactly one next hop from its table.' },
+        ],
+        right: 2,
+        why: 'The <b>default route</b> ("anything else") catches every network the router doesn\'t know by name. It\'s why your home router needs basically one line: anything that isn\'t local goes to your internet provider. Every router that forwards the packet takes 1 off its TTL.',
+        after: { path: ['lrouter', 'internet'], end: { kind: 'at', node: 'internet', text: 'Out to the Internet. TTL 7.' } },
+      },
+      {
+        id: 'q4', fixed: true, show: { at: 'lrouter', trail: [['maya', 'wifi'], ['wifi', 'lrouter']], hdr: H('10.0.1.10', '10.0.2.10', 443, 8, 1, LOGIN), ahead: ['lrouter', 'internet', 'srouter', 'sswitch', 'grades'] },
+        q: 'From here the packet goes <b>library router → Internet → school router → school switch → grades server</b>. It left Maya\'s laptop with <b>TTL 8</b>. What is its TTL when the grades server gets it?',
+        a: [
+          { t: '8. TTL only goes down when something goes wrong.', hint: 'TTL goes down at every router, whether or not anything is wrong. It\'s a countdown.' },
+          { t: '5' },
+          { t: '4', hint: 'Count again, but only the routers. A switch moves packets around inside one network and doesn\'t touch TTL.' },
+          { t: '3', hint: 'Did you count the laptop or the server? Only routers take 1 (and in Packet Run, the Internet cloud counts as one router).' },
+        ],
+        right: 1,
+        why: 'Library router 8→7, Internet 7→6, school router 6→5. The Wi-Fi access point and the switch move packets inside one network and don\'t touch TTL. In real life "the Internet" is 10 to 20 routers, and each one takes 1, so real packets start at 64 or 128.',
+        after: { path: ['lrouter', 'internet', 'srouter', 'sswitch', 'grades'], end: { kind: 'delivered', node: 'grades', text: 'Delivered to the grades server with TTL 5.' } },
+      },
+      {
+        id: 'q5', show: { at: 'maya', hdr: H('10.0.1.10', '10.0.2.10', 443, 8, 1, LOGIN), eyes: ['hacker'] },
+        q: 'Like in Packet Run, a hacker is on the same <b>open</b> library Wi-Fi, recording everything in the air. Maya\'s packet is locked (HTTPS, port 443). What ends up in the hacker\'s notebook?',
+        a: [
+          { t: 'Nothing. HTTPS makes the packet invisible.', hint: 'The packet still flies through the air right past the hacker\'s laptop. Which part of it can\'t be scrambled, because every router along the way has to read it?' },
+          { t: 'Maya\'s username and password.', hint: 'Look at the lock on the packet. What does encryption scramble?' },
+          { t: 'The header: Maya\'s address, the server\'s address, port 443, when, and how big. The login itself is scrambled.' },
+          { t: 'Only the port number.', hint: 'The routers need more than the port to deliver it. What else in the header do they read?' },
+        ],
+        right: 2,
+        why: 'Encryption scrambles the <b>payload</b>, never the <b>header</b>, because every router needs to read the header to deliver it. The hacker can\'t read the login, but still learns that 10.0.1.10 talked to 10.0.2.10 on port 443, when, and how much. That\'s called <b>metadata</b>.',
+        after: { path: ['maya', 'wifi', 'lrouter'], caught: { at: ['maya', 'wifi'], who: 'hacker' }, end: { kind: 'at', node: 'lrouter', text: 'The hacker got the header. The payload was scrambled.' } },
+      },
+    ],
+  },
+  {
+    id: 'c2', title: 'Where did it go?', short: 'Lost packets', scene: 'library',
+    story: 'Jay keeps sending packets that never arrive. A packet that goes missing always stops somewhere, for a reason. Find where, and why.',
+    qs: [
+      {
+        id: 'q1', show: { at: 'jay', hdr: H('10.0.1.11', '10.0.2.99', 443, 8, 1, 'hi') },
+        q: 'Jay meant to type the grades server (10.0.2.10), but typed <b>10.0.2.99</b>. No device has that address. Where does his packet stop?',
+        a: [
+          { t: 'Jay\'s phone won\'t send it.', hint: 'Jay\'s phone only checks whether 10.0.2 is its own network. It isn\'t, so off it goes to the gateway. Nobody near Jay knows what\'s at the school.' },
+          { t: 'At the library router.', hint: 'The library router doesn\'t know which devices exist at the school. It only knows "not local: send it to the Internet."' },
+          { t: 'It makes it all the way to the school, and the school router drops it: no device there has 10.0.2.99.' },
+          { t: 'It gets delivered to the grades server anyway, since .99 is close to .10.', hint: 'Addresses aren\'t "close enough." A different last number is a different device (or none at all).' },
+        ],
+        right: 2,
+        why: 'Each router only reads as much of the address as it needs. Everyone on the way just forwards toward "network 10.0.2." The school router is the first device that knows exactly who is on 10.0.2, and nobody is .99. Same as the "no device has that address" drop in Packet Run.',
+        after: { path: ['jay', 'wifi', 'lrouter', 'internet', 'srouter'], end: { kind: 'dropped', node: 'srouter', text: 'Dropped at the school router: no device has 10.0.2.99.' } },
+      },
+      {
+        id: 'q2', show: { at: 'jay', hdr: H('10.0.1.11', '10.0.9.10', 443, 8, 1, 'hi') },
+        q: 'Now Jay sends to <b>10.0.9.10</b>. No network anywhere uses 10.0.9. Where does this one stop?',
+        a: [
+          { t: 'The library router sends it to the Internet (default route), and the Internet drops it: no network uses 10.0.9.' },
+          { t: 'At Jay\'s phone.', hint: 'Jay\'s phone can\'t know which networks exist. It only knows its own, and 10.0.9 isn\'t it.' },
+          { t: 'It circles around until its TTL runs out.', hint: 'A circle needs two routers pointing at each other. Does anything here point back?' },
+          { t: 'At the school router.', hint: 'Why would anyone send it toward the school? The school is 10.0.2, not 10.0.9.' },
+        ],
+        right: 0,
+        why: 'Routers forward by <b>network</b>. The library router doesn\'t know 10.0.9 by name, so its default route sends it on. The Internet knows every network that exists, and when none of them is 10.0.9, there\'s nowhere left to send it.',
+        after: { path: ['jay', 'wifi', 'lrouter', 'internet'], end: { kind: 'dropped', node: 'internet', text: 'Dropped by the Internet: no network uses 10.0.9.' } },
+      },
+      {
+        id: 'q3', scene: 'loop', show: { at: 'r1', trail: [['jay', 'wifi'], ['wifi', 'r1']], hdr: H('10.0.1.11', '10.0.3.10', 7777, 8, 0, 'join game'), tables: ['r1', 'r2', 'r3'] },
+        q: 'Game night. Look at the routing tables under the map. Router 1 sends 10.0.3 traffic to Router 2, but <b>Router 2 sends it right back to Router 1</b>. Jay\'s packet just reached Router 1. What happens?',
+        a: [
+          { t: 'It bounces between Router 1 and Router 2, losing 1 TTL each time, until TTL hits 0 and a router drops it.' },
+          { t: 'Router 2 notices the loop and fixes its own table.', hint: 'Simple routers (and the ones in Packet Run) just follow their tables. Nothing checks whether a route makes sense.' },
+          { t: 'It bounces between them forever and slows the whole network down.', hint: 'That is exactly the problem one field in the header was invented to stop. Which one?' },
+          { t: 'Router 1 gives up and sends it to the Internet instead.', hint: 'Router 1 has a line for 10.0.3, so it uses it. It has no idea the line is wrong.' },
+        ],
+        right: 0,
+        why: '<b>TTL</b> (time to live) is a countdown so a lost packet can\'t circle forever. Without it, one typo in one table could flood a network with packets going around and around. This is Ticket B from Packet Run.',
+        after: { path: ['r1', 'r2', 'r1', 'r2', 'r1', 'r2', 'r1', 'r2'], end: { kind: 'dropped', node: 'r2', text: 'TTL hit 0. Dropped.' } },
+      },
+      {
+        id: 'q4', scene: 'loop', show: { at: 'r1', trail: [['jay', 'wifi'], ['wifi', 'r1']], hdr: H('10.0.1.11', '10.0.3.10', 7777, 8, 0, 'join game'), tables: ['r1', 'r2'] },
+        q: 'Work it out: the packet reaches Router 1 with <b>TTL 8</b>. Each router takes 1, and the router that takes the last one drops it. <b>Which router drops it, and how many times did it pass through Router 1?</b>',
+        a: [
+          { t: 'Router 1, after passing through it 8 times.', hint: 'The packet alternates: Router 1, Router 2, Router 1, Router 2… 8 router visits in all. How many of those 8 are Router 1?' },
+          { t: 'Router 2, after passing through Router 1 four times.' },
+          { t: 'Router 2, after passing through Router 1 eight times.', hint: 'Each trip around the loop visits both routers, and each visit costs 1 TTL. 8 TTL means 8 visits total, not 8 each.' },
+          { t: 'Router 1, after passing through it four times.', hint: 'Write the visits out: Router 1 (8→7), Router 2 (7→6), Router 1 (6→5)… Who takes it from 1 to 0?' },
+        ],
+        right: 1,
+        why: 'Router 1: 8→7, Router 2: 7→6, Router 1: 6→5, Router 2: 5→4, Router 1: 4→3, Router 2: 3→2, Router 1: 2→1, Router 2: 1→0, dropped. Eight visits, alternating, so Router 1 gets four and Router 2 takes the last one.',
+        after: { path: ['r1', 'r2', 'r1', 'r2', 'r1', 'r2', 'r1', 'r2'], end: { kind: 'dropped', node: 'r2', text: 'Dropped at Router 2 on its 8th router visit. Router 1 saw it 4 times.' } },
+      },
+      {
+        id: 'q5', scene: 'loop', show: { at: 'r1', hdr: H('10.0.1.11', '10.0.3.10', 7777, 8, 0, 'join game'), tables: ['r1', 'r2', 'r3'] },
+        q: 'You\'re the help desk. Which <b>one</b> change fixes game night for good?',
+        a: [
+          { t: 'Start packets with TTL 64 instead of 8.', hint: 'Then the packet just bounces longer before it dies. A bigger countdown doesn\'t fix a wrong direction.' },
+          { t: 'Delete Router 1\'s line for 10.0.3.', hint: 'Then Router 1 has no idea where 10.0.3 is, and no default route either. Jay\'s packet would be dropped at the first router instead.' },
+          { t: 'Change Router 2\'s line so 10.0.3 goes to Router 3.' },
+          { t: 'Add a line to Router 3.', hint: 'Router 3 is never the problem: the packet never gets there. Which router is sending it the wrong way?' },
+        ],
+        right: 2,
+        why: 'Router 1 had it right: 10.0.3 is past Router 2. The bad line is Router 2\'s. Pointed at Router 3, the path becomes Router 1 → Router 2 → Router 3 → game server. Real networks avoid typos like this by letting routers build their tables for themselves (routing protocols like OSPF and BGP).',
+        fixTable: { r2: [['10.0.3.x', 'Router 3']] },
+        after: { path: ['r1', 'r2', 'r3', 'game'], end: { kind: 'delivered', node: 'game', text: 'Fixed. Delivered with TTL 5.' } },
+      },
+    ],
+  },
+  {
+    id: 'c3', title: 'Room 333: one network', short: 'Room 333', scene: 'room333',
+    story: 'Room 333 is one network: two laptops, a printer, and a router to the outside, all plugged into one switch. Someone has also plugged a hacker laptop into a spare port.',
+    qs: [
+      {
+        id: 'q1', show: { at: 'l1', hdr: H('10.0.1.10', '10.0.1.12', 9100, 8, 0, 'print: essay.pdf') },
+        q: 'Laptop 1 (10.0.1.10) prints to Printer 1 (<b>10.0.1.12</b>) on port 9100. Does the packet go through Router 1?',
+        a: [
+          { t: 'Yes. Every packet has to go through the router.', hint: 'Compare the network part of the two addresses. What\'s a router for?' },
+          { t: 'No. Same network (10.0.1), so it goes laptop → switch → printer. The router never sees it.' },
+          { t: 'Only if the printer is busy.', hint: 'Busy or not, the path is decided by the addresses.' },
+          { t: 'Yes, because printing uses a special port.', hint: 'Ports pick the program on the device. They don\'t change the path. What does decide the path?' },
+        ],
+        right: 1,
+        why: 'Routers are for <b>leaving</b> a network. Inside one network, the switch delivers packets directly. The TTL doesn\'t even change: no router touched it.',
+        after: { path: ['l1', 'sw', 'printer'], end: { kind: 'delivered', node: 'printer', text: 'Printed. TTL still 8: no router touched it.' } },
+      },
+      {
+        id: 'q2', show: { at: 'l1', hdr: H('10.0.1.10', '10.0.1.12', 80, 8, 0, 'print: essay.pdf') },
+        q: 'This time Laptop 1 sends the print job to Printer 1 on <b>port 80</b> (web) instead of 9100. In Packet Run, the printer only listens on 9100. What happens?',
+        a: [
+          { t: 'It prints anyway. The address is right, so the port doesn\'t matter.', hint: 'The address got it to the right device. Once it\'s there, what decides which program on the device gets it?' },
+          { t: 'It reaches the printer, but nothing on the printer is listening on port 80, so it\'s refused.' },
+          { t: 'The switch drops it, because port 80 is for websites.', hint: 'Switches deliver by address. They don\'t care about ports.' },
+          { t: 'It goes to the router, because port 80 is internet traffic.', hint: 'What decides whether a packet goes to the router: the address or the port?' },
+        ],
+        right: 1,
+        why: 'The <b>address</b> gets a packet to the right device. The <b>port</b> picks the program on that device. No program listening on port 80 means the printer refuses it. (Plenty of real printers do run a settings web page on port 80, but this one doesn\'t.)',
+        after: { path: ['l1', 'sw', 'printer'], end: { kind: 'refused', node: 'printer', text: 'Reached the printer. Refused: nothing listens on port 80.' } },
+      },
+      {
+        id: 'q3', show: { at: 'l1', hdr: H('10.0.1.10', '10.0.1.11', 5000, 8, 0, 'chat: my password is tacocat22'), eyes: ['hacker'] },
+        q: 'Laptop 1 sends Laptop 2 an <b>unlocked</b> chat message. The hacker is plugged into the same switch. What does the hacker capture?',
+        a: [
+          { t: 'Everything, the same as on the library Wi-Fi.', hint: 'Wi-Fi is radio: everyone in range hears it. How does a switch send a packet: out of every port, or only out of one?' },
+          { t: 'Nothing. The switch sends the packet only out of the port that leads to Laptop 2.' },
+          { t: 'Only the header.', hint: 'Would the hacker\'s cable carry part of a packet? Think about which cables this packet travels on at all.' },
+          { t: 'Everything, because they\'re on the same network.', hint: 'Same network, but a different cable. What does the switch do with a packet for Laptop 2?' },
+        ],
+        right: 1,
+        why: 'A switch learns which device is on which port and sends each packet only out of that port. Wi-Fi is radio, and anyone in range hears everything. That\'s why the hacker on the switch in Packet Run heard nothing. (Real attackers have tricks to fool a switch, which is one more reason to encrypt anyway.)',
+        after: { path: ['l1', 'sw', 'l2'], end: { kind: 'delivered', node: 'l2', text: 'Delivered to Laptop 2. The hacker\'s cable never carried it.' } },
+      },
+      {
+        id: 'q4', fixed: true, show: { at: 'l1', hdr: H('10.0.1.10', '8.8.8.8', 53, 8, 0, 'where is grades.hsct.example?'), marks: [['l2', 'sw', 'A'], ['printer', 'sw', 'B'], ['sw', 'router', 'C'], ['hacker', 'sw', 'D']] },
+        q: 'The hacker wants to see <b>every</b> packet anyone in Room 333 sends to the internet, and can clip a wiretap onto one cable. Which spot on the map is best?',
+        a: [
+          { t: 'A: the cable to Laptop 2.', hint: 'That cable only carries Laptop 2\'s packets. What about Laptop 1\'s?' },
+          { t: 'B: the cable to the printer.', hint: 'The printer\'s cable only carries print jobs. Does internet traffic go near the printer?' },
+          { t: 'C: the cable between the switch and Router 1.' },
+          { t: 'D: their own cable into the switch.', hint: 'You just saw that a switch doesn\'t send other people\'s packets down that cable.' },
+        ],
+        right: 2,
+        why: 'Every packet that leaves Room 333 has to cross the cable to Router 1. It\'s a <b>chokepoint</b>. That\'s why the wiretap in Packet Run\'s airport ticket sat on the router\'s cable. Network admins guard chokepoints, and attackers go looking for them.',
+        after: { path: ['l1', 'sw', 'router', 'internet'], caught: { at: ['sw', 'router'], who: 'tap' }, end: { kind: 'at', node: 'internet', text: 'Captured at spot C on its way out.' } },
+      },
+      {
+        id: 'q5', show: { at: 'l1', hdr: H('10.0.1.10', '10.0.1.11', 5000, 8, 0, 'hey'), ips: { printer: '10.0.1.11' }, warn: ['printer', 'l2'] },
+        q: 'Someone typed an address into the printer by hand and gave it <b>10.0.1.11</b>, the same address as Laptop 2. Laptop 1 sends a chat to 10.0.1.11. What\'s the problem?',
+        a: [
+          { t: 'Both devices get a copy, so it works fine.', hint: 'An address is supposed to mean exactly one device. Does the network have a way to tell which of the two is "the real" 10.0.1.11?' },
+          { t: 'The switch picks the printer, because printers come first.', hint: 'Switches don\'t know what kind of device anything is.' },
+          { t: 'Packets can end up at the wrong device (whichever claimed the address most recently), so chats and prints break at random.' },
+          { t: 'The router renames the printer to fix it.', hint: 'Routers don\'t rename devices, and this packet never reaches the router anyway. Why not?' },
+        ],
+        right: 2,
+        why: 'Two devices with one address is an <b>address conflict</b>. The network ends up delivering to whichever one answered last, so things work, then don\'t. That\'s why DHCP hands out addresses automatically: it keeps a list so no two devices ever get the same one.',
+        after: { path: ['l1', 'sw', 'printer'], end: { kind: 'refused', node: 'printer', text: 'The chat went to the printer. It doesn\'t do chat. Refused.' } },
+      },
+    ],
+  },
+  {
+    id: 'c4', title: 'Capture the hacker: the airport', short: 'The airport', scene: 'airport',
+    story: 'Packet Run\'s airport ticket, one step at a time. A traveler logs into the grades site from open airport Wi-Fi. Hacker A has joined the Wi-Fi. Hacker B has clipped a wiretap onto the airport router\'s cable to the Internet (the 👁 on the map).',
+    qs: [
+      {
+        id: 'q1', show: { at: 'trav', hdr: H('10.0.3.10', '10.0.2.10', 80, 8, 0, LOGIN), eyes: ['hackerA', 'tap'] },
+        q: 'The traveler logs in the old way: port 80, <b>no lock</b>. Who gets the password?',
+        a: [
+          { t: 'Only Hacker A, on the Wi-Fi.', hint: 'Follow the packet past the access point. What cable does it cross next?' },
+          { t: 'Only Hacker B, on the wiretap.', hint: 'The packet\'s very first trip is through the air of an open Wi-Fi. Who\'s listening there?' },
+          { t: 'Both: Hacker A hears it in the air, and Hacker B reads it on the cable.' },
+          { t: 'Neither. Airports have firewalls.', hint: 'A firewall decides which packets may pass. It doesn\'t stop anyone from reading the ones that do.' },
+        ],
+        right: 2,
+        why: 'An unlocked packet can be read by anyone at <b>any point</b> along its path: in the air, on a cable, or at any router. Two hackers, two chances.',
+        after: { path: ['trav', 'wifi', 'arouter', 'internet', 'srouter', 'grades'], caught: [{ at: ['trav', 'wifi'], who: 'hackerA' }, { at: ['arouter', 'internet'], who: 'tap' }], end: { kind: 'delivered', node: 'grades', text: 'Delivered, and both hackers wrote down the password.' } },
+      },
+      {
+        id: 'q2', show: { at: 'trav', hdr: H('10.0.3.10', '10.0.2.10', 80, 8, 0, LOGIN), eyes: ['hackerA', 'tap'], wifiLock: true },
+        q: 'The airport turns on a <b>Wi-Fi password</b> (WPA2), and Hacker A doesn\'t know it. The traveler still logs in on port 80 with no lock. Who can read the password now?',
+        a: [
+          { t: 'Nobody. The Wi-Fi is encrypted now.', hint: 'Where does Wi-Fi encryption end? The access point unscrambles it before sending it down the cable.' },
+          { t: 'Hacker B. Wi-Fi encryption only covers the trip through the air, and the packet is plain again on the cable.' },
+          { t: 'Hacker A, because Wi-Fi passwords don\'t do anything.', hint: 'Without the password, Hacker A can hear the radio, but only as scrambled noise.' },
+          { t: 'Both hackers, same as before.', hint: 'Something did change for one of them. Which leg of the trip does the Wi-Fi password protect?' },
+        ],
+        right: 1,
+        why: 'Each protection covers part of the path. Wi-Fi encryption covers the <b>first leg</b>: laptop to access point. After that the packet is plain again. HTTPS is different: it\'s <b>end to end</b>, from the laptop all the way to the server.',
+        after: { path: ['trav', 'wifi', 'arouter', 'internet', 'srouter', 'grades'], caught: [{ at: ['trav', 'wifi'], who: 'hackerA', noise: true }, { at: ['arouter', 'internet'], who: 'tap' }], end: { kind: 'delivered', node: 'grades', text: 'Hacker A got noise. Hacker B got the password.' } },
+      },
+      {
+        id: 'q3', show: { at: 'trav', hdr: H('10.0.3.10', '10.0.2.10', 443, 8, 1, LOGIN), eyes: ['tap'] },
+        q: 'Now the traveler uses HTTPS (port 443, locked). Hacker B can\'t read the payload. What can Hacker B still work out, just from the headers?',
+        a: [
+          { t: 'Nothing useful at all.', hint: 'The header says who, to where, which port, and when. What could you guess from "someone at the airport visits the school\'s server every morning"?' },
+          { t: 'That someone at the airport is using the school\'s grades server, when, how often, and how much data.' },
+          { t: 'The traveler\'s password, if they wait long enough.', hint: 'Waiting doesn\'t unscramble anything. Modern encryption would take longer than the age of the universe to crack.' },
+          { t: 'Which grades the traveler looked at.', hint: 'The pages and grades are inside the scrambled payload. What\'s left in the clear?' },
+        ],
+        right: 1,
+        why: '<b>Metadata</b>: who talked to whom, when, how often, how much. It can reveal a lot (someone at the airport checks school grades every morning at 7). Encryption protects what you say, not the fact that you said it.',
+        after: { path: ['trav', 'wifi', 'arouter', 'internet', 'srouter', 'grades'], caught: [{ at: ['arouter', 'internet'], who: 'tap' }], end: { kind: 'delivered', node: 'grades', text: 'Hacker B has headers only: who, where, when.' } },
+      },
+      {
+        id: 'q4', show: { at: 'trav', hdr: H('10.0.3.10', '10.0.2.10', 80, 8, 0, LOGIN), eyes: ['hackerA', 'tap'] },
+        q: 'Back to the original ticket: open Wi-Fi, both hackers there, port 80. You can make <b>one</b> change. Which one protects the password from both hackers?',
+        a: [
+          { t: 'Kick Hacker A off the Wi-Fi.', hint: 'Hacker B\'s wiretap is still on the cable.' },
+          { t: 'Use HTTPS: port 443 with the lock.' },
+          { t: 'Move the grades server to a different network.', hint: 'Both hackers are near the traveler, not the server. The packet still passes them.' },
+          { t: 'Unplug the airport router\'s cable.', hint: 'Then nobody gets to the internet at all. And you don\'t control the airport\'s cables, or know how many taps are out there.' },
+        ],
+        right: 1,
+        why: 'You almost never control the path your packets take. <b>End-to-end encryption</b> protects the payload no matter who is listening in between: in the air, on a cable, or at a router.',
+        after: { hdr: { port: 443, lock: true }, path: ['trav', 'wifi', 'arouter', 'internet', 'srouter', 'grades'], caught: [{ at: ['trav', 'wifi'], who: 'hackerA' }, { at: ['arouter', 'internet'], who: 'tap' }], end: { kind: 'delivered', node: 'grades', text: 'Both hackers got headers and scrambled noise. Ticket fixed.' } },
+      },
+      {
+        id: 'q5', scene: 'eviltwin', show: { at: 'trav', hdr: H('192.168.66.20', 'school server', 443, 8, 1, LOGIN), eyes: ['hackerA'] },
+        q: 'Hacker A switches tactics: sets up a hotspot called <b>Airport_Free_WiFi</b>, and the traveler joins it. Now Hacker A <em>is</em> the access point and the router. The traveler logs in with HTTPS. Can Hacker A read the password?',
+        a: [
+          { t: 'Yes. Every packet goes through their laptop now, so they see everything.', hint: 'Being on the path means they handle the packet. Can they unscramble a payload that was locked for the real server?' },
+          { t: 'No. HTTPS locks the payload for the real server, so even the router in the middle can\'t read it, as long as the traveler doesn\'t click past a certificate warning.' },
+          { t: 'No, because a fake hotspot can\'t forward packets to the internet.', hint: 'A laptop can forward packets just fine. That\'s what makes the trick convincing: everything seems to work.' },
+          { t: 'Yes, but only the port number.', hint: 'The whole header is visible to anyone on the path. The question is about the password.' },
+        ],
+        right: 1,
+        why: 'This is called an <b>evil twin</b>. Routers always handle your packets, so HTTPS was built so routers can deliver it but can\'t read it. The one trap: if the browser warns that a certificate isn\'t valid and you click through anyway, you might be talking to the hacker instead of the server.',
+        after: { path: ['trav', 'evil', 'hackerA', 'internet', 'srouter', 'grades'], caught: { at: ['evil', 'hackerA'], who: 'hackerA' }, end: { kind: 'delivered', node: 'grades', text: 'Hacker A forwarded it and got headers only.' } },
+      },
+    ],
+  },
+  {
+    id: 'c5', title: 'Beyond Packet Run: the real internet', short: 'Real internet', scene: 'home',
+    story: 'Packet Run kept things simple. Real addresses have one more twist. At home, Maya\'s laptop is 192.168.1.23. So is Jay\'s, at his house across town. Both work.',
+    qs: [
+      {
+        id: 'q1', show: { at: 'maya', hi: ['maya', 'jay'] },
+        q: 'Maya\'s laptop and Jay\'s laptop are both <b>192.168.1.23</b>, in two different homes. How can two devices have the same address?',
+        a: [
+          { t: 'They can\'t. One of them will stop working.', hint: 'Both work fine, every day. The two laptops are on two different home networks.' },
+          { t: '192.168.x.x addresses are private. They only mean something inside one home network, so every home can reuse them.' },
+          { t: 'The internet adds their names to the address to tell them apart.', hint: 'Routers only read numbers. Something else must make these two addresses not clash.' },
+          { t: 'They take turns using the address.', hint: 'Both are online at the same time. Look at where each laptop\'s cable goes.' },
+        ],
+        right: 1,
+        why: 'Some address ranges are <b>private</b>: 10.x.x.x, 172.16–31.x.x and 192.168.x.x. Internet routers don\'t carry them, so every home and school can reuse them. (Every address in Packet Run was a private 10.x address too.) Each home router has one <b>public</b> address for the outside.',
+      },
+      {
+        id: 'q2', show: { at: 'maya', hdr: H('192.168.1.23', '203.0.113.5', 443, 64, 1, LOGIN) },
+        q: 'Maya logs into the school site from home. When her packet reaches the school, what <b>From</b> address does the school see?',
+        a: [
+          { t: '192.168.1.23, her laptop\'s address.', hint: 'If the school replied to 192.168.1.23, which of the millions of homes using that address would get it?' },
+          { t: '198.51.100.23: her home router swaps in its public address on the way out, and remembers to pass replies back to her laptop.' },
+          { t: '203.0.113.5, the school\'s own address.', hint: 'That\'s the To address. The From address has to be somewhere the reply can come back to.' },
+          { t: 'There\'s no From address on packets from home.', hint: 'Without a From address, where would the website send its reply?' },
+        ],
+        right: 1,
+        why: 'This is <b>NAT</b> (network address translation). The home router rewrites the From address to its own public one. Replies come back to the router, and the router passes them to the right laptop. So the From address <em>can</em> change on the way. The To address never does (until the school\'s own router, next question).',
+        after: { set: { mhome: { from: '198.51.100.23' } }, path: ['maya', 'mhome', 'internet', 'srouter'], end: { kind: 'at', node: 'srouter', text: 'The school sees From 198.51.100.23.' } },
+      },
+      {
+        id: 'q3', show: { at: 'maya', hdr: H('192.168.1.23', '?', 443, 64, 1, LOGIN) },
+        q: 'The grades server is <b>10.0.2.10</b>: private, inside the school. Maya types <b>grades.hsct.example</b>. What does her laptop do first, and what goes in the <b>To</b> field?',
+        a: [
+          { t: 'Puts the name grades.hsct.example in the To field.', hint: 'Routers only read numbers. Something has to turn the name into an address first.' },
+          { t: 'Puts 10.0.2.10 in the To field, the server\'s real address.', hint: 'Remember the last question: private addresses don\'t travel across the internet. Which of the millions of 10.0.2.10s would the internet pick?' },
+          { t: 'Asks a DNS server (port 53) for the name\'s address, gets the school\'s public address 203.0.113.5, and puts that in To. The school router passes it inside to 10.0.2.10.' },
+          { t: 'Asks the school router directly.', hint: 'How would her laptop know the school router\'s address before it has looked anything up?' },
+        ],
+        right: 2,
+        why: '<b>DNS</b> is the internet\'s phone book: names in, numbers out. The name leads to the school\'s <b>public</b> address. The school router then forwards it inside to the private server (port forwarding). Packet Run skipped this step by letting the Internet deliver private addresses.',
+        afterHdr: { to: '203.0.113.5' },
+        after: { hdr: { to: '8.8.8.8', port: 53, lock: false, data: 'where is grades.hsct.example?' }, set: { mhome: { from: '198.51.100.23' } }, path: ['maya', 'mhome', 'internet', 'dns'], end: { kind: 'at', node: 'dns', text: 'DNS answers: grades.hsct.example is 203.0.113.5.' } },
+      },
+      {
+        id: 'q4', show: { at: 'srouter', hi: ['maya', 'bro'], hdr: H('203.0.113.5', '198.51.100.23', 51000, 60, 1, 'your grades page') },
+        q: 'Maya and her brother both have the grades site open. Replies from the school all come back to the <b>same</b> public address, 198.51.100.23. How does the home router know which laptop each reply is for?',
+        a: [
+          { t: 'It sends every reply to both laptops.', hint: 'Then her brother would get Maya\'s grades page. The router must know exactly who asked.' },
+          { t: 'It reads the web page to see whose name is on it.', hint: 'The payload is encrypted (HTTPS). The router can\'t read it, and doesn\'t need to.' },
+          { t: 'It keeps a table: each outgoing connection got its own port number on the public side, and a reply to that port goes back to the laptop that started it.' },
+          { t: 'Whichever laptop is faster gets it.', hint: 'That would mix everyone\'s pages up. The router has to know for sure.' },
+        ],
+        right: 2,
+        why: 'Ports don\'t just pick the program on a server. Every connection also has a port on the sending side. The home router gives each connection its own public port and writes it in a table (NAT table): "port 51000 → Maya\'s laptop, port 51001 → her brother\'s." Replies carry that port, so they find their way home.',
+        after: { set: { mhome: { to: '192.168.1.23' } }, path: ['srouter', 'internet', 'mhome', 'maya'], end: { kind: 'delivered', node: 'maya', text: 'Port 51000 → Maya\'s laptop, per the NAT table.' } },
+      },
+      {
+        id: 'q5', show: { at: 'maya', hdr: H('192.168.1.23', '203.0.113.5', 443, 1, 1, '(traceroute)'), ahead: ['maya', 'mhome', 'internet', 'srouter'] },
+        q: 'Real computers have a tool, <b>traceroute</b>, that lists every router between you and a server. It sends a packet with TTL 1, then TTL 2, then TTL 3… Why does that reveal each router?',
+        a: [
+          { t: 'Each router adds its name to the packet as it passes.', hint: 'Packets don\'t collect a list along the way. Think about what a router does when it takes the last TTL.' },
+          { t: 'The server sends back a map of the internet.', hint: 'The server never sees the TTL 1 packet. Where does that one stop?' },
+          { t: 'The packet with TTL 1 dies at the first router, TTL 2 at the second, and so on, and each router that drops one sends back a "time exceeded" message from its own address.' },
+          { t: 'TTL tells routers to print their address on your screen.', hint: 'Routers can\'t print on your screen. But they can send you a packet back.' },
+        ],
+        right: 2,
+        why: 'The same countdown that stops loops doubles as a measuring tape. TTL 1 dies at hop 1, and that router answers "time exceeded." TTL 2 dies at hop 2, and so on. Try it for real: <code>tracert google.com</code> on Windows, <code>traceroute google.com</code> on a Mac.',
+        after: { path: ['maya', 'mhome'], end: { kind: 'dropped', node: 'mhome', text: 'TTL 1 → 0 at the home router, which answers "time exceeded from 192.168.1.1".' } },
+      },
+    ],
+  },
+];
+
+/* spread the right answers evenly over A–D (the two "fixed" questions keep their order:
+   the numbers read best in order, and the map's A–D spots match the options) */
+const ANSWER_SLOTS = [0, 3, 1, 2, 3, 0, 2, 1, 3, 0, 1, 3, 2, 0, 3, 1, 2, 0, 3, 2, 1, 3, 0];
+(function balanceAnswers() {
+  let k = 0;
+  for (const ch of CHAPTERS) for (const q of ch.qs) {
+    if (q.fixed) continue;
+    const t = ANSWER_SLOTS[k++ % ANSWER_SLOTS.length];
+    const [r] = q.a.splice(q.right, 1);
+    q.a.splice(t, 0, r);
+    q.right = t;
+  }
+})();
+
+/* =====================================================================
+   DIAGRAM: the network map, the packet, and "watch what happens"
+   ===================================================================== */
+const CELL = 80;
+const escHTML = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const SPRITE_URL = {};
+function spriteURL(kind) {
+  if (SPRITE_URL[kind]) return SPRITE_URL[kind];
+  const rows = SPRITES[kind];
+  const c = document.createElement('canvas');
+  c.width = 48; c.height = 48;
+  const g = c.getContext('2d');
+  rows.forEach((row, y) => { for (let x = 0; x < 12; x++) { const ch = row[x]; if (ch && ch !== '.') { g.fillStyle = PAL[ch]; g.fillRect(x * 4, y * 4, 4, 4); } } });
+  SPRITE_URL[kind] = c.toDataURL();
+  return SPRITE_URL[kind];
+}
+const reduceMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const isRouter = (n) => n && (n.type === 'router' || n.type === 'internet');
+function nodePt(n) { return { x: n.x * CELL + CELL / 2, y: n.y * CELL + CELL / 2 - 4 }; }
+function hdrMerge(a, b) { return Object.assign({}, a || {}, b || {}); }
+
+/* the header card (Packet Run's envelope) */
+function headerHTML(h, changed) {
+  if (!h) return '';
+  changed = changed || {};
+  const port = h.port != null ? `${h.port}${PORT_NAME[h.port] ? ' · ' + PORT_NAME[h.port] : ''}` : '';
+  const cell = (k, label, v) => `<div class="hf${changed[k] ? ' chg' : ''}"><span class="hl">${label}</span><span class="hv">${escHTML(v)}</span></div>`;
+  return `<div class="env${h.lock ? ' locked' : ''}" aria-label="Packet header">
+    <div class="env-h"><img src="${spriteURL(h.lock ? 'lockedpacket' : 'packet')}" alt=""><b>The packet</b><span class="small">${h.lock ? '🔒 encrypted payload' : 'no lock: anyone on the path can read it'}</span></div>
+    <div class="env-grid">${cell('from', 'FROM', h.from)}${cell('to', 'TO', h.to)}${cell('port', 'PORT', port)}${cell('ttl', 'TTL', String(h.ttl))}</div>
+    <div class="env-pay${changed.data ? ' chg' : ''}"><span class="hl">PAYLOAD</span><span class="hv">${h.lock ? '████████████ (scrambled)' : escHTML(h.data || '')}</span></div>
+  </div>`;
+}
+function tablesHTML(scene, which, override) {
+  if (!which || !which.length || !scene.tables) return '';
+  return `<div class="rtables">${which.map((id) => {
+    const n = scene.nodes.find((x) => x.id === id);
+    const rows = (override && override[id]) || scene.tables[id] || [];
+    return `<div class="rtab${override && override[id] ? ' fixed' : ''}"><div class="rt-h">${escHTML(n.name)}'s routes</div><table><tbody>${rows.map((r) => `<tr class="${r[2] === 'bad' ? 'bad' : ''}"><td>${escHTML(r[0])}</td><td>→ ${escHTML(r[1])}</td></tr>`).join('')}</tbody></table></div>`;
+  }).join('')}</div>`;
+}
+
+class NetMap {
+  constructor(host) {
+    this.host = host;
+    host.innerHTML = `<div class="map-wrap"><svg class="netmap" role="img"></svg></div><div class="map-note small" aria-live="polite"></div><div class="map-hdr"></div><div class="map-tables"></div>`;
+    this.svg = host.querySelector('svg');
+    this.note = host.querySelector('.map-note');
+    this.hdrHost = host.querySelector('.map-hdr');
+    this.tabHost = host.querySelector('.map-tables');
+    this.anim = null;
+  }
+  /* draw a scene in a given state: { at, trail, ahead, eyes, marks, hi, warn, ips, wifiLock, hdr, tables } */
+  draw(scene, st) {
+    this.stop();
+    this.scene = scene;
+    this.st = st;
+    const byId = Object.fromEntries(scene.nodes.map((n) => [n.id, n]));
+    this.byId = byId;
+    const xs = scene.nodes.map((n) => n.x), ys = scene.nodes.map((n) => n.y);
+    const x0 = Math.min(...xs) * CELL - 44, y0 = Math.min(...ys) * CELL - 34, x1 = (Math.max(...xs) + 1) * CELL + 44, y1 = (Math.max(...ys) + 1) * CELL + (scene.nodes.some((n) => n.ip2) ? 44 : 30);
+    this.svg.setAttribute('viewBox', `${x0} ${y0} ${x1 - x0} ${y1 - y0}`);
+    const on = (list, a, b) => (list || []).some(([p, q]) => (p === a && q === b) || (p === b && q === a));
+    const aheadPairs = (st.ahead || []).slice(1).map((id, i) => [st.ahead[i], id]);
+    let h = '<g class="links">';
+    for (const [a, b, air, tap] of scene.links) {
+      const A = nodePt(byId[a]), B = nodePt(byId[b]);
+      const cls = ['ln', air ? 'air' : '', on(st.trail, a, b) ? 'trail' : '', on(aheadPairs, a, b) ? 'ahead' : ''].join(' ');
+      h += `<line class="${cls}" x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}" data-l="${a}|${b}"/>`;
+      if (tap) h += `<g class="tapmark" transform="translate(${(A.x + B.x) / 2},${(A.y + B.y) / 2})"><circle r="15"/><ellipse rx="8" ry="5" fill="#fff"/><circle r="2.8" fill="#100d22"/><title>Wiretap</title></g>`;
+    }
+    for (const [a, b, letter] of st.marks || []) {
+      const A = nodePt(byId[a]), B = nodePt(byId[b]);
+      h += `<g class="mark" transform="translate(${(A.x + B.x) / 2},${(A.y + B.y) / 2})"><circle r="13"/><text y="5" text-anchor="middle">${letter}</text></g>`;
+    }
+    h += '</g><g class="nodes">';
+    for (const n of scene.nodes) {
+      const p = nodePt(n);
+      const ip = st.ips && st.ips[n.id] ? st.ips[n.id] : n.ip;
+      const cls = ['nd', 't-' + n.type, n.evil ? 'evil' : '', (st.hi || []).includes(n.id) ? 'hi' : '', (st.warn || []).includes(n.id) ? 'warn' : ''].join(' ');
+      h += `<g class="${cls}" transform="translate(${p.x},${p.y})" data-n="${n.id}">
+        <rect x="-27" y="-27" width="54" height="54" rx="12" class="tile"/>
+        <image href="${spriteURL(n.type === 'wifi' ? 'wifi' : n.type)}" x="-19" y="-19" width="38" height="38"/>
+        ${n.type === 'wifi' && st.wifiLock ? '<text class="wlock" x="20" y="-18">🔒</text>' : ''}
+        ${(st.eyes || []).includes(n.id) ? '<g class="eye" transform="translate(25,-25)"><circle r="12"/><ellipse rx="8" ry="5" fill="#fff"/><circle r="2.8" fill="#100d22"/></g>' : ''}
+        <text y="46" class="nm">${escHTML(n.name)}</text>
+        ${ip ? `<text y="63" class="ip">${escHTML(ip)}</text>` : ''}${n.ip2 ? `<text y="79" class="ip">${escHTML(n.ip2)}</text>` : ''}
+      </g>`;
+    }
+    h += '</g><g class="fx"></g>';
+    this.svg.innerHTML = h;
+    this.svg.setAttribute('aria-label', `Network map: ${scene.title}. ${this.whereText(st)}`);
+    this.fx = this.svg.querySelector('.fx');
+    if (st.at) this.placePacket(st.at, st.hdr && st.hdr.lock);
+    this.hdr = st.hdr ? Object.assign({}, st.hdr) : null;
+    this.hdrHost.innerHTML = headerHTML(this.hdr);
+    this.tabHost.innerHTML = tablesHTML(scene, st.tables, st.tableFix);
+    this.note.textContent = this.whereText(st);
+  }
+  /* on a phone the map scrolls sideways: keep the packet (or a spot) in view */
+  follow(x) {
+    const wrap = this.host.querySelector('.map-wrap');
+    if (!wrap || wrap.scrollWidth <= wrap.clientWidth + 2) return;
+    const r = this.svg.getBoundingClientRect(), vb = this.svg.viewBox.baseVal;
+    wrap.scrollLeft = (x - vb.x) / vb.width * r.width - wrap.clientWidth / 2;
+  }
+  whereText(st) {
+    if (!st.at) return '';
+    if (Array.isArray(st.at)) return `The packet is on the way from ${this.byId[st.at[0]].name} to ${this.byId[st.at[1]].name}.`;
+    return `The packet is at ${this.byId[st.at].name}.`;
+  }
+  ptOf(at) {
+    if (Array.isArray(at)) { const A = nodePt(this.byId[at[0]]), B = nodePt(this.byId[at[1]]); return { x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 }; }
+    return nodePt(this.byId[at]);
+  }
+  placePacket(at, lock) {
+    const p = this.ptOf(at);
+    let g = this.fx.querySelector('.pkt');
+    if (!g) { g = document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.setAttribute('class', 'pkt'); this.fx.appendChild(g); }
+    g.innerHTML = `<circle r="15" class="pk-ring"/><image href="${spriteURL(lock ? 'lockedpacket' : 'packet')}" x="-13" y="-13" width="26" height="26"/>`;
+    g.setAttribute('transform', `translate(${p.x + (Array.isArray(at) ? 0 : 20)},${p.y - (Array.isArray(at) ? 0 : 26)})`);
+    this.pk = { g, x: p.x + (Array.isArray(at) ? 0 : 20), y: p.y - (Array.isArray(at) ? 0 : 26) };
+    this.follow(this.pk.x);
+  }
+  bubble(nodeOrPair, text, kind) {
+    const p = this.ptOf(nodeOrPair);
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('class', 'bub ' + (kind || ''));
+    const lines = String(text).match(/.{1,30}(\s|$)/g) || [text];
+    const w = Math.min(330, Math.max(...lines.map((l) => l.trim().length)) * 9.1 + 20), hgt = lines.length * 20 + 12;
+    let bx = p.x - w / 2, by = p.y - 50 - hgt;
+    const vb = this.svg.viewBox.baseVal;
+    bx = Math.max(vb.x + 4, Math.min(vb.x + vb.width - w - 4, bx));
+    if (by < vb.y + 2) by = p.y + 40;
+    g.innerHTML = `<rect x="${bx}" y="${by}" width="${w}" height="${hgt}" rx="8"/>${lines.map((l, i) => `<text x="${bx + 10}" y="${by + 23 + i * 20}">${escHTML(l.trim())}</text>`).join('')}`;
+    this.fx.appendChild(g);
+  }
+  stop() { if (this.anim) { this.anim.cancelled = true; this.anim = null; } }
+  /* play a question's "after": move the packet along the path, counting TTL down at routers */
+  play(after, onDone) {
+    this.stop();
+    const run = { cancelled: false };
+    this.anim = run;
+    const path = after.path;
+    let hdr = hdrMerge(this.hdr, after.hdr);
+    const changed = {};
+    for (const k of Object.keys(after.hdr || {})) changed[k] = true;
+    this.hdrHost.innerHTML = headerHTML(hdr, changed);
+    this.placePacket(path[0], hdr.lock);
+    this.fx.querySelectorAll('.bub').forEach((b) => b.remove());
+    const catches = after.caught ? [].concat(after.caught) : [];
+    const lastIdx = path.length - 1;
+    const endKind = after.end ? after.end.kind : 'at';
+    const handle = (i) => {
+      /* a router handles the packet: TTL - 1 (the first node counts: the packet is sitting there waiting;
+         the last one only counts if it's where the packet is dropped) */
+      const n = this.byId[path[i]];
+      const ch = {};
+      if (isRouter(n) && typeof hdr.ttl === 'number' && (i < lastIdx || endKind === 'dropped')) { hdr.ttl -= 1; ch.ttl = true; }
+      if (after.set && after.set[path[i]]) { hdr = hdrMerge(hdr, after.set[path[i]]); for (const k of Object.keys(after.set[path[i]])) ch[k] = true; }
+      if (Object.keys(ch).length) this.hdrHost.innerHTML = headerHTML(hdr, ch);
+    };
+    const crossed = (a, b) => {
+      for (const c of catches) {
+        if (!((c.at[0] === a && c.at[1] === b) || (c.at[0] === b && c.at[1] === a))) continue;
+        const where = c.who === 'tap' ? c.at : c.who;
+        const text = c.noise ? 'Notebook: ░▒▓░▒ scrambled Wi-Fi noise' : hdr.lock ? `Notebook: ${hdr.from} → ${hdr.to}, port ${hdr.port}. Payload: ████ (scrambled)` : `Notebook: ${hdr.from} → ${hdr.to}, port ${hdr.port}: "${hdr.data}"`;
+        this.bubble(where, text, c.noise || hdr.lock ? 'meh' : 'bad');
+      }
+    };
+    const finish = () => {
+      if (run.cancelled) return;
+      this.anim = null;
+      this.hdr = hdr;
+      if (after.end) {
+        this.follow(this.ptOf(after.end.node).x);
+        this.bubble(after.end.node, (after.end.kind === 'delivered' ? '✓ ' : after.end.kind === 'dropped' ? '✗ ' : after.end.kind === 'refused' ? '⊘ ' : '') + after.end.text, 'end-' + after.end.kind);
+        this.note.textContent = after.end.text;
+      }
+      if (onDone) onDone(hdr);
+    };
+    if (reduceMotion()) {
+      for (let i = 0; i < path.length; i++) { if (i > 0) crossed(path[i - 1], path[i]); handle(i); }
+      this.placePacket(path[lastIdx], hdr.lock);
+      finish();
+      return;
+    }
+    let i = 0;
+    handle(0);
+    const step = () => {
+      if (run.cancelled) return;
+      if (i >= lastIdx) { finish(); return; }
+      const A = this.ptOf(path[i]), B = this.ptOf(path[i + 1]);
+      const t0 = performance.now(), dur = 420;
+      const g = this.pk.g;
+      const frame = (t) => {
+        if (run.cancelled) return;
+        const k = Math.min(1, (t - t0) / dur);
+        const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+        g.setAttribute('transform', `translate(${A.x + (B.x - A.x) * e},${A.y + (B.y - A.y) * e - 22})`);
+        this.follow(A.x + (B.x - A.x) * e);
+        if (k < 1) requestAnimationFrame(frame);
+        else { crossed(path[i], path[i + 1]); i++; handle(i); setTimeout(step, 120); }
+      };
+      requestAnimationFrame(frame);
+    };
+    setTimeout(step, 200);
+  }
+}
+
+/* =====================================================================
+   LESSON: five scenarios, one question at a time, and the HSCT result
+   ===================================================================== */
+HSCT.lesson({ id: 'packet-trail', title: 'Packet Trail: where is my packet?', version: '1.0', course: 'it-network', possible: 100 });
+
+const $ = (id) => document.getElementById(id);
+const PTS_FIRST = 4, PTS_SECOND = 2;
+const QKEY = (c, q) => CHAPTERS[c].id + '.' + CHAPTERS[c].qs[q].id;
+const LETTERS = ['A', 'B', 'C', 'D'];
+let L = null, map = null, ended = false, leaving = false;
+
+function freshState() { return { c: 0, q: 0, ans: {} }; }
+function ansOf(c, q) { return L.ans[QKEY(c, q)] || (L.ans[QKEY(c, q)] = { picks: [], done: false, right: false, pts: 0 }); }
+function chapterDone(c) { return CHAPTERS[c].qs.every((_, q) => ansOf(c, q).done); }
+function chapterPts(c) { return CHAPTERS[c].qs.reduce((t, _, q) => t + ansOf(c, q).pts, 0); }
+function totalPts() { return CHAPTERS.reduce((t, _, c) => t + chapterPts(c), 0); }
+function unlockedCh(c) { return c === 0 || chapterDone(c - 1); }
+function unlockedQ(c, q) { return unlockedCh(c) && (q === 0 || ansOf(c, q - 1).done); }
+const narrow = () => window.innerWidth < 900;
+function show(id) { document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === id)); window.scrollTo(0, 0); }
+
+/* ---------- intro ---------- */
+$('intro-art').innerHTML = ['laptop', 'phone', 'wifi', 'router', 'internet', 'switch', 'server', 'printer', 'hacker', 'lockedpacket'].map((k) => `<img src="${spriteURL(k)}" alt="">`).join('');
+$('intro-chapters').innerHTML = CHAPTERS.map((ch, i) => `<li><span class="n">${i + 1}</span><span><b>${escHTML(ch.title)}.</b> <span class="muted">${escHTML(ch.story.split('. ')[0])}.</span></span><span class="pts">${ch.qs.length * PTS_FIRST} pts</span></li>`).join('');
+$('start').onclick = () => {
+  const name = $('name').value.trim();
+  if (name.length < 2) { $('name-err').hidden = false; $('name').focus(); return; }
+  $('name-err').hidden = true;
+  L = freshState();
+  HSCT.start(name);
+  show('view-work');
+  map = new NetMap($('map'));
+  goTo(0, 0);
+};
+$('name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('start').click(); });
+
+/* ---------- stepper ---------- */
+function renderStepper() {
+  $('stepper').innerHTML = CHAPTERS.map((ch, c) => {
+    const cls = ['step'];
+    if (c === L.c) cls.push('current');
+    if (chapterDone(c)) cls.push('done');
+    const open = unlockedCh(c);
+    return `<button class="${cls.join(' ')}" data-ch="${c}" ${open ? '' : 'disabled'} ${c === L.c ? 'aria-current="step"' : ''} aria-label="Scenario ${c + 1}, ${escHTML(ch.title)}, ${chapterPts(c)} of ${ch.qs.length * PTS_FIRST} points${open ? '' : ', locked until you finish the one before'}"><span class="num" aria-hidden="true">${chapterDone(c) ? '✓' : open ? c + 1 : '🔒'}</span><span class="sname" aria-hidden="true">${escHTML(ch.short)}</span><span class="spts" aria-hidden="true">${chapterPts(c)}/${ch.qs.length * PTS_FIRST}</span></button>`;
+  }).join('') + `<span class="points">Points <b>${totalPts()}</b> / 100</span>`;
+  $('stepper').querySelectorAll('[data-ch]').forEach((b) => b.addEventListener('click', () => {
+    const c = +b.dataset.ch;
+    const firstOpen = CHAPTERS[c].qs.findIndex((_, q) => !ansOf(c, q).done);
+    goTo(c, firstOpen < 0 ? 0 : firstOpen);
+  }));
+}
+
+/* ---------- one question ---------- */
+function sceneFor(c, q) { const Q = CHAPTERS[c].qs[q]; return SCENES[Q.scene || CHAPTERS[c].scene]; }
+function goTo(c, q, focusQ) {
+  if (!unlockedQ(c, q)) return;
+  const chChanged = c !== L.c || !$('ch-title').textContent;
+  L.c = c; L.q = q;
+  const ch = CHAPTERS[c], Q = ch.qs[q];
+  $('ch-kicker').textContent = `Scenario ${c + 1} of ${CHAPTERS.length} · ${ch.qs.length * PTS_FIRST} points`;
+  $('ch-title').textContent = ch.title;
+  $('ch-story').textContent = ch.story;
+  const scene = sceneFor(c, q);
+  $('map-title').textContent = scene.title;
+  const a = ansOf(c, q);
+  map.draw(scene, Object.assign({}, Q.show, a.done && Q.fixTable ? { tableFix: Q.fixTable } : {}));
+  renderQuestion();
+  renderStepper();
+  HSCT.log('question', { q: QKEY(c, q) });
+  if (chChanged) { window.scrollTo(0, 0); const h = $('ch-title'); h.focus({ preventScroll: true }); }
+  else if (focusQ) {
+    const h = $('q-text');
+    h.focus({ preventScroll: true });
+    /* phones: the map is above the question, so show it first */
+    if (narrow()) $('map-card').scrollIntoView({ block: 'start' }); else $('qcard').scrollIntoView({ block: 'nearest' });
+  }
+}
+function renderQuestion() {
+  const c = L.c, q = L.q, ch = CHAPTERS[c], Q = ch.qs[q], a = ansOf(c, q);
+  $('q-dots').innerHTML = ch.qs.map((_, i) => {
+    const s = ansOf(c, i);
+    const cls = ['dot', i === q ? 'cur' : '', s.done ? (s.pts === PTS_FIRST ? 'ok' : s.pts ? 'half' : 'miss') : ''].join(' ');
+    return `<button class="${cls}" data-q="${i}" ${unlockedQ(c, i) ? '' : 'disabled'} aria-label="Question ${i + 1}${s.done ? `, answered, ${s.pts} points` : unlockedQ(c, i) ? '' : ', locked'}" ${i === q ? 'aria-current="true"' : ''}>${i + 1}</button>`;
+  }).join('');
+  $('q-dots').querySelectorAll('[data-q]').forEach((b) => b.addEventListener('click', () => goTo(c, +b.dataset.q, true)));
+  $('q-num').textContent = `Question ${q + 1} of ${ch.qs.length}`;
+  $('q-pts').textContent = a.done ? `${a.pts} / ${PTS_FIRST} points` : a.picks.length ? `second try: ${PTS_SECOND} points` : `${PTS_FIRST} points first try`;
+  $('q-text').innerHTML = Q.q;
+  $('q-opts').innerHTML = Q.a.map((o, i) => {
+    const picked = a.picks.includes(i);
+    const cls = ['opt', picked ? (i === Q.right ? 'right' : 'wrong') : '', a.done && i === Q.right && !picked ? 'reveal' : ''].join(' ');
+    return `<button class="${cls}" data-i="${i}" ${a.done || picked ? 'disabled' : ''}><span class="ol">${LETTERS[i]}</span><span class="ot">${escHTML(o.t)}</span>${picked ? `<span class="sr">${i === Q.right ? ' (your answer, correct)' : ' (your answer, not correct)'}</span>` : a.done && i === Q.right ? '<span class="sr"> (the correct answer)</span>' : ''}</button>`;
+  }).join('');
+  $('q-opts').querySelectorAll('.opt:not(:disabled)').forEach((b) => b.addEventListener('click', () => pick(+b.dataset.i)));
+  const fb = $('q-fb');
+  if (a.done) {
+    const how = a.right ? (a.picks.length === 1 ? '<b>Right, first try.</b>' : '<b>Right on the second try.</b>') : `<b>The answer is ${LETTERS[Q.right]}.</b>`;
+    fb.innerHTML = `<div class="fb ${a.right ? 'good' : 'bad'}">${how} ${Q.why}</div>`;
+  } else if (a.picks.length) {
+    const last = a.picks[a.picks.length - 1];
+    fb.innerHTML = `<div class="fb warn"><b>Not ${LETTERS[last]}.</b> ${escHTML(Q.a[last].hint || 'Think about it again.')} <span class="muted">One more try.</span></div>`;
+  } else fb.innerHTML = '';
+  const last = q === ch.qs.length - 1, lastCh = c === CHAPTERS.length - 1;
+  $('q-watch').hidden = !(a.done && Q.after);
+  $('q-watch').textContent = narrow() ? '▶ Watch the packet' : '▶ Watch it again';
+  $('q-next').hidden = !a.done;
+  $('q-next').textContent = !last ? 'Next question →' : !lastCh ? `Next scenario: ${CHAPTERS[c + 1].title} →` : 'Finish and get my result';
+  $('q-next').classList.toggle('maroon', last && lastCh);
+}
+function pick(i) {
+  const c = L.c, q = L.q, Q = CHAPTERS[c].qs[q], a = ansOf(c, q);
+  if (a.done || a.picks.includes(i)) return;
+  a.picks.push(i);
+  const right = i === Q.right;
+  if (right) { a.done = true; a.right = true; a.pts = a.picks.length === 1 ? PTS_FIRST : PTS_SECOND; }
+  else if (a.picks.length >= 2) { a.done = true; a.right = false; a.pts = 0; }
+  HSCT.log('answer', { q: QKEY(c, q), picked: LETTERS[i], right, tries: a.picks.length, pts: a.done ? a.pts : null });
+  if (a.done && Q.fixTable) map.tabHost.innerHTML = tablesHTML(sceneFor(c, q), Q.show.tables, Q.fixTable);
+  renderQuestion();
+  renderStepper();
+  /* focus: the feedback after a miss (so the hint is read), the Watch button once it's done */
+  /* on a wide screen the map is right there, so play it now; on a phone it's a button away */
+  if (a.done) { const w = $('q-watch'); (w.hidden ? $('q-next') : w).focus(); if (Q.after && !narrow()) watch(true); }
+  else { const o = $('q-opts').querySelector('.opt:not(:disabled)'); if (o) o.focus(); }   /* the hint is read out by the live region */
+}
+function watch(auto) {
+  const c = L.c, q = L.q, Q = CHAPTERS[c].qs[q];
+  if (!Q.after) return;
+  const scene = sceneFor(c, q);
+  map.draw(scene, Object.assign({}, Q.show, Q.fixTable ? { tableFix: Q.fixTable } : {}));
+  map.play(Q.after, () => { if (Q.afterHdr) { map.hdr = Object.assign({}, Q.show.hdr, Q.afterHdr); map.hdrHost.innerHTML = headerHTML(map.hdr, Object.fromEntries(Object.keys(Q.afterHdr).map((k) => [k, true]))); } });
+  if (!auto) HSCT.log('watch', { q: QKEY(c, q) });
+  if (!auto && narrow()) $('map-card').scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'start' });
+}
+$('q-watch').addEventListener('click', () => watch(false));
+$('q-next').addEventListener('click', () => {
+  const c = L.c, q = L.q, ch = CHAPTERS[c];
+  if (q < ch.qs.length - 1) goTo(c, q + 1, true);
+  else if (c < CHAPTERS.length - 1) goTo(c + 1, 0);
+  else finish();
+});
+
+/* ---------- end ---------- */
+function finish() {
+  if (ended) return;
+  ended = true;
+  map.stop();
+  const total = totalPts();
+  const firstTry = Object.values(L.ans).filter((a) => a.right && a.picks.length === 1).length;
+  const tier = total >= 90 ? 'Packet pro' : total >= 70 ? 'Delivered' : 'Retransmit';
+  show('view-end');
+  $('end-h1').textContent = total >= 90 ? 'Every packet traced.' : total >= 70 ? 'Delivered.' : 'Retransmit.';
+  $('end-h1').focus();
+  $('end-lede').textContent = `${firstTry} of 25 right on the first try. ${total >= 90 ? 'You can follow a packet anywhere.' : total >= 70 ? 'Solid. Look back at the scenarios where you needed a second try.' : 'The explanations under each question are the lesson. Read back through the ones you missed.'}`;
+  $('end-breakdown').innerHTML = CHAPTERS.map((ch, c) => `<tr><td>${c + 1}. ${escHTML(ch.title)}</td><td>${chapterPts(c)} / ${ch.qs.length * PTS_FIRST}</td></tr>`).join('') + `<tr><td><b>Total</b></td><td><b>${total} / 100</b></td></tr>`;
+  const answers = {};
+  CHAPTERS.forEach((ch, c) => ch.qs.forEach((_, q) => { const a = ansOf(c, q); answers[QKEY(c, q)] = { picks: a.picks.map((i) => LETTERS[i]), right: a.right, pts: a.pts }; }));
+  HSCT.log('finish', { total });
+  HSCT.endScreen('#hsct-result', {
+    earned: total, possible: 100, tier,
+    sections: CHAPTERS.map((ch, c) => ({ id: ch.id, title: `${c + 1}. ${ch.title}`, earned: chapterPts(c), possible: ch.qs.length * PTS_FIRST })),
+    extra: { firstTry, answers },
+  });
+}
+$('again').addEventListener('click', () => {
+  $('again-confirm').innerHTML = `<div class="confirm"><p style="margin-top:0">Start the whole lesson over? Your result file above is already made; download it first if you haven't.</p><div class="row"><button class="btn" id="ag-yes">Start over</button><button class="btn ghost" id="ag-no">Cancel</button></div></div>`;
+  $('ag-yes').onclick = () => { leaving = true; location.reload(); };
+  $('ag-no').onclick = () => { $('again-confirm').innerHTML = ''; $('again').focus(); };
+  $('ag-yes').focus();
+});
+window.addEventListener('beforeunload', (e) => { if (L && !ended && !leaving) { e.preventDefault(); e.returnValue = ''; } });
+
+</script>
+</body>
+</html>
