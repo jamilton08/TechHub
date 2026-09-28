@@ -1,4 +1,10 @@
 node_modules
 dist
 public/reveal
+public/pyodide
 .DS_Store
+.env.local
+__pycache__/
+backend/**/db.sqlite3
+backend/**/media/
+.venv/

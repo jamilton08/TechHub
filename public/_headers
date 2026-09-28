@@ -1,0 +1,35 @@
+# Cloudflare Pages response headers (https://developers.cloudflare.com/pages/configuration/headers/)
+
+# Python Arcade: a running game reads the keyboard and input() through
+# SharedArrayBuffer, which browsers only allow on "cross-origin isolated"
+# pages. These two headers do that. They're limited to /play so the rest of
+# the site (lesson iframes, embeds) isn't affected.
+/play
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+
+/play/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+
+# The runner page (the game screen inside /play). CORP lets it be embedded
+# from another origin — needed when it moves to its own domain.
+/play/runner*
+  Cross-Origin-Resource-Policy: cross-origin
+
+# The Python worker script is built into /assets and must carry the same
+# policy to share memory with the page. Harmless for every other file there.
+/assets/*
+  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Resource-Policy: same-origin
+
+# The worker that runs student code may only load scripts from this site and
+# only talk to this site (plus Pyodide's package CDN), even if a program
+# finds a way to reach JavaScript.
+/assets/runner.worker-*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self' https://cdn.jsdelivr.net; img-src 'self' blob: data:; font-src 'self' blob: data:
+
+# The Python runtime. The version is in the path, so cache it hard.
+/pyodide/*
+  Cross-Origin-Resource-Policy: same-origin
+  Cache-Control: public, max-age=31536000, immutable

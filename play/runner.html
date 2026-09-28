@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Python Arcade runner</title>
+  </head>
+  <body>
+    <!--
+      The Python Arcade runs student programs inside this page, embedded in
+      /play as an iframe. It holds the game screen, the Python worker, the
+      keyboard/mouse capture and the sound. Keep it on its own so it can move
+      to a separate origin later (see src/arcade/config.js → RUNNER_URL).
+    -->
+    <div id="stage">
+      <canvas id="screen" width="1" height="1" hidden></canvas>
+      <div id="idle" role="status" aria-live="polite">
+        <span class="led" aria-hidden="true"></span>
+        <p id="idle-text">Loading Python…</p>
+        <p id="idle-sub"></p>
+      </div>
+      <div id="hint" hidden>Click the game to use the keyboard</div>
+      <div id="badge" hidden></div>
+    </div>
+    <script type="module" src="/src/arcade/runner/frame.js"></script>
+  </body>
+</html>

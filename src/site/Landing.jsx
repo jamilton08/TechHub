@@ -13,6 +13,7 @@ const PROJECTS = [
     owner: 'Jonathan Cruz',
     status: 'Live',
     href: '/studio',
+    cta: "Open Jonathan's Studio",
     tone: 'split',
     summary:
       'A presentation studio built for the classroom. Drag blocks onto a slide, pick a theme, and present with everything reveal.js can do — fragments, code stepping, speaker notes, PDF export.',
@@ -20,6 +21,20 @@ const PROJECTS = [
       'Next: live polls and charts inside the slides, so students answer from their phones while the lesson runs and the results land on the board in real time.',
     why:
       'The polling tools we tried are subscriptions with participant caps. We would rather own the tool, shape it around how we actually teach, and let students see how it is built.',
+  },
+  {
+    title: 'Python Arcade',
+    owner: 'Jonathan Cruz',
+    status: 'Live',
+    href: '/play',
+    cta: 'Open the Python Arcade',
+    tone: 'split',
+    summary:
+      'Write Python games and run them right in the browser — real Python with pygame, keyboard and mouse, images and sounds, and input() for text games. Start from an example, save as you go, download a .zip that runs at home with pip install pygame-ce.',
+    vision:
+      'Next: sign-in, so projects follow students from computer to computer, a class gallery where they play and remix each other\'s games, and teachers opening student work straight from the class list.',
+    why:
+      'Installing Python and pygame on every school computer is a fight, and most online editors can\'t run pygame at all. This runs on any Chromebook, and it is ours.',
   },
   { title: 'Coming soon', owner: 'Herman Cordero', status: 'In progress', tone: 'maroon', summary: 'Project page reserved. Check back soon.' },
   { title: 'Coming soon', owner: 'Julian Ocansey', status: 'In progress', tone: 'blue', summary: 'Project page reserved. Check back soon.' },
@@ -109,7 +124,7 @@ export default function Landing() {
           </div>
         </Section>
 
-        <Section id="projects" title="Projects" lead="One per teacher. Each links to its own app or page as it comes online.">
+        <Section id="projects" title="Projects" lead="The apps each teacher is building. Each links to its own app or page as it comes online.">
           <div className="projects">
             {PROJECTS.map((p, i) => (
               <article key={i} className={`project tone-${p.tone}${p.href ? ' is-live' : ''}`}>
@@ -121,7 +136,7 @@ export default function Landing() {
                 <p>{p.summary}</p>
                 {p.vision && <p><strong>Where it's going.</strong> {p.vision}</p>}
                 {p.why && <p><strong>Why we're building it.</strong> {p.why}</p>}
-                {p.href && <a className="btn btn-blue" href={p.href}>Open Jonathan's Studio</a>}
+                {p.href && <a className="btn btn-blue" href={p.href}>{p.cta || `Open ${p.title}`}</a>}
               </article>
             ))}
           </div>

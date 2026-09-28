@@ -18,6 +18,8 @@ import VerifyPage from './site/VerifyPage.jsx';
 //   /lessons/<course>/<lesson>  one lesson, rendered from its HTML file
 //   /lessons/verify        teachers: open students' encrypted result files
 //   /studio                Jonathan's Studio
+//   /play                  Python Arcade (opens your last project)
+//   /play/<project id>     Python Arcade, one project
 const path = window.location.pathname.replace(/\/+$/, '') || '/';
 let Page = Landing;
 let props = {};
@@ -33,4 +35,12 @@ else if ((m = path.match(/^\/lessons\/([^/]+)\/([^/]+)$/))) { Page = LessonPage;
 // No <StrictMode> on purpose: it double-mounts effects in dev, and
 // reveal.js does not survive being torn down and re-initialized against
 // DOM it already rewrote. The Deck component guards against it anyway.
-createRoot(document.getElementById('root')).render(<Page {...props} />);
+const root = createRoot(document.getElementById('root'));
+if ((m = path.match(/^\/play(?:\/([\w-]+))?$/))) {
+  // The Arcade (editor + Python runner) loads as its own chunk so the rest
+  // of the site doesn't pay for CodeMirror.
+  const projectId = m[1] || null;
+  import('./arcade/ArcadePage.jsx').then(({ default: ArcadePage }) => root.render(<ArcadePage projectId={projectId} />));
+} else {
+  root.render(<Page {...props} />);
+}

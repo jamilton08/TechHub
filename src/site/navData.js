@@ -68,7 +68,14 @@ export const NAV = [
   {
     label: 'Projects',
     groups: [
-      { label: 'Live', href: '/#projects', items: [{ label: "Jonathan's Studio", sub: 'Slide editor · polls coming', href: '/studio' }] },
+      {
+        label: 'Live',
+        href: '/#projects',
+        items: [
+          { label: "Jonathan's Studio", sub: 'Slide editor · polls coming', href: '/studio' },
+          { label: 'Python Arcade', sub: 'Write & run Python games', href: '/play' },
+        ],
+      },
       {
         label: 'Coming soon',
         items: [

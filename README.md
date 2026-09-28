@@ -8,6 +8,8 @@ Two pages in one Vite app:
   with an `href`.
 - `/studio` — Jonathan's Studio, a React slide editor on top of
   [reveal.js](https://revealjs.com).
+- `/play` — the Python Arcade: write Python games and run them in the
+  browser (see [Python Arcade](#python-arcade) below).
 
 Routing is a few lines in `src/main.jsx` (path-based, no library).
 `public/_redirects` tells Cloudflare Pages to serve `index.html` for
@@ -100,3 +102,85 @@ src/
   it; then the player works and you move the block with the grip above it.
 - Uploaded images are stored as data URLs inside the deck (kept under 3 MB
   each). For big images paste a URL instead.
+
+# Python Arcade
+
+`/play` is an editor where students write Python — including pygame
+games — and run it right in the browser. It uses real CPython 3.14 compiled to
+WebAssembly ([Pyodide](https://pyodide.org)), a pygame layer that draws
+with the browser's canvas, and a console for `print()` and `input()`.
+Projects save as you type.
+
+## How it fits together
+
+```
+/play  (src/arcade/ArcadePage.jsx)               the editor page
+ ├─ CodeMirror editor, file tabs, Assets, console, dialogs
+ ├─ store/            where projects are saved
+ │    localStore.js   this browser (IndexedDB) — the default
+ │    apiStore.js     a student's account (the Django API in backend/)
+ └─ <iframe src="/play/runner.html">             the game screen
+      runner/frame.js      canvas, keyboard/mouse → shared memory, sound
+      runner/runner.worker.js   Pyodide + the pygame layer, one program at a time
+      runner/py/           the Python side: pygame/ package + hsct_runner.py
+```
+
+- **The student's program runs in a Web Worker.** A `while True:` game loop
+  blocks the worker, not the page, and **Stop** always works. It first
+  sends a QUIT event (so a game can save before it closes), then
+  KeyboardInterrupt, and if that fails it restarts Python.
+- **Frames:** each `pygame.display.flip()` copies the screen into an
+  ImageBitmap and posts it to the runner page.
+- **Input** goes the other way through a `SharedArrayBuffer` (keys, mouse,
+  an event queue, and typed `input()` lines), because a busy worker never
+  sees normal messages. SharedArrayBuffer needs the page to be
+  *cross-origin isolated*: that's the COOP/COEP headers in
+  `public/_headers`, only on `/play`.
+- **Pyodide is self-hosted**: `npm install` copies it into
+  `public/pyodide/<version>/` (`scripts/copy-pyodide.mjs`). There's no CDN
+  for a school filter to block, and browsers cache the ~13 MB for a year.
+  The first visit takes a few seconds to load; after that it's quick.
+- **The pygame layer** (`runner/py/pygame/`) covers what classes use:
+  display, draw, Surface, Rect, Color, event, key, mouse, time, font,
+  image, transform, mixer, sprite, math.Vector2, mask and gfxdraw. It speaks
+  the real API, so the same code runs at home with
+  `pip install pygame-ce`, and **Download → .zip** includes instructions.
+  Help → *What works* lists it all.
+- **Files a program writes** (a high score, a save file) come back into
+  the project as tabs when it ends.
+
+## Settings
+
+All optional, as Vite env vars (`.env.local`, or Cloudflare Pages →
+Settings → Environment variables):
+
+| | |
+|---|---|
+| `VITE_API_BASE` | The Django API, e.g. `https://api.hsct.tech/api`. Unset = save in the browser only. |
+| `VITE_LOGIN_URL` | Where **Sign in** goes (must redirect back to `?next=`). |
+| `VITE_ARCADE_RUNNER_URL` | Host the game screen on its own origin, e.g. `https://run.hsct.tech/play/runner.html` — do this before students open each other's games (see `backend/README.md`). |
+| `VITE_PYODIDE_BASE` / `VITE_PYODIDE_PACKAGES` | Where Python and extra packages (numpy…) load from. |
+
+## Common changes
+
+- **Add an example:** drop a `.py` file in `src/arcade/examples/` and list
+  it in `examples/index.js`.
+- **Teach the pygame layer something new:** the Python lives in
+  `src/arcade/runner/py/pygame/`, and the drawing it calls is the `host`
+  object in `runner.worker.js`. New `.py` files there are picked up
+  automatically.
+- **Error explanations** ("You're joining text and a number…") are in
+  `src/arcade/lib/hints.js`.
+- **Upgrade Python:** `npm install pyodide@<version> --save-exact`. The copy
+  script and the cache-busting path follow it.
+
+## Gotchas
+
+- `npm run dev` sets the COOP/COEP headers itself (`vite.config.js`). If
+  `/play` shows "Keyboard input and input() are off", the headers aren't
+  reaching the page — check `public/_headers` made it into `dist/`.
+- Cross-origin isolation blocks third-party embeds without CORS/CORP on
+  `/play`. That's why the headers are limited to `/play`, and why
+  `useFonts` loads Google Fonts with `crossorigin`.
+- Games written for pygbag (`async def main()` with `await asyncio.sleep(0)`)
+  don't run. Use the normal game loop.

@@ -1,0 +1,50 @@
+html, body { margin: 0; height: 100%; background: #0a1030; overflow: hidden; }
+body {
+  font: 15px/1.45 "IBM Plex Sans", "Helvetica Neue", system-ui, sans-serif;
+  color: #e9ecfb;
+  -webkit-user-select: none; user-select: none;
+}
+#stage {
+  position: fixed; inset: 0; display: grid; place-items: center;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(122, 162, 255, .08), transparent 60%),
+    #0a1030;
+}
+#screen {
+  display: block; background: #000; outline: none;
+  box-shadow: 0 0 0 1px #26306a, 0 18px 50px rgba(0, 0, 0, .45);
+  touch-action: none;
+}
+#screen.pixelated { image-rendering: pixelated; }
+#screen.no-cursor { cursor: none; }
+#screen[hidden] { display: none; }
+
+#idle { text-align: center; padding: 24px; max-width: 460px; }
+#idle p { margin: 0; }
+#idle-text { font: 600 17px/1.3 "Sora", "Avenir Next", system-ui, sans-serif; }
+#idle-sub { margin-top: 6px !important; color: #8b95c9; font-size: 14px; }
+#idle[hidden] { display: none; }
+
+.led {
+  display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-bottom: 12px;
+  background: #232f6c; box-shadow: inset 0 0 0 1px rgba(0,0,0,.35);
+}
+body[data-state="loading"] .led,
+body[data-state="loading-packages"] .led { background: #7aa2ff; animation: blink 1s ease-in-out infinite; }
+body[data-state="ready"] .led,
+body[data-state="done"] .led { background: #7aa2ff; box-shadow: 0 0 6px #7aa2ff, 0 0 16px #7aa2ff; }
+body[data-state="running"] .led,
+body[data-state="input"] .led { background: #5ff59a; box-shadow: 0 0 6px #5ff59a, 0 0 16px #5ff59a; }
+body[data-state="error"] .led,
+body[data-state="crashed"] .led { background: #ff6b7a; box-shadow: 0 0 6px #ff6b7a, 0 0 16px #ff6b7a; }
+@keyframes blink { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .led { animation: none !important; } }
+
+#hint, #badge {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  font: 600 13px/1 "Sora", system-ui, sans-serif; padding: 8px 12px; border-radius: 999px;
+  pointer-events: none; white-space: nowrap;
+}
+#hint { bottom: 12px; background: rgba(10, 16, 48, .82); color: #e9ecfb; box-shadow: 0 0 0 1px #3a4a9c; }
+#badge { top: 12px; background: rgba(10, 16, 48, .82); color: #a9b7ea; box-shadow: 0 0 0 1px #26306a; }
+#hint[hidden], #badge[hidden] { display: none; }
