@@ -1,0 +1,1972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Seized Drive: a digital forensics case — HSCT</title>
+<!--
+  HSCT LESSON: The Seized Drive (it-network / network security). Follows "Packet Trail".
+  A digital-forensics investigation: the caught hacker's seized laptop, under warrant.
+  Three screens, in the template's order:
+    1. #view-intro   what the case is, the rules, the student's name   -> HSCT.start(name)
+    2. #view-work    six steps (chain of custody, logs, hashes, IP trace, timeline, the case)
+    3. #view-end     wrap-up + the standard result card                 -> HSCT.endScreen(...)
+  Everything is fictional and self-contained: no real tools, no real network, no CDN.
+  All IP addresses use the ranges reserved for documentation (RFC 5737).
+  The message throughout is the lawful side of security: authorization, a forensic copy
+  proven by hashing, and the courts — never breaking into the suspect's systems.
+  Scripts after the kit: sprites, render helpers, the case data, shared UI, the six steps, the flow.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f7fc; --paper:#fff; --ink:#101a3f; --muted:#5b6485; --line:#d3d9ee; --line-2:#e6eaf5;
+  --blue:#1f3fae; --blue-soft:#e9edf8; --green:#1f7a3d; --green-soft:#e1f2e6; --red:#b3261e; --red-soft:#fbe3e1;
+  --maroon:#7a1f3d; --maroon-soft:#f6e6ec; --amber:#8a5a00; --amber-soft:#fff4d6;
+  --screen:#100d22; --code-bg:#0f1530; --code-ink:#dfe6ff; --code-mute:#7d88b3;
+  --hsct-color: var(--blue);
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:17px;line-height:1.55}
+h1,h2,h3,h4{margin:0;line-height:1.15}
+p{margin:0 0 .8rem}
+button{font:inherit;cursor:pointer;color:inherit}
+input,select,textarea{font:inherit;color:inherit}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,canvas:focus-visible,[tabindex]:focus-visible,summary:focus-visible{outline:3px solid #1f3fae;outline-offset:2px}
+.gscreen :focus-visible,.fchip :focus-visible{outline-color:#ffe066}
+code,kbd,pre{font-family:var(--mono)}
+code{font-size:.92em;background:var(--blue-soft);padding:.05em .35em;border-radius:5px}
+kbd{font-size:.82em;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:.05em .4em;background:#fff}
+[hidden]{display:none !important}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.view{display:none}.view.active{display:block}
+.wrap{max-width:760px;margin:0 auto;padding:40px 20px 80px}
+.wrap.wide{max-width:1220px;padding-top:0}
+.kicker{color:var(--muted);font-size:14px;margin-bottom:6px}
+h1{font-size:2.1rem;font-weight:700;letter-spacing:-.015em;margin-bottom:.45rem}
+h2{font-size:1.6rem;font-weight:700;letter-spacing:-.01em;margin-bottom:.4rem}
+h3{font-size:1.1rem;font-weight:700;margin-bottom:.5rem}
+.lede{color:var(--muted);font-size:1.08rem;margin-bottom:1.2rem;max-width:62ch}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-bottom:16px}
+.card.tight{padding:14px 16px}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+.btn{border:2px solid var(--blue);background:var(--blue);color:#fff;border-radius:8px;padding:10px 16px;font-weight:600;line-height:1.2}
+.btn:hover{filter:brightness(.93)}
+.btn.ghost{background:transparent;color:var(--blue)}
+.btn.small{padding:6px 11px;font-size:14px;border-width:1.5px}
+.btn.maroon{border-color:var(--maroon);background:var(--maroon)}
+.btn.maroon.ghost{background:transparent;color:var(--maroon)}
+.btn.green{border-color:var(--green);background:var(--green)}
+.btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.err{color:var(--red);margin-top:8px}
+.rules{margin:0;padding-left:1.2rem}.rules li{margin:.3rem 0}
+.name-row{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.name-row input{flex:1;min-width:220px;padding:11px 12px;border:1.5px solid var(--line);border-radius:8px}
+.stoplist{list-style:none;margin:0 0 4px;padding:0;display:grid;gap:8px}
+.stoplist li{display:grid;grid-template-columns:30px 1fr auto;gap:10px;align-items:baseline}
+.stoplist .n{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--blue-soft);color:var(--blue);font-weight:700;font-size:14px}
+.stoplist .pts{color:var(--muted);font-size:14px;white-space:nowrap}
+.hero-art{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 18px}
+.hero-art img{width:40px;height:40px;image-rendering:pixelated}
+img.spr{image-rendering:pixelated;image-rendering:crisp-edges;width:24px;height:24px;vertical-align:middle}
+
+/* ---------- stepper ---------- */
+.stepper{position:sticky;top:0;z-index:30;background:rgba(245,247,252,.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);margin:0 -20px 22px;padding:10px 20px}
+.stepper-in{display:flex;gap:6px;align-items:center;overflow-x:auto;scrollbar-width:thin}
+.step{flex:0 0 auto;display:flex;align-items:center;gap:7px;border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:5px 12px 5px 6px;font-size:14px;font-weight:600;color:var(--muted);white-space:nowrap}
+.step .num{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--line-2);color:var(--muted);font-size:12.5px}
+.step.current{border-color:var(--blue);color:var(--ink)}
+.step.current .num{background:var(--blue);color:#fff}
+.step.done .num{background:var(--green);color:#fff}
+.step:disabled{opacity:.55;cursor:not-allowed}
+.step .spts{font-weight:500;color:var(--muted);font-size:12.5px}
+.points{margin-left:auto;flex:0 0 auto;font-size:14px;color:var(--muted);padding-left:10px;white-space:nowrap;position:sticky;right:0;background:rgba(245,247,252,.97);box-shadow:-10px 0 8px -4px rgba(245,247,252,.97)}
+.points b{color:var(--ink);font-size:16px}
+
+.stop{animation:fadein .25s ease}
+@keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.stop-head{margin-bottom:14px}
+.stop-foot{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:22px;padding-top:16px;border-top:1px solid var(--line)}
+.grid2{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:18px;align-items:start}
+.grid-ed{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:900px){.grid2,.grid-ed{grid-template-columns:minmax(0,1fr)}}
+
+/* ---------- task checklist ---------- */
+.tasks{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.tasks li{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:start;font-size:15px}
+.tasks .box{width:20px;height:20px;border-radius:6px;border:2px solid var(--line);display:inline-grid;place-items:center;margin-top:2px;font-size:13px;color:#fff;transition:background .2s}
+.tasks li.ok .box{background:var(--green);border-color:var(--green)}
+.tasks li.ok .box::after{content:"✓";font-weight:700}
+.tasks li.bad .box{background:var(--red);border-color:var(--red)}
+.tasks li.bad .box::after{content:"✕";font-weight:700}
+.tasks .tp{color:var(--muted);font-size:13.5px;white-space:nowrap}
+
+/* ---------- anatomy diagram ---------- */
+.anat{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:10px}
+.anat .part{background:#fff;border:1px solid var(--line);border-top:4px solid var(--c,var(--blue));border-radius:10px;padding:10px 12px}
+.anat .part h4{font-family:var(--mono);font-size:15px;margin-bottom:4px;color:var(--c,var(--blue))}
+.anat .part p{font-size:14px;margin:0;color:var(--muted)}
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:14px;margin:0 0 16px;color:var(--muted)}
+.flow span.f{background:#fff;border:1px solid var(--line);border-radius:999px;padding:3px 10px;color:var(--ink)}
+.flow span.a{color:var(--muted)}
+@media (max-width:700px){.anat{grid-template-columns:1fr 1fr}}
+
+/* ---------- questions ---------- */
+.q{margin-bottom:14px}
+.q .qt{font-weight:600;margin-bottom:8px}
+.choices{display:grid;gap:7px}
+.choice{text-align:left;padding:10px 13px;border:1.5px solid var(--line);border-radius:10px;background:#fff;font-size:15.5px}
+.choice:hover:not(:disabled){border-color:var(--blue)}
+.choice.right{border-color:var(--green);background:var(--green-soft)}
+.choice.wrong{border-color:var(--red);background:var(--red-soft)}
+.choice:disabled{cursor:default;color:var(--ink)}
+.fb{padding:10px 13px;border-radius:10px;background:var(--blue-soft);margin-top:8px;font-size:15px}
+.fb.good{background:var(--green-soft)}
+.fb.bad{background:var(--red-soft)}
+.fb.warn{background:var(--amber-soft)}
+.checks{display:grid;gap:6px}
+.checks label{display:flex;gap:10px;align-items:flex-start;padding:8px 11px;border:1.5px solid var(--line);border-radius:10px;background:#fff;font-size:15px;cursor:pointer}
+.checks label.right{border-color:var(--green);background:var(--green-soft)}
+.checks label.wrong{border-color:var(--red);background:var(--red-soft)}
+.checks input{margin-top:4px;width:17px;height:17px;flex:0 0 auto}
+.checks .why{display:block;font-size:13.5px;color:var(--muted);margin-top:2px}
+
+.panel{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);background:var(--line-2);padding:5px 5px 0;overflow-x:auto}
+.tab{border:0;background:transparent;padding:8px 13px;border-radius:8px 8px 0 0;font-size:14px;font-weight:600;color:var(--muted);white-space:nowrap}
+.tab[aria-selected="true"]{background:#fff;color:var(--ink)}
+.tabpanel{padding:12px 14px}
+.tabpanel.code{padding:0}
+.state-cap{font-size:13.5px;color:var(--muted);margin-bottom:8px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.state{font-family:var(--mono);font-size:12.5px;line-height:1.55;background:var(--code-bg);color:var(--code-ink);border-radius:10px;padding:10px 0;max-height:430px;overflow:auto;margin:0}
+.state .l{display:block;padding:0 12px 0 calc(12px + 4ch);text-indent:-4ch;white-space:pre-wrap;overflow-wrap:anywhere}
+.state .l.chg{background:rgba(255,214,90,.20);box-shadow:inset 3px 0 0 #ffd65a}
+.state .l.add{background:rgba(92,220,140,.16);box-shadow:inset 3px 0 0 #5cdc8c}
+.state .l.gone{color:#ff8fa3;text-decoration:line-through;opacity:.8}
+@media (prefers-reduced-motion:no-preference){.state .l.chg,.state .l.add{animation:glow 1.6s ease-out}}
+@keyframes glow{from{background:rgba(255,214,90,.55)}}
+.k-key{color:#9fd3ff}.k-str{color:#b5f0a8}.k-num{color:#ffc27a}.k-kw{color:#ff9bd2}.k-mute{color:var(--code-mute)}
+
+.callout{border-left:4px solid var(--maroon);background:var(--maroon-soft);padding:10px 13px;border-radius:0 10px 10px 0;font-size:15px;margin:10px 0}
+.callout.blue{border-color:var(--blue);background:var(--blue-soft)}
+.callout.green{border-color:var(--green);background:var(--green-soft)}
+.callout.amber{border-color:#c98a10;background:var(--amber-soft)}
+
+/* ---------- code views + editor ---------- */
+.code{font-family:var(--mono);font-size:13px;line-height:1.6;background:var(--code-bg);color:var(--code-ink);border-radius:10px;margin:0;overflow:auto;max-height:460px;padding:10px 0;tab-size:4}
+.code .ln{display:block;padding:0 14px;white-space:pre;min-height:1.6em}
+.code.num{counter-reset:ln}
+.code.num .ln::before{counter-increment:ln;content:counter(ln);display:inline-block;width:2.4em;margin-right:12px;text-align:right;color:#4d5780;user-select:none}
+.code .ln.hl{background:rgba(255,214,90,.14)}
+.code .ln.errl{background:rgba(255,90,110,.22)}
+.t-kw{color:#ff9bd2}.t-str{color:#b5f0a8}.t-num{color:#ffc27a}.t-com{color:#7d88b3;font-style:italic}.t-fn{color:#8fd0ff}.t-bi{color:#c9b3ff}.t-st{color:#ffe08a}.t-op{color:#dfe6ff}
+.ed{display:grid;grid-template-columns:auto minmax(0,1fr);background:var(--code-bg);border-radius:10px;overflow:hidden;border:2px solid transparent}
+.ed:focus-within{border-color:#6f86e8}
+.ed-gut{font-family:var(--mono);font-size:13.5px;line-height:1.6;color:#4d5780;text-align:right;padding:10px 8px 10px 12px;user-select:none;white-space:pre;overflow:hidden;background:#0c1128}
+.ed-main{position:relative;min-height:120px;overflow:hidden}
+.ed-hl,.ed-ta{font-family:var(--mono);font-size:13.5px;line-height:1.6;padding:10px 12px;margin:0;white-space:pre;tab-size:4;letter-spacing:0;word-spacing:0}
+.ed-hl{position:absolute;inset:0;color:var(--code-ink);pointer-events:none;overflow:hidden}
+.ed-hl .ln{display:block;min-height:1.6em}
+.ed-hl .ln.errl{background:rgba(255,90,110,.25)}
+.ed-ta{position:relative;display:block;width:100%;height:100%;min-height:120px;border:0;outline:0;resize:none;background:transparent;color:transparent;caret-color:#fff;overflow:auto;-webkit-text-fill-color:transparent}
+.ed-ta::selection{background:rgba(120,150,255,.45);-webkit-text-fill-color:transparent}
+.ed-note{font-size:12.5px;color:var(--muted);margin-top:4px}
+.console{font-family:var(--mono);font-size:13px;background:#070a18;color:#d6ddff;border-radius:10px;padding:10px 12px;white-space:pre-wrap;min-height:44px;max-height:240px;overflow:auto;margin:8px 0 0}
+.console .e{color:#ff9aa8}
+.console .o{color:#b5f0a8}
+.explain{font-size:14.5px;background:var(--amber-soft);border-radius:10px;padding:9px 12px;margin-top:8px}
+
+/* ---------- labs ---------- */
+.lab{margin-bottom:22px}
+.labgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:18px;align-items:start}
+.labgrid .code{font-size:12.5px}
+@media (max-width:1100px){.labgrid{grid-template-columns:minmax(0,1fr)}}
+.labgrid>div,.grid2>div,.grid-ed>div{min-width:0}
+.lab-head{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px}
+.lab-head .badge{font-size:12.5px;font-weight:700;border-radius:999px;padding:2px 10px;background:var(--line-2);color:var(--muted)}
+.lab-head .badge.pass{background:var(--green-soft);color:var(--green)}
+.results{list-style:none;padding:0;margin:8px 0 0;display:grid;gap:5px}
+.results li{display:grid;grid-template-columns:22px 1fr;gap:8px;font-size:14.5px;align-items:start}
+.results .ic{font-weight:700}
+.results li.ok .ic{color:var(--green)}
+.results li.no .ic{color:var(--red)}
+.results li.skip{color:var(--muted)}
+.mem{display:flex;flex-wrap:wrap;gap:18px;align-items:center;background:#fbfcff;border:1.5px dashed var(--line);border-radius:12px;padding:12px 14px;margin-top:10px;font-size:14px}
+.mem .names{display:grid;gap:10px}
+.mem .nm{font-family:var(--mono);font-weight:700;background:#fff;border:1.5px solid var(--ink);border-radius:6px;padding:2px 9px;display:inline-block}
+.mem .arrow{font-size:20px;color:var(--muted)}
+.mem .obj{border:2px solid var(--blue);border-radius:10px;background:#fff;padding:6px 10px;font-family:var(--mono);font-size:12.5px;min-width:150px}
+.mem .obj .oid{font-size:11px;color:var(--muted);display:block}
+.mem .obj.text{border-color:var(--green);word-break:break-all;max-width:320px}
+.mem .shared{border-color:var(--red)}
+.mem .col{display:grid;gap:8px;justify-items:start}
+.mem .cap{flex-basis:100%;margin:0;color:var(--muted)}
+.hint{font-size:14.5px;background:var(--amber-soft);border-radius:10px;padding:9px 12px;margin-top:8px}
+/* ---------- rulebook ---------- */
+.recipe{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:15px;margin:0}
+.recipe dt{font-family:var(--mono);font-weight:700;color:var(--blue)}
+.recipe dd{margin:0;color:var(--ink)}
+.field{display:grid;gap:4px;margin-bottom:12px}
+.field label{font-weight:600;font-size:15px}
+.field .help{font-size:13px;color:var(--muted)}
+.field input,.field textarea{border:1.5px solid var(--line);border-radius:8px;padding:9px 11px;background:#fff}
+.field textarea{min-height:64px;resize:vertical}
+.auto-rules{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:15px}
+.auto-rules li{display:grid;grid-template-columns:28px 1fr;gap:8px;align-items:center}
+.auto-rules img{width:24px;height:24px;image-rendering:pixelated}
+.game-q{margin-bottom:18px}
+.game-q h4{font-size:1.02rem;margin-bottom:6px}
+.status-pill{display:inline-block;font-size:12.5px;font-weight:700;border-radius:999px;padding:2px 10px;background:var(--line-2);color:var(--muted)}
+.status-pill.ok{background:var(--green-soft);color:var(--green)}
+
+/* ---------- end ---------- */
+.endgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:760px){.endgrid{grid-template-columns:1fr}}
+.breakdown{width:100%;border-collapse:collapse;font-size:14.5px}
+.breakdown td{padding:5px 0;border-top:1px solid var(--line)}
+.breakdown td:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.confirm{border:1.5px solid var(--amber);background:var(--amber-soft);border-radius:12px;padding:12px 14px;margin-top:10px}
+
+@media (max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:28px 16px 70px}
+  h1{font-size:1.7rem}
+  h2{font-size:1.35rem}
+  .stepper{margin:0 -16px 18px;padding:8px 16px}
+  .step .sname{display:none}
+  .step{padding:4px 8px 4px 5px}
+  .points{font-size:13px}
+  .card{padding:14px 14px}
+  .hero-art img{width:32px;height:32px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
+
+
+/* =================== Packet Trail =================== */
+.qgrid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:900px){.qgrid{grid-template-columns:minmax(0,1fr)}}
+.qgrid>div{min-width:0}
+.mapcard{position:sticky;top:66px;padding:12px}
+@media (max-width:900px){.mapcard{position:static}}
+.map-h{font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:0 0 8px}
+.map-wrap{background:var(--screen);border-radius:12px;padding:6px;overflow:hidden}
+svg.netmap{display:block;width:100%;height:auto;max-height:52vh}
+.netmap .ln{stroke:#8a93ad;stroke-width:4;stroke-linecap:round}
+.netmap .ln.air{stroke:#2cc0ff;stroke-width:3;stroke-dasharray:3 7}
+.netmap .ln.trail{stroke:#ffe066}
+.netmap .ln.ahead{stroke:#ffe066;stroke-width:2;stroke-dasharray:8 6;opacity:.8}
+.netmap .tile{fill:#1d1838;stroke:#5b6485;stroke-width:2.5}
+.netmap .t-router .tile,.netmap .t-internet .tile{stroke:#c9d1e6}
+.netmap .t-hacker .tile,.netmap .evil .tile{stroke:#ef3b4f}
+.netmap .t-laptop .tile,.netmap .t-phone .tile,.netmap .t-server .tile,.netmap .t-printer .tile{stroke:#3f7cff}
+.netmap .hi .tile{stroke:#ffe066;stroke-width:4}
+.netmap .warn .tile{stroke:#ff9f43;stroke-width:4}
+.netmap .warn .ip{fill:#ff9f43}
+.netmap image{image-rendering:pixelated}
+.netmap .nm{fill:#fff;font:700 17px "IBM Plex Sans",sans-serif;text-anchor:middle;paint-order:stroke;stroke:#100d22;stroke-width:4px}
+.netmap .ip{fill:#9fd3ff;font:600 14.5px var(--mono);text-anchor:middle;paint-order:stroke;stroke:#100d22;stroke-width:4px}
+.netmap .evil .nm,.netmap .t-hacker .ip{fill:#ff8fa3}
+.netmap .eye circle,.netmap .tapmark circle{fill:#ef3b4f}
+.netmap .mark circle{fill:#ffe066;stroke:#100d22;stroke-width:2}
+.netmap .mark text{font:800 14px "IBM Plex Sans",sans-serif;fill:#100d22}
+.netmap .wlock{font-size:14px}
+.netmap .pk-ring{fill:rgba(255,224,102,.25);stroke:#ffe066;stroke-width:2}
+@media (prefers-reduced-motion:no-preference){.netmap .pk-ring{animation:pulse 1.4s ease-in-out infinite}}
+@keyframes pulse{50%{fill:rgba(255,224,102,.05)}}
+.netmap .bub rect{fill:#fff;stroke:#100d22;stroke-width:1.5}
+.netmap .bub text{font:600 15px var(--mono);fill:#101a3f}
+.netmap .bub.bad rect{fill:#ffd9dd;stroke:#b3261e}
+.netmap .bub.meh rect{fill:#fff4d6;stroke:#8a5a00}
+.netmap .bub.end-delivered rect{fill:#e1f2e6;stroke:#1f7a3d}
+.netmap .bub.end-dropped rect,.netmap .bub.end-refused rect{fill:#fbe3e1;stroke:#b3261e}
+.netmap .bub.end-at rect{fill:#e9edf8;stroke:#1f3fae}
+.map-note{margin:6px 2px 0;color:var(--muted)}
+.env{border:2px solid #d6b65a;background:#fffaf0;border-radius:12px;padding:10px 12px;margin-top:10px}
+.env.locked{border-color:#2f9e5b;background:#f3fbf5}
+.env-h{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.env-h img{width:26px;height:26px;image-rendering:pixelated}
+.env-h .small{color:var(--muted)}
+.env-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+@media (max-width:560px){.env-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.hf,.env-pay{background:#fff;border:1px solid var(--line);border-radius:8px;padding:4px 8px;min-width:0}
+.hl{display:block;font:700 10.5px var(--mono);color:var(--muted);letter-spacing:.06em}
+.hv{display:block;font:600 13.5px var(--mono);overflow-wrap:anywhere}
+.env-pay{margin-top:6px}
+.hf.chg,.env-pay.chg{background:#fff0b8;border-color:#e0a100}
+@media (prefers-reduced-motion:no-preference){.hf.chg{animation:glowy 1s ease-out}}
+@keyframes glowy{from{background:#ffe066}}
+.rtables{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.rtab{border:1px solid var(--line);border-radius:8px;background:#fff;font-size:13px;min-width:180px}
+.rtab.fixed{border-color:var(--green)}
+.rt-h{font-weight:700;padding:4px 8px;background:var(--line-2);border-radius:8px 8px 0 0}
+.rtab table{border-collapse:collapse;width:100%;font-family:var(--mono);font-size:12.5px}
+.rtab td{padding:3px 8px;border-top:1px solid var(--line-2)}
+.rtab tr.bad td{background:var(--red-soft);color:var(--red);font-weight:700}
+.qtop{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.dots{display:flex;gap:6px}
+.dot{width:32px;height:32px;border-radius:50%;border:2px solid var(--line);background:#fff;font-weight:700;font-size:14px;color:var(--muted)}
+.dot.cur{border-color:var(--blue);color:var(--blue)}
+.dot.ok{background:var(--green);border-color:var(--green);color:#fff}
+.dot.half{background:#e0a100;border-color:#e0a100;color:#fff}
+.dot.miss{background:var(--red);border-color:var(--red);color:#fff}
+.dot:disabled{opacity:.45;cursor:not-allowed}
+.qnum{margin:12px 0 4px}
+.qtext{font-size:1.08rem;font-weight:600;line-height:1.5;margin-bottom:12px}
+.qtext:focus{outline:none}
+.opts{display:grid;gap:8px}
+.opt{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start;text-align:left;padding:11px 13px;border:1.5px solid var(--line);border-radius:10px;background:#fff;font-size:15.5px;line-height:1.45}
+.opt .ol{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--line-2);font-weight:700;font-size:13.5px;color:var(--muted)}
+.opt:hover:not(:disabled){border-color:var(--blue)}
+.opt:disabled{cursor:default;color:var(--ink)}
+.opt.right{border-color:var(--green);background:var(--green-soft)}
+.opt.right .ol{background:var(--green);color:#fff}
+.opt.wrong{border-color:var(--red);background:var(--red-soft);opacity:.85}
+.opt.wrong .ol{background:var(--red);color:#fff}
+.opt.reveal{border-color:var(--green);border-style:dashed}
+.qbtns{margin-top:12px;justify-content:flex-end}
+.fb:focus{outline:2px solid var(--blue);outline-offset:2px}
+
+#map-card,#qcard{scroll-margin-top:64px}
+@media (max-width:760px){
+  .map-wrap{overflow-x:auto;overscroll-behavior-x:contain}
+  svg.netmap{min-width:720px;max-height:none}
+  .map-wrap::after{content:"swipe the map sideways ↔";display:block;text-align:center;font-size:11.5px;color:#9d97c9;padding:2px 0 0;position:sticky;left:0;width:100%}
+}
+
+/* =================== The Seized Drive =================== */
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+.grid2>div{min-width:0}
+@media (max-width:820px){.grid2{grid-template-columns:minmax(0,1fr)}}
+.stop{animation:fadein .25s ease}
+.stop-foot{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:6px}
+.callout{border-left:4px solid var(--maroon);background:var(--maroon-soft);border-radius:0 12px 12px 0}
+.card-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.card-h h3{margin:0}
+.finish-card{border-color:var(--maroon)}
+img.spr{width:22px;height:22px}
+
+/* tasks + questions */
+.tasks{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.tasks li{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:start;font-size:15px}
+.tasks .box{width:20px;height:20px;border-radius:6px;border:2px solid var(--line);display:inline-grid;place-items:center;margin-top:2px;font-size:13px;color:#fff}
+.tasks li.ok .box{background:var(--green);border-color:var(--green)}
+.tasks li.ok .box::after{content:"✓";font-weight:700}
+.tasks li.bad .box{background:var(--red);border-color:var(--red)}
+.tasks .tp{color:var(--muted);font-size:13.5px;white-space:nowrap}
+.q{margin-bottom:14px}
+.q .qt{font-weight:600;margin-bottom:8px}
+.choices{display:grid;gap:7px}
+.choice{text-align:left;padding:10px 13px;border:1.5px solid var(--line);border-radius:10px;background:#fff;font-size:15.5px}
+.choice:hover:not(:disabled){border-color:var(--blue)}
+.choice.right{border-color:var(--green);background:var(--green-soft)}
+.choice.wrong{border-color:var(--red);background:var(--red-soft)}
+.choice:disabled{cursor:default;color:var(--ink)}
+.cmark{font-weight:700;margin-right:7px}
+.choice.right .cmark{color:var(--green)}.choice.wrong .cmark{color:var(--red)}
+.fb{padding:10px 13px;border-radius:10px;background:var(--blue-soft);margin-top:8px;font-size:15px;overflow-wrap:anywhere}
+.fb.good{background:var(--green-soft)}.fb.bad{background:var(--red-soft)}.fb.warn{background:var(--amber-soft)}
+.mono{font-family:var(--mono)}
+.okv{color:var(--green);font-weight:700}
+.bad{color:var(--red);font-weight:700}
+
+/* order list (custody steps, timeline) */
+.orderlist{display:grid;gap:8px}
+.oitem{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;gap:10px;align-items:center;background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:9px 11px;cursor:grab}
+.oitem.dragging{opacity:.5}
+.oitem.over{border-color:var(--blue);box-shadow:0 0 0 2px var(--blue-soft)}
+.ohandle{color:var(--muted);cursor:grab;font-weight:700}
+.onum{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--blue-soft);color:var(--blue);font-weight:700;font-size:13px}
+.otext{font-size:15px}
+.otime{font-family:var(--mono);color:var(--blue)}
+.omove{display:flex;gap:4px}
+.mini{border:1px solid var(--line);background:#fff;border-radius:6px;width:30px;height:30px;font-size:14px;line-height:1;padding:0;color:var(--muted)}
+.mini:hover:not(:disabled){color:var(--ink);border-color:var(--ink)}
+.mini:disabled{opacity:.35;cursor:default}
+
+/* stop 1 images */
+.imgrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:640px){.imgrow{grid-template-columns:minmax(0,1fr)}}
+.imcopy{display:flex;flex-direction:column;gap:5px;align-items:flex-start;text-align:left;border:1.5px solid var(--line);background:#fff;border-radius:10px;padding:10px 12px}
+.imcopy:hover{border-color:var(--blue)}
+.imcopy code{background:var(--code-bg);color:var(--code-ink);border-radius:5px;padding:2px 7px;font-size:13px}
+.imcopy .imh{font-weight:700;font-size:14px}
+.imcopy .immatch{font-size:12.5px;color:var(--muted)}
+.imcopy.picked{border-color:var(--green);background:var(--green-soft)}
+.imcopy.wrongpick{border-color:var(--amber);background:var(--amber-soft)}
+
+/* stop 2 logs */
+.s2-controls{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.ctl{display:inline-flex;gap:6px;align-items:center;font-size:14px;font-weight:600;color:var(--muted)}
+.ctl select{border:1.5px solid var(--line);border-radius:8px;padding:5px 8px;background:#fff;font-weight:600;color:var(--ink)}
+.tb-scroll{overflow-x:auto}
+.logtab,.mantab{border-collapse:collapse;width:100%;font-size:14px;min-width:640px}
+.logtab th,.logtab td,.mantab th,.mantab td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line-2);white-space:nowrap}
+.logtab thead th,.mantab thead th{font-size:12.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+.logtab tbody tr{cursor:pointer}
+.logtab tbody tr:hover{background:var(--blue-soft)}
+.logtab tr.night td{background:#fff7ec}
+.logtab tr.night:hover td{background:#ffeccd}
+.logtab tr.flagged td{background:var(--green-soft);box-shadow:inset 3px 0 0 var(--green)}
+.outp{color:var(--maroon);font-weight:700}
+.mantab tbody tr{cursor:pointer}
+.mantab tbody tr:hover{background:var(--blue-soft)}
+.mantab td.verdict{white-space:nowrap}
+.pillbtn{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:6px 13px;font-weight:600;font-size:14px;margin:3px 4px 3px 0}
+.pillbtn:hover{border-color:var(--blue)}
+.pillbtn.picked{border-color:var(--green);background:var(--green-soft)}
+.pillbtn.wrongpick{border-color:var(--red);background:var(--red-soft)}
+
+/* stop 3 hash demo */
+.hashdemo input{width:100%;max-width:360px;border:1.5px solid var(--line);border-radius:8px;padding:9px 11px;font-family:var(--mono)}
+.hashout{margin:10px 0 4px}
+.hashout code{background:var(--code-bg);color:var(--code-ink);border-radius:6px;padding:4px 10px;font-size:15px;letter-spacing:.05em}
+
+/* stop 4 */
+.ipclass{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:12px;align-items:center;border:1px solid var(--line-2);border-radius:10px;padding:8px 12px;margin-bottom:8px}
+.ipclass code{background:var(--code-bg);color:var(--code-ink);border-radius:5px;padding:2px 8px;font-size:14px}
+.iprole{font-size:13.5px;color:var(--muted)}
+.ipbtns{display:flex;gap:4px}
+.segbtn{border:1.5px solid var(--line);background:#fff;border-radius:8px;padding:5px 12px;font-weight:600;font-size:13.5px;color:var(--muted)}
+.segbtn.on{border-color:var(--blue);background:var(--blue);color:#fff}
+.ipverdict{min-width:28px;text-align:center}
+@media (max-width:640px){.ipclass{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"ip v" "role role" "btn btn"}.ipclass code{grid-area:ip}.iprole{grid-area:role}.ipbtns{grid-area:btn}.ipverdict{grid-area:v}}
+.whoisgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:16px;align-items:start}
+@media (max-width:760px){.whoisgrid{grid-template-columns:minmax(0,1fr)}}
+.lookupcol{display:grid;gap:8px}
+.lookbtn{text-align:left;border:1.5px solid var(--line);background:#fff;border-radius:10px;padding:9px 12px}
+.lookbtn:hover{border-color:var(--blue)}
+.lookbtn code{background:var(--code-bg);color:var(--code-ink);border-radius:5px;padding:2px 7px;font-size:13.5px}
+.recordcol{min-height:60px}
+.record{border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;background:#fbfcff}
+.record h4{margin-bottom:8px}
+.record dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0 0 6px;font-size:14.5px}
+.record dt{font-weight:700;color:var(--muted)}
+.record dd{margin:0}
+.record code{background:var(--blue-soft);border-radius:5px;padding:1px 6px}
+
+/* stop 6 report */
+.field{display:grid;gap:4px;margin-bottom:12px}
+.field label{font-weight:600;font-size:15px}
+.field .help{font-size:13px;color:var(--muted)}
+.field textarea{min-height:64px;resize:vertical;border:1.5px solid var(--line);border-radius:8px;padding:9px 11px;background:#fff}
+.dstat{color:var(--green);font-weight:700}
+
+@media (max-width:520px){
+  .wrap{padding:28px 16px 70px}
+  h1{font-size:1.7rem}h2{font-size:1.35rem}
+  .stepper{margin:0 -16px 18px;padding:8px 16px}
+  .step .sname{display:none}
+}
+.logtab td.flagcell,.logtab th:first-child{width:34px;text-align:center}
+.flagmark{color:var(--green);font-weight:700}
+.logtab tr.flagged .flagmark,.mantab .verdict .bad,.mantab .verdict .okv{font-weight:700}
+.segbtn[aria-pressed="true"]{border-color:var(--blue);background:var(--blue);color:#fff}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ===== 1. INTRO ===== -->
+  <section class="view active" id="view-intro">
+    <div class="wrap">
+      <p class="kicker">IT Network · Network security</p>
+      <h1>The Seized Drive: a digital forensics case</h1>
+      <div class="hero-art" id="intro-art" aria-hidden="true"></div>
+      <p class="lede">You caught the hacker. Now comes the real work. He stole a file of patient records from the Northside Clinic, and it's your job to prove what he took, when it left the network, and where it went — <b>without</b> touching his systems and without ever revealing the victims' data. This is <b>digital forensics</b>: the careful, legal side of security. You have his seized laptop and a signed warrant. Work the case one step at a time.</p>
+      <div class="card callout">
+        <p style="margin:0"><b>This is not "hack him back."</b> Breaking into someone's computer is a crime even when that someone is a thief. Real investigators never do it. Everything here goes through a warrant, a forensic copy, and the courts — which is exactly why the evidence holds up.</p>
+      </div>
+      <div class="card">
+        <h3>Six steps</h3>
+        <ol class="stoplist" id="intro-stops"></ol>
+      </div>
+      <div class="card">
+        <ul class="rules">
+          <li>100 points across six steps. The points for each are shown at the top of the case.</li>
+          <li>The clock starts when you click Start and stops when you finish.</li>
+          <li>Multiple-choice questions: 3 points first try, 1 on the second, then the reason is shown.</li>
+          <li>Refreshing the page wipes your work (nothing is saved in the browser). Finish in one sitting.</li>
+          <li>At the end you download a result file for Google Classroom, and you can download your findings report.</li>
+        </ul>
+        <div class="name-row">
+          <input id="name" type="text" placeholder="Your full name (goes on your result)" autocomplete="off" maxlength="60" aria-label="Your full name">
+          <button class="btn" id="start">Start the case</button>
+        </div>
+        <div class="err" id="name-err" hidden>Enter your name first. It goes on your result file.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 2. WORK ===== -->
+  <section class="view" id="view-work">
+    <div class="wrap wide">
+      <nav class="stepper" aria-label="Investigation steps"><div class="stepper-in" id="stepper"></div></nav>
+
+      <!-- STOP 1 -->
+      <div class="stop" id="stop-1" hidden>
+        <div class="stop-head">
+          <p class="kicker">Step 1 of 6 · 15 points</p>
+          <h2 tabindex="-1">Chain of custody: handle the drive right</h2>
+          <p class="lede">Evidence is only worth something if you can prove nobody changed it. Before you read a single file, you have to protect the drive and make a copy you can prove is identical. Get this wrong and everything you find later can be thrown out of court.</p>
+        </div>
+        <div class="card">
+          <h3>Put the first five steps in order</h3>
+          <p class="small muted" style="margin-bottom:10px">Drag the cards, or use the ↑ ↓ buttons. Then check your order.</p>
+          <div id="s1-order"></div>
+          <div class="row" style="margin-top:10px"><button class="btn" id="s1-order-check" type="button">Check the order</button></div>
+          <div id="s1-order-note" aria-live="polite"></div>
+        </div>
+        <div class="card">
+          <h3>Prove the copy is perfect</h3>
+          <div id="s1-images"></div>
+          <div id="s1-img-note" aria-live="polite"></div>
+        </div>
+        <div class="grid2">
+          <div class="card"><h3>Checklist</h3><ul class="tasks" id="s1-tasks"></ul></div>
+          <div class="card"><h3>Think about it</h3><div id="s1-q"></div></div>
+        </div>
+        <div class="stop-foot"><span></span><button class="btn" data-go="2">Next: read the logs →</button></div>
+      </div>
+
+      <!-- STOP 2 -->
+      <div class="stop" id="stop-2" hidden>
+        <div class="stop-head">
+          <p class="kicker">Step 2 of 6 · 20 points</p>
+          <h2 tabindex="-1">Read the logs</h2>
+          <p class="lede">The laptop kept an access log: every sign-in, every file opened, every transfer, each stamped with a time in UTC. Most of it is ordinary clinic activity. Buried in it is the break-in. Filter and sort to find the two rows that don't belong.</p>
+        </div>
+        <div class="card">
+          <div class="s2-controls" id="s2-controls"></div>
+          <div class="tb-scroll"><div id="s2-table"></div></div>
+          <div id="s2-note" aria-live="polite"></div>
+        </div>
+        <div class="card">
+          <div id="s2-account"></div>
+          <div id="s2-account-note" aria-live="polite"></div>
+        </div>
+        <div class="grid2">
+          <div class="card"><h3>Checklist</h3><ul class="tasks" id="s2-tasks"></ul></div>
+          <div class="card"><h3>Think about it</h3><div id="s2-q"></div></div>
+        </div>
+        <div class="stop-foot"><button class="btn ghost" data-go="1">← Back</button><button class="btn" data-go="3">Next: verify the files →</button></div>
+      </div>
+
+      <!-- STOP 3 -->
+      <div class="stop" id="stop-3" hidden>
+        <div class="stop-head">
+          <p class="kicker">Step 3 of 6 · 15 points</p>
+          <h2 tabindex="-1">Verify the files with hashes</h2>
+          <p class="lede">A <b>hash</b> is a short fingerprint of a file: the same file always gives the same hash, and changing even one byte changes it completely. The clinic recorded a hash for every important file before the break-in. Compare them with the drive now to catch what the intruder changed — and what he left behind.</p>
+        </div>
+        <div class="card">
+          <h3>The file manifest</h3>
+          <p class="small muted" style="margin-bottom:8px">Click the file that was <b>altered</b> (its hash no longer matches), and the file that was <b>planted</b> (it has no recorded hash at all).</p>
+          <div class="tb-scroll"><div id="s3-manifest"></div></div>
+          <div id="s3-note" aria-live="polite"></div>
+        </div>
+        <div class="card">
+          <h3>Why one byte gives it away</h3>
+          <div id="s3-hashdemo" class="hashdemo"></div>
+        </div>
+        <div class="grid2">
+          <div class="card"><h3>Checklist</h3><ul class="tasks" id="s3-tasks"></ul></div>
+          <div class="card"><h3>Think about it</h3><div id="s3-q"></div></div>
+        </div>
+        <div class="stop-foot"><button class="btn ghost" data-go="2">← Back</button><button class="btn" data-go="4">Next: trace the destination →</button></div>
+      </div>
+
+      <!-- STOP 4 -->
+      <div class="stop" id="stop-4" hidden>
+        <div class="stop-head">
+          <p class="kicker">Step 4 of 6 · 20 points</p>
+          <h2 tabindex="-1">Trace where the data went</h2>
+          <p class="lede">The log showed 48 MB leaving for an outside address. Some of these addresses are <b>private</b> — they only exist inside a local network and can't be reached across the internet — and some are <b>public</b>. Sort them out, look up who owns the public ones, and find the drop server. Then do the one legal thing you're allowed to do next.</p>
+        </div>
+        <div class="card">
+          <h3>Public or private?</h3>
+          <p class="small muted" style="margin-bottom:8px">Private ranges (10.x, 172.16–31.x, 192.168.x) live inside a network. A server out on the internet needs a public address.</p>
+          <div id="s4-classify"></div><p class="sr" id="s4-classify-live" aria-live="polite"></p>
+        </div>
+        <div class="card">
+          <h3>Look it up (WHOIS)</h3>
+          <div id="s4-whois"></div>
+        </div>
+        <div class="grid2">
+          <div class="card"><h3>Checklist</h3><ul class="tasks" id="s4-tasks"></ul></div>
+          <div class="card"><h3>Think about it</h3><div id="s4-q"></div></div>
+        </div>
+        <div class="stop-foot"><button class="btn ghost" data-go="3">← Back</button><button class="btn" data-go="5">Next: build the timeline →</button></div>
+      </div>
+
+      <!-- STOP 5 -->
+      <div class="stop" id="stop-5" hidden>
+        <div class="stop-head">
+          <p class="kicker">Step 5 of 6 · 15 points</p>
+          <h2 tabindex="-1">Build the timeline</h2>
+          <p class="lede">You have pieces from three places: the sign-in log, the file system, and the network records. On their own they're just entries. Put them in the order they happened and they tell one clear story — the story you'll hand to the court.</p>
+        </div>
+        <div class="card">
+          <h3>Order the events</h3>
+          <p class="small muted" style="margin-bottom:10px">No timestamps shown — reason it out from what has to come before what. Drag the cards or use the ↑ ↓ buttons, then check.</p>
+          <div id="s5-timeline"></div>
+          <div class="row" style="margin-top:10px"><button class="btn" id="s5-check" type="button">Check the timeline</button></div>
+          <div id="s5-check-note" aria-live="polite"></div>
+        </div>
+        <div class="grid2">
+          <div class="card"><h3>Checklist</h3><ul class="tasks" id="s5-tasks"></ul></div>
+          <div class="card"><h3>Think about it</h3><div id="s5-q"></div></div>
+        </div>
+        <div class="stop-foot"><button class="btn ghost" data-go="4">← Back</button><button class="btn" data-go="6">Next: close the case →</button></div>
+      </div>
+
+      <!-- STOP 6 -->
+      <div class="stop" id="stop-6" hidden>
+        <div class="stop-head">
+          <p class="kicker">Step 6 of 6 · 15 points</p>
+          <h2 tabindex="-1">Close the case</h2>
+          <p class="lede">You know what happened. Now the parts that decide whether it counts: what keeps evidence admissible, where the law draws the line even against a criminal, and why the stolen data stays sealed. Then write up your findings.</p>
+        </div>
+        <div class="card"><h3>Think about it</h3><div id="s6-q"></div></div>
+        <div class="card">
+          <div class="card-h"><h3>Your findings report</h3></div>
+          <p class="small">Write it in your own words — short and clear, the way a real report reads. 2 points each once a box has a real answer.</p>
+          <div id="s6-report" aria-live="polite"></div>
+          <div class="row" style="margin-top:8px"><button class="btn ghost small" id="s6-export" type="button">Download my findings (.txt)</button><span class="small muted">A clean report with the facts of the case filled in.</span></div>
+        </div>
+        <div class="card finish-card">
+          <h3>Finish</h3>
+          <p class="small">Finishing makes your result file (once). Check the points at the top first.</p>
+          <button class="btn maroon" id="finish" type="button">Finish and get my result</button>
+          <div id="finish-confirm"></div>
+        </div>
+        <div class="stop-foot"><button class="btn ghost" data-go="5">← Back</button><span></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 3. END ===== -->
+  <section class="view" id="view-end">
+    <div class="wrap">
+      <p class="kicker">The Seized Drive · complete</p>
+      <h1 id="end-h1" tabindex="-1">Case closed.</h1>
+      <p class="lede" id="end-lede"></p>
+      <div class="card"><table class="breakdown"><tbody id="end-breakdown"></tbody></table>
+        <div class="row" style="margin-top:12px"><button class="btn ghost small" id="end-export">Download my findings (.txt)</button></div>
+      </div>
+      <!-- The kit renders the standard result card (score, time, code, download) into this element. -->
+      <div id="hsct-result"></div>
+      <div class="row"><button class="btn ghost" id="again">Try again</button></div>
+      <div id="again-confirm"></div>
+    </div>
+  </section>
+</div>
+
+<!-- HSCT KIT START — do not edit; copy the whole block from lesson-template/hsct-lesson.js -->
+<script>
+/* ============================================================================
+   HSCT LESSON KIT  v1.0
+   Every lesson on HSCT TechHub inlines this block unchanged (between the
+   <!-- HSCT KIT START --> and <!-- HSCT KIT END --> markers). It gives a
+   lesson three things:
+
+     1. A clock.   HSCT.start(name) when the student begins. The kit records
+                   wall-clock time and "active" time (tab visible).
+     2. A log.     HSCT.log(type, data) for anything worth remembering —
+                   answers, hints, retries. Ends up inside the result file.
+     3. A result.  HSCT.endScreen(el, {...scores}) renders the standard result
+                   card: name, score, time taken, badge code, and a button
+                   that downloads the encrypted result file the student
+                   submits in Google Classroom.
+
+   The file is encrypted with the teacher's PUBLIC key below (RSA-OAEP wrapping
+   an AES-256-GCM key). It can only be opened with the matching private key,
+   on the site's /lessons/verify page. Students can't read or edit it.
+
+   API (all on window.HSCT):
+     HSCT.lesson({ id, title, version, course, possible })   once, at load
+     HSCT.start(name)                                        when work begins
+     HSCT.log(type, data)                                    any time
+     HSCT.elapsed()   -> { seconds, activeSeconds }
+     HSCT.finish({ earned, possible, sections, tier, extra }) -> Promise<result>
+     HSCT.endScreen(el, { earned, possible, sections, tier, extra, note })
+                      -> Promise<result>   (calls finish, renders the card)
+     HSCT.download()  / HSCT.copyCode()                      after finish
+   ========================================================================== */
+(function () {
+  'use strict';
+  var KIT = '1.0';
+
+  /* Mr. Cruz's public key. Replace the whole object if the key pair is ever
+     regenerated on /lessons/verify — and keep the private key out of git. */
+  var PUBLIC_KEY = {"kty":"RSA","n":"rZUBRxn7dUikufJq7z2XVn-on4Of0IyQr_YaPSTgIUaGsYKcrZ4FNROL4A_ZM5JShLf6OVp2ZeAI7XN_7iX0tvd79RqAWRM9an6rx-s6bMYSW1wmtRxZyL-BX56vTtikVRLNO7uyzCb8kevJE71Fi6nlPhdXa-iS4vtIEm2Wjh4cLPinAKhMnkO3BpGHUhtFw7Hyus1w04EdLxowk4UcN7d0w4MQRnBV8ehXQVoLVQ0_QtfrtPTQOpScHuwyaw9nwnTA7h7BEOv1ZkbEyq2N4TFixSSCsneUsc3PlbZOndDzMGMmdMr00ulntRZBfyioFzRcsRUGGwAqpB9SuH7XGQ","e":"AQAB","alg":"RSA-OAEP-256","ext":true};
+
+  var VERIFY_URL = 'hsct.tech/lessons/verify';
+
+  var cfg = null;      // lesson config
+  var ses = null;      // current session
+  var ticker = null;   // active-time interval
+  var result = null;   // { badge, filename, text, envelope, payload }
+
+  /* ---------- small helpers ---------- */
+  var enc = new TextEncoder();
+  function b64(buf) {
+    var bytes = new Uint8Array(buf), s = '';
+    for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return btoa(s);
+  }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function fmtDuration(sec) {
+    sec = Math.max(0, Math.round(sec || 0));
+    var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+    if (h) return h + ' h ' + pad(m) + ' min';
+    if (m) return m + ' min ' + pad(s) + ' s';
+    return s + ' s';
+  }
+  function fmtDate(iso) {
+    try { return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+    catch (e) { return iso; }
+  }
+  function slug(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'student'; }
+  function stamp(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes()); }
+
+  /* Badge code: 8 characters from a SHA-256 of the result, shown on screen
+     so a screenshot can be matched to its file. */
+  var ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ23456789';
+  function badgeFrom(hashBuf) {
+    var bytes = new Uint8Array(hashBuf), out = '';
+    for (var i = 0; i < 8; i++) out += ALPHABET[bytes[i] % ALPHABET.length];
+    return out.slice(0, 4) + '-' + out.slice(4);
+  }
+
+  function needSubtle() {
+    if (!(window.crypto && crypto.subtle)) {
+      throw new Error('Result files need a secure page (https). Open this lesson from the TechHub site and finish again.');
+    }
+  }
+
+  /* ---------- public API ---------- */
+  function lesson(c) {
+    if (!c || !c.id || !c.title) throw new Error('HSCT.lesson needs { id, title }');
+    cfg = { version: '1.0', course: '', possible: 100 };
+    for (var k in c) cfg[k] = c[k];
+    return HSCT;
+  }
+
+  function start(name) {
+    if (!cfg) throw new Error('Call HSCT.lesson({...}) before HSCT.start(name)');
+    name = String(name || '').trim().replace(/\s+/g, ' ');
+    if (name.length < 2) throw new Error('HSCT.start needs the student\'s name');
+    ses = { name: name, started: new Date().toISOString(), t0: Date.now(), active: 0, events: [] };
+    result = null;
+    clearInterval(ticker);
+    ticker = setInterval(function () { if (document.visibilityState === 'visible') ses.active += 1; }, 1000);
+    log('start');
+    return HSCT;
+  }
+
+  function log(type, data) {
+    if (!ses) return HSCT;
+    var e = { t: Math.round((Date.now() - ses.t0) / 100) / 10, type: String(type) };
+    if (data && typeof data === 'object') for (var k in data) if (k !== 't' && k !== 'type') e[k] = data[k];
+    if (ses.events.length < 800) ses.events.push(e);
+    return HSCT;
+  }
+
+  function elapsed() {
+    if (!ses) return { seconds: 0, activeSeconds: 0 };
+    return { seconds: Math.round((Date.now() - ses.t0) / 1000), activeSeconds: ses.active };
+  }
+
+  /* Build, seal, and keep the result. Resolves to { badge, filename, text, payload }. */
+  async function finish(opts) {
+    if (!cfg || !ses) throw new Error('HSCT.start(name) was never called');
+    needSubtle();
+    opts = opts || {};
+    clearInterval(ticker);
+    var finished = new Date();
+    var el = elapsed();
+    var earned = Number(opts.earned || 0), possible = Number(opts.possible || cfg.possible || 0);
+    var payload = {
+      kit: KIT,
+      lesson: { id: cfg.id, title: cfg.title, version: cfg.version, course: cfg.course },
+      student: { name: ses.name },
+      started: ses.started,
+      finished: finished.toISOString(),
+      seconds: el.seconds,
+      activeSeconds: el.activeSeconds,
+      score: { earned: earned, possible: possible, percent: possible ? Math.round(1000 * earned / possible) / 10 : null },
+      tier: opts.tier || null,
+      sections: (opts.sections || []).map(function (s) { return { id: s.id, title: s.title, earned: s.earned, possible: s.possible, status: s.status }; }),
+      extra: opts.extra || null,
+      events: ses.events,
+      env: { tz: Intl.DateTimeFormat().resolvedOptions().timeZone, ua: navigator.userAgent, url: location.href.split('?')[0] },
+    };
+    var hash = await crypto.subtle.digest('SHA-256', enc.encode(JSON.stringify(payload)));
+    var badge = badgeFrom(hash);
+    payload.badge = badge;
+
+    /* header travels in the clear but is authenticated (AES-GCM additional data) */
+    var header = { hsct: 1, kit: KIT, lesson: cfg.id, title: cfg.title, student: ses.name, finished: payload.finished, badge: badge };
+    var pub = await crypto.subtle.importKey('jwk', PUBLIC_KEY, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['wrapKey']);
+    var aes = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt']);
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    var data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv, additionalData: enc.encode(JSON.stringify(header)) }, aes, enc.encode(JSON.stringify(payload)));
+    var wrapped = await crypto.subtle.wrapKey('raw', aes, pub, { name: 'RSA-OAEP' });
+    var envelope = {};
+    for (var k in header) envelope[k] = header[k];
+    envelope.key = b64(wrapped); envelope.iv = b64(iv); envelope.data = b64(data);
+
+    result = {
+      badge: badge,
+      filename: 'HSCT_' + cfg.id + '_' + slug(ses.name) + '_' + stamp(finished) + '.hsct',
+      text: JSON.stringify(envelope),
+      payload: payload,
+    };
+    return result;
+  }
+
+  function download() {
+    if (!result) throw new Error('Nothing to download yet — call HSCT.finish first');
+    var blob = new Blob([result.text], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = result.filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+    return result.filename;
+  }
+
+  async function copyCode() {
+    if (!result) throw new Error('Nothing to copy yet — call HSCT.finish first');
+    try { await navigator.clipboard.writeText(result.text); return true; }
+    catch (e) {
+      var ta = document.createElement('textarea'); ta.value = result.text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      var ok = false; try { ok = document.execCommand('copy'); } catch (e2) {}
+      ta.remove(); return ok;
+    }
+  }
+
+  /* ---------- the standard end screen ---------- */
+  var CSS = '.hsct-card{--hsct-ink:#101a3f;--hsct-mute:#5b6485;--hsct-line:#d3d9ee;--hsct-accent:var(--hsct-color,#1f3fae);--hsct-ok:#1f7a3d;--hsct-bad:#b3261e;'
+    + 'font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;color:var(--hsct-ink);background:#fff;border:1px solid var(--hsct-line);border-left:6px solid var(--hsct-accent);border-radius:12px;padding:20px 22px;margin:20px 0;line-height:1.45}'
+    + '.hsct-card *{box-sizing:border-box}.hsct-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--hsct-mute)}.hsct-head b{color:var(--hsct-accent)}'
+    + '.hsct-name{font-size:22px;font-weight:700;margin:6px 0 2px}.hsct-score{font-size:15px;margin:0 0 12px}.hsct-score b{font-size:28px;font-weight:700}.hsct-score .hsct-tier{display:inline-block;margin-left:8px;padding:2px 10px;border-radius:999px;background:var(--hsct-accent);color:#fff;font-size:13px;font-weight:600;vertical-align:middle}'
+    + '.hsct-facts{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0 0 14px;font-size:14px}.hsct-facts dt{color:var(--hsct-mute)}.hsct-facts dd{margin:0}.hsct-facts code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;letter-spacing:.08em;font-weight:600}'
+    + '.hsct-secs{width:100%;border-collapse:collapse;font-size:14px;margin:0 0 14px}.hsct-secs td{padding:5px 0;border-top:1px solid var(--hsct-line)}.hsct-secs td:last-child{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}'
+    + '.hsct-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.hsct-btn{font:600 15px "IBM Plex Sans","Segoe UI",system-ui,sans-serif;padding:11px 18px;border-radius:8px;border:2px solid var(--hsct-accent);background:var(--hsct-accent);color:#fff;cursor:pointer}.hsct-btn:hover{filter:brightness(.92)}.hsct-btn.hsct-alt{background:transparent;color:var(--hsct-accent)}.hsct-btn:focus-visible{outline:3px solid #a9b7ea;outline-offset:2px}.hsct-btn:disabled{opacity:.55;cursor:wait}'
+    + '.hsct-note{margin:12px 0 0;font-size:13.5px;color:var(--hsct-mute)}.hsct-status{margin:8px 0 0;font-size:14px;min-height:1.4em}.hsct-status.ok{color:var(--hsct-ok)}.hsct-status.bad{color:var(--hsct-bad)}'
+    + '@media print{.hsct-actions,.hsct-note,.hsct-status{display:none}}';
+
+  function injectCss() {
+    if (document.getElementById('hsct-kit-css')) return;
+    var s = document.createElement('style'); s.id = 'hsct-kit-css'; s.textContent = CSS; document.head.appendChild(s);
+  }
+
+  /* Renders the card into `el` and seals the result. Resolves with the result. */
+  async function endScreen(el, opts) {
+    if (typeof el === 'string') el = document.querySelector(el);
+    if (!el) throw new Error('HSCT.endScreen needs an element');
+    injectCss();
+    opts = opts || {};
+    var elp = elapsed();
+    var possible = Number(opts.possible || cfg.possible || 0), earned = Number(opts.earned || 0);
+    var pct = possible ? Math.round(100 * earned / possible) : null;
+    var secs = (opts.sections || []).map(function (s) {
+      var right = s.status != null ? esc(s.status) : (s.possible != null ? esc(s.earned) + ' / ' + esc(s.possible) : esc(s.earned));
+      return '<tr><td>' + esc(s.title) + '</td><td>' + right + '</td></tr>';
+    }).join('');
+    el.innerHTML = '<div class="hsct-card">'
+      + '<div class="hsct-head"><span><b>HSCT TechHub</b> result</span><span>' + esc(cfg.title) + '</span></div>'
+      + '<div class="hsct-name">' + esc(ses ? ses.name : '') + '</div>'
+      + '<div class="hsct-score"><b>' + esc(earned) + '</b> / ' + esc(possible) + (pct != null ? ' <span>(' + pct + '%)</span>' : '') + (opts.tier ? '<span class="hsct-tier">' + esc(opts.tier) + '</span>' : '') + '</div>'
+      + '<dl class="hsct-facts"><dt>Finished</dt><dd>' + esc(fmtDate(new Date().toISOString())) + '</dd>'
+      + '<dt>Time taken</dt><dd>' + esc(fmtDuration(elp.seconds)) + (elp.activeSeconds < elp.seconds - 60 ? ' <span style="color:var(--hsct-mute)">(' + esc(fmtDuration(elp.activeSeconds)) + ' with the tab open)</span>' : '') + '</dd>'
+      + '<dt>Code</dt><dd><code class="hsct-badge">........</code></dd></dl>'
+      + (secs ? '<table class="hsct-secs"><tbody>' + secs + '</tbody></table>' : '')
+      + '<div class="hsct-actions"><button type="button" class="hsct-btn hsct-dl" disabled>Download your result file</button><button type="button" class="hsct-btn hsct-alt hsct-copy" disabled>Copy result code</button></div>'
+      + '<p class="hsct-note">' + esc(opts.note || 'Submit the file in Google Classroom. If downloads are blocked, copy the code and paste it instead. The file is encrypted: only your teacher can open it.') + '</p>'
+      + '<p class="hsct-status" aria-live="polite">Preparing your result file…</p>'
+      + '</div>';
+    var status = el.querySelector('.hsct-status'), dl = el.querySelector('.hsct-dl'), cp = el.querySelector('.hsct-copy');
+    try {
+      var r = await finish(opts);
+      el.querySelector('.hsct-badge').textContent = r.badge;
+      status.textContent = 'Ready: ' + r.filename;
+      dl.disabled = false; cp.disabled = false;
+      dl.onclick = function () { try { download(); status.className = 'hsct-status ok'; status.textContent = 'Downloaded ' + r.filename + ' — now submit it.'; } catch (e) { status.className = 'hsct-status bad'; status.textContent = e.message; } };
+      cp.onclick = async function () { var ok = await copyCode(); status.className = 'hsct-status ' + (ok ? 'ok' : 'bad'); status.textContent = ok ? 'Code copied — paste it into your submission.' : 'Copy failed. Use the download instead.'; };
+      return r;
+    } catch (e) {
+      status.className = 'hsct-status bad';
+      status.textContent = e.message || String(e);
+      throw e;
+    }
+  }
+
+  var HSCT = {
+    kit: KIT, verifyUrl: VERIFY_URL,
+    lesson: lesson, start: start, log: log, elapsed: elapsed,
+    finish: finish, download: download, copyCode: copyCode, endScreen: endScreen,
+    get result() { return result; },
+    get session() { return ses ? { name: ses.name, started: ses.started } : null; },
+    fmtDuration: fmtDuration,
+  };
+  window.HSCT = HSCT;
+})();
+</script>
+<!-- HSCT KIT END -->
+
+<script>
+/* ---------- pixel sprites (12 x 12). Each letter is a color; '.' is empty. ---------- */
+const PAL = {
+  k: '#1b1530', w: '#ffffff', a: '#c9d1e6', A: '#8a93ad', z: '#4a5270', h: '#2c3350',
+  B: '#3f7cff', N: '#1d45b8', f: '#2cc0ff', F: '#1789c7', g: '#35e07a', G: '#1f8f4a',
+  y: '#f2c230', Y: '#c98a10', r: '#ef3b4f', R: '#b3172d', p: '#6d5a8c', P: '#3b2f52', e: '#7dff9b',
+  s: '#f5c7a0', o: '#ff9f43', c: '#e8ecf7',
+};
+const SPRITES = {
+  laptop: [
+    '............',
+    '.kkkkkkkkkk.',
+    '.kBBBBBBBBk.',
+    '.kBfBBBBBBk.',
+    '.kBBfBBBBBk.',
+    '.kBBBBBBBBk.',
+    '.kBBBBBBBBk.',
+    '.kkkkkkkkkk.',
+    'kaaaaaaaaaak',
+    'kaAAzzzzAAak',
+    '.kkkkkkkkkk.',
+    '............',
+  ],
+  phone: [
+    '...kkkkkk...',
+    '...khhhhk...',
+    '...kBBBBk...',
+    '...kBfBBk...',
+    '...kBBfBk...',
+    '...kBBBBk...',
+    '...kBBBBk...',
+    '...kBBBBk...',
+    '...kBBBBk...',
+    '...khaahk...',
+    '...khhhhk...',
+    '...kkkkkk...',
+  ],
+  server: [
+    '..kkkkkkkk..',
+    '..khhhhhhk..',
+    '..khgGhzhk..',
+    '..kkkkkkkk..',
+    '..khhhhhhk..',
+    '..khgGhzhk..',
+    '..kkkkkkkk..',
+    '..khhhhhhk..',
+    '..khgGhzhk..',
+    '..kkkkkkkk..',
+    '..kz....zk..',
+    '..kk....kk..',
+  ],
+  printer: [
+    '............',
+    '...kkkkkk...',
+    '...kwwwwk...',
+    '...kwAAwk...',
+    '.kkkkkkkkkk.',
+    '.kaaaaaaaak.',
+    '.kaaaaagyak.',
+    '.kAAAAAAAAk.',
+    '.kkwwwwwwkk.',
+    '...kwAAwk...',
+    '...kwwwwk...',
+    '...kkkkkk...',
+  ],
+  switch: [
+    '............',
+    '............',
+    '............',
+    'kkkkkkkkkkkk',
+    'khhhhhhhhhhk',
+    'khkgkgkgkgGk',
+    'khkzkzkzkzhk',
+    'khhhhhhhhhhk',
+    'kkkkkkkkkkkk',
+    '.kk......kk.',
+    '............',
+    '............',
+  ],
+  wifi: [
+    '............',
+    '..ffffffff..',
+    '.f........f.',
+    'f..ffffff..f',
+    '..f......f..',
+    '....ffff....',
+    '.....kk.....',
+    '.....ak.....',
+    '.kkkkkkkkkk.',
+    '.kaaaaaaaak.',
+    '.kagaaaaaak.',
+    '.kkkkkkkkkk.',
+  ],
+  router: [
+    '...kkkkkk...',
+    '..kRRRRRRk..',
+    '.kRRRwRRRRk.',
+    'kRRRwwwRRRRk',
+    'kRwRRwRRwRRk',
+    'kwwwRRRRwwwk',
+    'kRwRRwRRwRRk',
+    'kRRRRwRRRRRk',
+    '.kRRwwwRRRk.',
+    '..kRRwRRRk..',
+    '...kkkkkk...',
+    '............',
+  ],
+  internet: [
+    '............',
+    '....kkkk....',
+    '...kccccck..',
+    '..kcccccccck',
+    '.kkcccfccccck'.slice(0, 12),
+    'kcccccccccck',
+    'kccfccccfcck',
+    'kcccccccccck',
+    '.kccccccccck'.slice(0, 12),
+    '..kkkkkkkkk.',
+    '............',
+    '............',
+  ],
+  hacker: [
+    '....kkkk....',
+    '...kPPPPk...',
+    '..kPPPPPPk..',
+    '..kPkkkkPk..',
+    '..kPkekePk..',
+    '..kPkkkkPk..',
+    '..kPPPPPPk..',
+    '.kPPPPPPPPk.',
+    'kPPkkkkkkPPk',
+    'kPkaaaaaakPk',
+    'kPkaAAAAakPk',
+    'kkkkkkkkkkkk',
+  ],
+  lock: [
+    '....kkkk....',
+    '...kaaaak...',
+    '..kak..kak..',
+    '..kak..kak..',
+    '..kak..kak..',
+    '.kkkkkkkkkk.',
+    '.kyyyyyyyyk.',
+    '.kyyykkyyyk.',
+    '.kyyykkyyyk.',
+    '.kyyyykyyyk.',
+    '.kYYYYYYYYk.',
+    '.kkkkkkkkkk.',
+  ],
+  packet: [
+    '............',
+    '............',
+    'kkkkkkkkkkkk',
+    'kwkwwwwwwkwk',
+    'kwwkwwwwkwwk',
+    'kwwwkwwkwwwk',
+    'kwwwwkkwwwwk',
+    'kwwwwwwwwwwk',
+    'kwwwwwwwwwwk',
+    'kkkkkkkkkkkk',
+    '............',
+    '............',
+  ],
+  lockedpacket: [
+    '............',
+    '............',
+    'kkkkkkkkkkkk',
+    'kykyyyyyykyk',
+    'kyykyyyykyyk',
+    'kyyykkkkyyyk',
+    'kyyyykkyyyyk',
+    'kyyyykkyyyyk',
+    'kyyyyyyyyyyk',
+    'kkkkkkkkkkkk',
+    '............',
+    '............',
+  ],
+  drive: [
+    '............',
+    '.kkkkkkkkkk.',
+    '.khhhhhhhhk.',
+    '.khaaaaaahk.',
+    '.khaAAAAahk.',
+    '.khaaaaaahk.',
+    '.khhhhhhhhk.',
+    '.khzhhhhzhk.',
+    '.khzhgghzhk.',
+    '.khhhhhhhhk.',
+    '.kkkkkkkkkk.',
+    '............',
+  ],
+  magnify: [
+    '..kkkk......',
+    '.kwwwwk.....',
+    'kwffffwk....',
+    'kwfccfwk....',
+    'kwffffwk....',
+    'kwffffwk....',
+    '.kwwwwkk....',
+    '..kkkkkk....',
+    '.....kkkk...',
+    '......kkkk..',
+    '.......kkk..',
+    '............',
+  ],
+  folder: [
+    '............',
+    '..kkkk......',
+    '.kyyyyk.....',
+    'kyyyyyyyyyk.',
+    'kyYYYYYYYYk.',
+    'kyyyyyyyyyk.',
+    'kyyyyyyyyyk.',
+    'kyYYYYYYYYk.',
+    'kyyyyyyyyyk.',
+    'kkkkkkkkkkk.',
+    '............',
+    '............',
+  ],
+  doc: [
+    '.kkkkkkkk...',
+    '.kwwwwwkkk..',
+    '.kwwwwwkAk..',
+    '.kwkkwwkkk..',
+    '.kwwwwwwwk..',
+    '.kwkkkkwwk..',
+    '.kwwwwwwwk..',
+    '.kwkkkkwwk..',
+    '.kwwwwwwwk..',
+    '.kwkkwwwwk..',
+    '.kwwwwwwwk..',
+    '.kkkkkkkkk..',
+  ],
+  clock: [
+    '...kkkkkk...',
+    '.kkwwwwwwkk.',
+    '.kwwwkwwwwk.',
+    'kwwwwkwwwwwk',
+    'kwwwwkwwwwwk',
+    'kwwwwkkwwwwk',
+    'kwwwwwwkwwwk',
+    'kwwwwwwwwwwk',
+    'kwwwwwwwwwwk',
+    '.kwwwwwwwwk.',
+    '.kkwwwwwwkk.',
+    '...kkkkkk...',
+  ],
+  shield: [
+    '..kkkkkkkk..',
+    '.kBBBBBBBBk.',
+    'kBBBBBBBBBBk',
+    'kBBBwwwBBBBk',
+    'kBBwBBBwBBBk',
+    'kBBBBBBwBBBk',
+    'kBBBBBwBBBBk',
+    'kBBwBBwBBBBk',
+    '.kBwwwBBBBk.',
+    '.kBBBBBBBBk.',
+    '..kBBBBBBk..',
+    '...kBBBBk...',
+  ],
+  fingerprint: [
+    '..kkkkkkkk..',
+    '.kkzzzzzzkk.',
+    'kkzkkzzkkzkk',
+    'kzkzkkzkzkzk',
+    'kzkzkzkzkzzk',
+    'kzkzkzkzkzzk',
+    'kzkzkzkzkzzk',
+    'kzkzkkzkzkzk',
+    'kkzkkzzkkzkk',
+    '.kkzzzzzzkk.',
+    '..kkkkkkkk..',
+    '............',
+  ],
+  suspect: [
+    '...kkkkkk...',
+    '..kPPPPPPk..',
+    '..kPhhhhPk..',
+    '..khsssshk..',
+    '..hsrssrsh..',
+    '..hssssssh..',
+    '..khsssshk..',
+    '...khhhhk...',
+    '..kPPPPPPk..',
+    '.kPPPPPPPPk.',
+    '.kPzPPPPzPk.',
+    '.kk......kk.',
+  ],
+};
+
+/* ---------- shared helpers: escaping + sprite data URLs ---------- */
+const escHTML = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const SPRITE_URL = {};
+function spriteURL(kind) {
+  if (SPRITE_URL[kind]) return SPRITE_URL[kind];
+  const rows = SPRITES[kind];
+  const c = document.createElement('canvas');
+  c.width = 48; c.height = 48;
+  const g = c.getContext('2d');
+  rows.forEach((row, y) => { for (let x = 0; x < 12; x++) { const ch = row[x]; if (ch && ch !== '.') { g.fillStyle = PAL[ch]; g.fillRect(x * 4, y * 4, 4, 4); } } });
+  SPRITE_URL[kind] = c.toDataURL();
+  return SPRITE_URL[kind];
+}
+function spriteImg(kind, cls) { return `<img class="spr ${cls || ''}" src="${spriteURL(kind)}" alt="" draggable="false">`; }
+const reduceMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* =====================================================================
+   THE CASE. Everything is fictional. All IPs use the ranges reserved for
+   documentation (RFC 5737): 192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24.
+   Internal clinic addresses are private (10.0.0.0/8).
+   The logs, hashes, IP records and timeline all line up with each other.
+   ===================================================================== */
+const CASE = {
+  victim: 'Northside Community Clinic',
+  stolen: 'patients_2026.csv',
+  stolenDesc: 'a file of patient records (names, dates of birth, medical notes)',
+  suspect: 'gh0stmoth',
+  evidence: 'EV-04',           // the seized laptop
+  account: 'nrivera',          // the phished staff account the intruder used
+  day: '2026-03-14',
+  dropIP: '198.51.100.23',
+  loginIP: '203.0.113.47',
+  internalNet: '10.0.0.0/8',
+};
+
+/* ---------- Stop 1: the correct first steps ---------- */
+const CUSTODY_STEPS = [
+  { id: 'photo', t: 'Photograph the laptop exactly as it was found', why: 'Records the scene before anyone touches anything.' },
+  { id: 'block', t: 'Connect it through a write-blocker', why: 'Lets you read the drive without changing a single byte on it.' },
+  { id: 'image', t: 'Make a forensic image (a bit-for-bit copy of the whole drive)', why: 'You investigate the copy, so the original is never at risk.' },
+  { id: 'hash', t: 'Hash the original drive and the image, and check they match', why: 'A matching hash proves the copy is identical to the original.' },
+  { id: 'work', t: 'Do all of your investigating on the copy', why: 'The sealed original stays untouched as the reference.' },
+];
+
+/* three images of the drive; one copy is corrupt (its hash won't match) */
+const IMAGE_CHECK = {
+  original: 'a91f4c… e7b2',
+  copies: [
+    { id: 'A', label: 'Copy A (USB dock)', hash: 'a91f4c… e7b2', ok: true },
+    { id: 'B', label: 'Copy B (network share)', hash: 'a91f4c… e7b2', ok: true },
+    { id: 'C', label: 'Copy C (old cable)', hash: '5d0be1… 9x44', ok: false },
+  ],
+};
+
+/* ---------- Stop 2: the access log (all times UTC) ---------- */
+const LOGS = [
+  { t: '08:02', user: 'kpatel', event: 'sign-in', ip: '10.0.0.14', bytes: 0, out: false },
+  { t: '08:47', user: 'nrivera', event: 'sign-in', ip: '10.0.0.21', bytes: 0, out: false },
+  { t: '09:15', user: 'kpatel', event: 'file read: schedule.xlsx', ip: '10.0.0.14', bytes: 42000, out: false },
+  { t: '11:30', user: 'jmalik', event: 'sign-in', ip: '10.0.0.31', bytes: 0, out: false },
+  { t: '13:05', user: 'nrivera', event: 'sign-out', ip: '10.0.0.21', bytes: 0, out: false },
+  { t: '17:48', user: 'jmalik', event: 'sign-out', ip: '10.0.0.31', bytes: 0, out: false },
+  { t: '02:11', user: 'nrivera', event: 'sign-in', ip: '203.0.113.47', bytes: 0, out: false, night: true, key: 'login' },
+  { t: '02:19', user: 'nrivera', event: 'file read: patients_2026.csv', ip: '203.0.113.47', bytes: 50100000, out: false, night: true, key: 'read' },
+  { t: '02:23', user: 'nrivera', event: 'archive created: patients.zip', ip: '203.0.113.47', bytes: 48200000, out: false, night: true, key: 'zip' },
+  { t: '02:31', user: 'nrivera', event: 'outbound transfer → 198.51.100.23:443', ip: '198.51.100.23', bytes: 48200000, out: true, night: true, key: 'exfil' },
+  { t: '02:34', user: 'nrivera', event: 'sign-out', ip: '203.0.113.47', bytes: 0, out: false, night: true, key: 'logout' },
+];
+
+/* ---------- Stop 3: the file manifest (known-good hashes vs. what's on the copy now) ---------- */
+const MANIFEST = [
+  { name: 'patients_2026.csv', good: '7f3a…d90c', now: '7f3a…d90c' },
+  { name: 'schedule.xlsx', good: 'b1e0…4a77', now: 'b1e0…4a77' },
+  { name: 'access.log', good: 'c4d9…1f20', now: 'c4d9…1f20' },
+  { name: 'billing.db', good: '2a88…6b13', now: '9c15…0e4e', tampered: true },   // hash changed → altered
+  { name: 'cleanup.bat', good: null, now: 'e77b…33af', planted: true },          // not in the manifest → planted
+];
+
+/* ---------- Stop 4: the IP records ---------- */
+const IPS = [
+  { ip: '10.0.0.21', kind: 'private', role: 'The clinic PC the account normally uses', whois: null },
+  { ip: '203.0.113.47', kind: 'public', role: 'Where the 2 a.m. sign-in came from', whois: { owner: 'VaultVPN Ltd', country: 'RO', abuse: 'abuse@vaultvpn.example', note: 'A VPN provider — hides the real location.' } },
+  { ip: '198.51.100.23', kind: 'public', role: 'Where the stolen file was sent', whois: { owner: 'Havenhost B.V.', country: 'NL', abuse: 'abuse@havenhost.example', note: 'A server-hosting company. This is the drop server.' } },
+  { ip: '192.168.1.5', kind: 'private', role: "A home-router address — can't be reached across the internet", whois: null },
+];
+
+/* ---------- Stop 5: the timeline events (shuffled for the student to order) ---------- */
+const TIMELINE = [
+  { id: 'login', t: '02:11', label: 'Someone signs in as nrivera from a VPN address (203.0.113.47), at 2 a.m.' },
+  { id: 'read', t: '02:19', label: 'The account opens the patient file, patients_2026.csv' },
+  { id: 'zip', t: '02:23', label: 'The file is compressed into patients.zip' },
+  { id: 'exfil', t: '02:31', label: '48 MB is sent out to 198.51.100.23 on port 443' },
+  { id: 'logout', t: '02:34', label: 'The account signs out' },
+  { id: 'wipe', t: '02:35', label: 'A script, cleanup.bat, is run to try to erase the tracks' },
+];
+
+/* ---------- questions (3 points first try, 1 on the second). Options are
+   shuffled per session, and lengths are mixed so you can't guess by size. */
+const Q = {
+  s1a: {
+    id: 's1a', q: 'Why do forensic analysts investigate a copy of the drive instead of the original?',
+    a: ['Copies can be searched much faster than the original drive can, which saves time', 'Opening files changes a drive, so working on the original would alter the evidence', 'The original has to be returned to the suspect right away once it is booked in', 'A copy can store more data than the original drive was ever able to hold'],
+    right: 1, fb: 'Just opening or searching a drive writes new data to it (timestamps, temp files). Change the original and the defense can argue you planted or altered the evidence. So you prove the copy is identical, seal the original, and work on the copy.',
+  },
+  s1b: {
+    id: 's1b', q: 'You hash the original drive and the image, and the two hashes are identical. What has that proven?',
+    a: ['That the drive is completely free of viruses and other malware that could spread', 'That the copy is an exact, unchanged duplicate of the original drive', 'That the suspect is the person who is guilty of stealing the missing file', 'That none of the files on the drive were protected with encryption'],
+    right: 1, fb: 'A hash is like a fingerprint for data: same data in, same hash out. Identical hashes mean the copy matches the original bit for bit, so anything you find on the copy was really on the original.',
+  },
+  s2a: {
+    id: 's2a', q: 'At 02:31 the log shows 48 MB leaving the network, outbound, to an outside address. In an investigation, what is that most likely to be?',
+    a: ['A normal software update quietly downloading in the background overnight', 'Data being stolen (exfiltrated) off the network', 'The user backing up their files to the clinic server as usual', 'A printer on the network sending a large document to be printed'],
+    right: 1, fb: 'Outbound means data leaving the network. A large outbound transfer to an unknown outside address, at 2 a.m., right after the patient file was opened and zipped, is the classic shape of exfiltration — data being taken out.',
+  },
+  s2b: {
+    id: 's2b', q: 'Every timestamp in this log is written in UTC, not local time. Why do systems log in UTC?',
+    a: ['UTC is the only time format that every computer in the world is able to read', 'So that logs from different computers can be lined up on one shared clock', 'To hide the true local time of the break-in from any investigator later', 'Because UTC is the time zone used by the news and by most official reports'],
+    right: 1, fb: 'A break-in can touch servers in several time zones. If each logged its own local time, lining events up would be a mess. One shared clock (UTC) lets you put every event in the right order.',
+  },
+  s3a: {
+    id: 's3a', q: 'The file billing.db now has a different hash than the clinic recorded before the break-in. What does that tell you?',
+    a: ['The file was deleted from the drive at some point during the break-in', 'The file was changed after the clinic first recorded its hash', 'The program that calculates the hash is broken or out of date', 'The file is now noticeably bigger than it used to be before'],
+    right: 1, fb: 'A hash changes if even one byte of the file changes. A different hash from the known-good one means the file was altered. It does not tell you what changed — just that it is no longer the original.',
+  },
+  s3b: {
+    id: 's3b', q: 'You change a single character in a file and its hash becomes completely different, not just a little different. Why is that useful?',
+    a: ['It makes the file take up far less room on the drive, which speeds up copying', 'A tiny change is impossible to hide, so a matching hash is strong proof', 'It scrambles the file so that nobody without the key can read it', 'It makes the whole computer run faster while the file is open'],
+    right: 1, fb: 'Because one changed byte flips the whole hash, you cannot quietly tweak a file and keep its hash. That is exactly why a matching hash is trusted as proof a file is unchanged.',
+  },
+  s4a: {
+    id: 's4a', q: 'One candidate address is 192.168.1.5, a private address. Why can it not be the server the data was sent to across the internet?',
+    a: ['Private addresses are far too slow to carry a file that large across the world', 'Private addresses only work inside a local network, not across the internet', 'Private addresses are always fake ones typed in by attackers to mislead you', 'Private addresses can only ever be owned and used by the government'],
+    right: 1, fb: 'Ranges like 10.x, 172.16–31.x and 192.168.x are private: reused inside millions of home and office networks and not routable on the public internet. The drop server has to be a public address.',
+  },
+  s4b: {
+    id: 's4b', q: 'The data was sent out on port 443. Why might the attacker have chosen that port?',
+    a: ['Port 443 is the only port on a firewall that is allowed to carry large files', 'Port 443 is normal HTTPS web traffic, so the transfer blends in', 'Traffic sent on port 443 is impossible for any firewall or tool to log', 'Sending data on port 443 makes the whole transfer download much faster'],
+    right: 1, fb: 'Port 443 is ordinary encrypted web traffic. Firewalls almost always allow it, and a transfer on 443 looks like someone visiting websites — a common trick to make stolen data slip out unnoticed.',
+  },
+  s4c: {
+    id: 's4c', q: 'You look up who owns the drop server address and get a hosting company and its abuse contact. What is the right next move?',
+    a: ['Log into the hosting company yourself and quietly delete the stolen file off their server', 'Send a legal preservation request so the host saves the data and logs as evidence', 'Post the server address online so that other people can go and attack it too', 'Ignore it, because the stolen file is certainly already long gone by now anyway'],
+    right: 1, fb: 'You go through the proper channel: ask the host, in writing and through legal process, to preserve the account and its logs. Breaking into their server yourself — even to stop a thief — would be a crime and would ruin the case.',
+  },
+  s5a: {
+    id: 's5a', q: 'Your timeline was built by lining up entries from the sign-in log, the file system, and the network records. Why pull from several sources instead of one?',
+    a: ['Because any single source of evidence is always wrong in some important way', 'Each source shows one piece; together they tell the whole story', 'Because pulling from several sources makes the final report much longer', 'Because investigators are paid more money for every source they cite'],
+    right: 1, fb: 'The login log shows who and when; the file system shows what was opened; the network records show where it went. Cross-checking them turns scattered entries into one story that is much harder to dispute.',
+  },
+  s5b: {
+    id: 's5b', q: 'The order — sign in, open the file, zip it, send it out, then run a cleanup script — matters to the case. What does that sequence show?',
+    a: ['It shows that the whole thing was a harmless accident by a tired employee', 'A deliberate series of steps: get in, take the data, then hide it', 'It shows that the clinic network was running unusually slowly that night', 'It shows that two completely different people must have been involved'],
+    right: 1, fb: 'Intent shows up in the order. Opening the exact patient file, compressing it, sending it out, then running a script to erase the tracks is a planned theft, not a mistake — and the cleanup step shows the person knew it was wrong.',
+  },
+  s6a: {
+    id: 's6a', q: 'Which of these would most likely make your evidence inadmissible (thrown out of court)?',
+    a: ['Writing down every step you took, with the exact times and matching hashes', 'Working on the original drive with no write-blocker, so it got changed', 'Keeping the original drive sealed the whole time in a locked evidence room', 'Asking a second analyst on the team to double-check all of your work'],
+    right: 1, fb: 'Break the chain of custody — change the original, or lose track of who had the evidence — and the court can no longer trust that what you found was really there. That can throw out the whole case.',
+  },
+  s6b: {
+    id: 's6b', q: 'You discover the suspect\'s own drop server, still online, holding the stolen file. Can you break into it to delete the data?',
+    a: ['Yes, because he is a criminal, so at this point basically anything is fair game', 'Yes, as long as you are careful enough about it that no one ever finds out you did it', 'No — breaking into any computer is a crime, even a criminal\'s; go through the courts', 'Only if you make your own copy of the stolen data first, before you delete it'],
+    right: 2, fb: 'This is the whole reason we reframed the mission. "Hacking back" is itself a crime, and it would destroy your case and put you on the wrong side of the law. You preserve, document, and let warrants and the courts do the taking-down.',
+  },
+  s6c: {
+    id: 's6c', q: 'The stolen file is full of patients\' private medical records. Why can\'t you show it around or post what you found to prove the theft?',
+    a: ['It is boring, and honestly nobody following along with the case would want to read all of it', 'It is the victims\' private data and sealed evidence; sharing it would harm them again', 'The file is simply far too large to attach and share with other people', 'It is written in a code that no one has been able to crack open yet'],
+    right: 1, fb: 'The victims were already harmed once. The records stay sealed evidence, handled only by the people the case allows. Leaking them "to prove it" would harm the patients again and could get the case thrown out.',
+  },
+};
+
+/* ---------- Stop 6: the findings report fields ---------- */
+const REPORT_FIELDS = [
+  { k: 'what', label: 'What was taken?', help: 'Name the file and what kind of data it held.', pts: 2 },
+  { k: 'when', label: 'When did it leave the network, and how do you know?', help: 'Give the time and the log entry that shows it.', pts: 2 },
+  { k: 'where', label: 'Where did it go, and how did you keep the evidence trustworthy?', help: 'The destination, plus what you did to prove nothing was altered.', pts: 2 },
+];
+
+/* =====================================================================
+   SHARED UI: element lookup, questions, checklists, an order-list, a toy
+   hash, and a small download helper. Reused by every stop.
+   ===================================================================== */
+const $ = (id) => document.getElementById(id);
+function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function show(id) { document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === id)); window.scrollTo(0, 0); }
+const clone = (o) => JSON.parse(JSON.stringify(o));
+
+/* multiple choice: 3 points first try, 1 on the second */
+function renderQuestion(host, q, store, onAnswer) {
+  const st = store[q.id] || (store[q.id] = { tries: 0, picked: [], right: false, pts: 0 });
+  if (!st.order) { st.order = shuffle(q.a.map((_, i) => i)); }   // shuffle option positions once
+  host.innerHTML = `<div class="q"><p class="qt">${q.qHTML || escHTML(q.q)}</p><div class="choices">${st.order.map((k) => {
+    const p = st.picked.includes(k);
+    const mark = p ? (k === q.right ? '<span class="cmark" aria-hidden="true">✓</span><span class="sr"> (correct)</span>' : '<span class="cmark" aria-hidden="true">✗</span><span class="sr"> (wrong)</span>') : '';
+    return `<button type="button" class="choice${p ? (k === q.right ? ' right' : ' wrong') : ''}" data-k="${k}" ${st.right || p ? 'disabled' : ''}>${mark}${escHTML(q.a[k])}</button>`;
+  }).join('')}</div><div class="fb-host" aria-live="polite"></div></div>`;
+  const fbHost = host.querySelector('.fb-host');
+  if (st.right) fbHost.innerHTML = `<div class="fb good"><b>${st.tries === 1 ? 'Right, first try.' : 'Right.'}</b> ${q.fb}</div>`;
+  else if (st.tries) fbHost.innerHTML = `<div class="fb bad">Not that one. Try another (${st.tries === 1 ? 'you can still get 1 of the 3 points' : 'no points left on this one, but pick the right one to see why'}).</div>`;
+  host.querySelectorAll('.choice').forEach((b) => b.addEventListener('click', () => {
+    const k = +b.dataset.k;
+    st.tries++; st.picked.push(k);
+    if (k === q.right) { st.right = true; st.pts = st.tries === 1 ? 3 : st.tries === 2 ? 1 : 0; }
+    HSCT.log('answer', { q: q.id, picked: k, right: k === q.right, tries: st.tries });
+    renderQuestion(host, q, store, onAnswer);
+    const next = host.querySelector('.choice:not(:disabled)') || host.querySelector('.fb');
+    if (next) { if (!next.matches('button')) next.tabIndex = -1; next.focus(); }
+    if (onAnswer) onAnswer();
+  }));
+}
+const qPts = (store, id) => (store[id] ? store[id].pts : 0);
+function qBlock(host, ids, store, onAnswer) {
+  host.innerHTML = ids.map((id) => `<div data-q="${id}"></div>`).join('');
+  ids.forEach((id) => renderQuestion(host.querySelector(`[data-q="${id}"]`), Q[id], store, onAnswer));
+}
+
+function taskList(ul, items) {
+  ul.innerHTML = items.map((t) => `<li class="${t.ok ? 'ok' : t.bad ? 'bad' : ''}"><span class="box" aria-hidden="true"></span><span>${t.html}<span class="sr">${t.ok ? ' (done)' : ' (not done yet)'}</span></span><span class="tp">${t.pts != null ? (t.ok ? '+' + t.pts : t.pts + ' pt' + (t.pts === 1 ? '' : 's')) : ''}</span></li>`).join('');
+}
+
+function download(name, text, type) {
+  const blob = new Blob([text], { type: type || 'text/plain' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
+/* a tiny, fake hash just for the "change one character" demo. Real hashes
+   (SHA-256) are 64 hex digits; this is 8 so it fits on screen. */
+function toyHash(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  h >>>= 0;
+  let out = (h >>> 0).toString(16).padStart(8, '0');
+  // mix a second round so it looks 16 wide and changes a lot
+  let h2 = h ^ 0x9e3779b9;
+  for (let i = str.length - 1; i >= 0; i--) { h2 ^= str.charCodeAt(i); h2 = Math.imul(h2, 0x85ebca6b); }
+  out += (h2 >>> 0).toString(16).padStart(8, '0');
+  return out;
+}
+
+/* ---------- an ordered list you can drag, or move with the keyboard ---------- */
+class OrderList {
+  constructor(host, items, opts) {
+    this.host = host; this.items = items.slice(); this.opts = opts || {};
+    host.classList.add('orderlist'); host.setAttribute('role', 'list');
+    this.render();
+  }
+  get order() { return this.items.map((i) => i.id); }
+  set(ids) { this.items.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id)); this.render(); }
+  move(from, to) {
+    if (to < 0 || to >= this.items.length) return;
+    const [it] = this.items.splice(from, 1);
+    this.items.splice(to, 0, it);
+    this.render(true, to);
+    if (this.opts.onChange) this.opts.onChange(this.order);
+  }
+  render(focusMove, focusIdx) {
+    const h = this.host;
+    h.innerHTML = this.items.map((it, i) => `<div class="oitem" role="listitem" draggable="true" data-i="${i}">
+      <span class="ohandle" aria-hidden="true">⋮⋮</span>
+      <span class="onum">${i + 1}</span>
+      <span class="otext">${it.time ? `<b class="otime">${escHTML(it.time)}</b> ` : ''}${escHTML(it.label || it.t)}</span>
+      <span class="omove"><button type="button" class="mini" data-up="${i}" aria-label="Move ‘${escHTML(it.label || it.t)}’ up" ${i === 0 ? 'disabled' : ''}>↑</button><button type="button" class="mini" data-down="${i}" aria-label="Move ‘${escHTML(it.label || it.t)}’ down" ${i === this.items.length - 1 ? 'disabled' : ''}>↓</button></span>
+    </div>`).join('');
+    h.querySelectorAll('[data-up]').forEach((b) => b.onclick = () => this.move(+b.dataset.up, +b.dataset.up - 1));
+    h.querySelectorAll('[data-down]').forEach((b) => b.onclick = () => this.move(+b.dataset.down, +b.dataset.down + 1));
+    h.querySelectorAll('.oitem').forEach((el) => {
+      el.addEventListener('dragstart', (e) => { this.drag = +el.dataset.i; el.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
+      el.addEventListener('dragend', () => { el.classList.remove('dragging'); h.querySelectorAll('.oitem').forEach((x) => x.classList.remove('over')); });
+      el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('over'); });
+      el.addEventListener('dragleave', () => el.classList.remove('over'));
+      el.addEventListener('drop', (e) => { e.preventDefault(); const to = +el.dataset.i; if (this.drag != null && this.drag !== to) this.move(this.drag, to); this.drag = null; });
+    });
+    if (focusMove) {
+      const row = h.querySelector(`.oitem[data-i="${focusIdx}"]`);
+      const btn = row && (row.querySelector('[data-up]:not(:disabled)') || row.querySelector('[data-down]:not(:disabled)'));
+      if (btn) btn.focus();
+    }
+  }
+}
+
+/* =====================================================================
+   THE SIX STOPS of the investigation. Each has init (once), enter (on show),
+   and sNPts (its score). L holds all the lesson state.
+   ===================================================================== */
+const arrEq = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
+
+/* ============================ STOP 1 ============================ */
+let ORD1 = null;
+function initStop1() {
+  const start = shuffle(CUSTODY_STEPS);
+  if (arrEq(start.map((s) => s.id), CUSTODY_STEPS.map((s) => s.id))) start.reverse();
+  ORD1 = new OrderList($('s1-order'), start, { onChange: () => { if (s1OrderRight()) checkS1Order(); else $('s1-order-note').innerHTML = ''; renderS1(); } });
+  $('s1-order-check').onclick = () => { checkS1Order(true); renderS1(); };
+  $('s1-images').innerHTML = `<p class="small muted" style="margin:0 0 8px">The original drive hashes to <code>${IMAGE_CHECK.original}</code>. You made three copies. Two match; one was made over a bad cable and is corrupt. Click the copy you must throw out.</p>
+    <div class="imgrow">${IMAGE_CHECK.copies.map((c) => `<button type="button" class="imcopy" data-id="${c.id}"><span class="imh">${escHTML(c.label)}</span><code>${escHTML(c.hash)}</code><span class="immatch">${c.hash === IMAGE_CHECK.original ? '✓ matches the original' : 'compare with the original…'}</span></button>`).join('')}</div>`;
+  $('s1-images').querySelectorAll('.imcopy').forEach((b) => b.addEventListener('click', () => {
+    const c = IMAGE_CHECK.copies.find((x) => x.id === b.dataset.id);
+    $('s1-images').querySelectorAll('.imcopy').forEach((x) => x.classList.remove('picked', 'wrongpick'));
+    if (!c.ok) { L.s1.badImage = true; b.classList.add('picked'); }
+    else { b.classList.add('wrongpick'); }
+    $('s1-img-note').innerHTML = c.ok
+      ? `<div class="fb warn"><b>That copy is fine.</b> Its hash matches the original exactly, so it is a perfect duplicate. Look for the one that does <em>not</em> match.</div>`
+      : `<div class="fb good"><b>Correct — throw out Copy ${c.id}.</b> Its hash is different from the original, so it is not an exact duplicate. A hash catches even a single flipped bit.</div>`;
+    HSCT.log('image', { id: c.id, ok: c.ok });
+    renderS1();
+  }));
+  qBlock($('s1-q'), ['s1a', 's1b'], L.s1.q, renderS1);
+}
+function s1OrderRight() { return ORD1 && arrEq(ORD1.order, CUSTODY_STEPS.map((s) => s.id)); }
+function checkS1Order(announce) {
+  const right = s1OrderRight();
+  const note = $('s1-order-note');
+  if (right) note.innerHTML = `<div class="fb good"><b>That's the right order.</b> ${CUSTODY_STEPS.map((s, i) => `${i + 1}. ${escHTML(s.t.split(' (')[0])}`).join(' → ')}. Photograph, protect, copy, prove the copy, then work on the copy.</div>`;
+  else if (announce) note.innerHTML = `<div class="fb bad">Not yet. Think it through: you record the scene first, make it impossible to change the drive, then copy it, then prove the copy is identical — and only then start digging.</div>`;
+  HSCT.log('custody_order', { right });
+}
+function s1Pts() { return (s1OrderRight() ? 6 : 0) + (L.s1.badImage ? 3 : 0) + qPts(L.s1.q, 's1a') + qPts(L.s1.q, 's1b'); }
+function renderS1() {
+  taskList($('s1-tasks'), [
+    { ok: s1OrderRight(), html: 'Put the first five steps in the right order', pts: 6 },
+    { ok: !!L.s1.badImage, html: 'Spot the corrupt copy by its hash', pts: 3 },
+    { ok: qPts(L.s1.q, 's1a') > 0, html: 'Why work on a copy?', pts: 3 },
+    { ok: qPts(L.s1.q, 's1b') > 0, html: 'What a matching hash proves', pts: 3 },
+  ]);
+  renderStepper();
+}
+function enterStop1() { renderS1(); }
+
+/* ============================ STOP 2 ============================ */
+let s2Filter = { user: 'all', out: false, sort: 'time' };
+function initStop2() {
+  const users = ['all'].concat([...new Set(LOGS.map((l) => l.user))]);
+  $('s2-controls').innerHTML = `
+    <label class="ctl">Account <select id="s2-user">${users.map((u) => `<option value="${u}">${u === 'all' ? 'everyone' : u}</option>`).join('')}</select></label>
+    <label class="ctl"><input type="checkbox" id="s2-out"> outbound only</label>
+    <label class="ctl">Sort <select id="s2-sort"><option value="time">by time</option><option value="bytes">by size (biggest first)</option></select></label>
+    <button class="btn ghost small" id="s2-clear" type="button">Reset</button>`;
+  $('s2-user').onchange = (e) => { s2Filter.user = e.target.value; if (e.target.value === CASE.account) L.s2.filtered = true; drawLogs(); renderS2(); };
+  $('s2-out').onchange = (e) => { s2Filter.out = e.target.checked; drawLogs(); };
+  $('s2-sort').onchange = (e) => { s2Filter.sort = e.target.value; if (e.target.value === 'bytes') L.s2.sorted = true; drawLogs(); renderS2(); };
+  $('s2-clear').onclick = () => { s2Filter = { user: 'all', out: false, sort: 'time' }; $('s2-user').value = 'all'; $('s2-out').checked = false; $('s2-sort').value = 'time'; drawLogs(); };
+  $('s2-account').innerHTML = `<p class="small" style="margin:0 0 6px"><b>Whose account did the night-time activity use?</b></p>` +
+    [...new Set(LOGS.map((l) => l.user))].map((u) => `<button type="button" class="pillbtn" data-u="${u}">${u}</button>`).join('');
+  $('s2-account').querySelectorAll('[data-u]').forEach((b) => b.addEventListener('click', () => {
+    const ok = b.dataset.u === CASE.account;
+    $('s2-account').querySelectorAll('.pillbtn').forEach((x) => x.classList.remove('picked', 'wrongpick'));
+    b.classList.add(ok ? 'picked' : 'wrongpick');
+    if (ok) L.s2.account = true;
+    $('s2-account-note').innerHTML = ok
+      ? `<div class="fb good"><b>Yes — nrivera.</b> But look at the address: the daytime nrivera sign-ins come from inside the clinic (10.0.0.21), and the 2 a.m. one comes from an outside VPN. Same account, very different place. The account was almost certainly phished.</div>`
+      : `<div class="fb bad">Check the night-time rows again — every one of them is on the same account.</div>`;
+    HSCT.log('account', { u: b.dataset.u, ok });
+    renderS2();
+  }));
+  drawLogs();
+  qBlock($('s2-q'), ['s2a', 's2b'], L.s2.q, renderS2);
+}
+function drawLogs() {
+  let rows = LOGS.map((l, i) => ({ l, i }));
+  if (s2Filter.user !== 'all') rows = rows.filter((r) => r.l.user === s2Filter.user);
+  if (s2Filter.out) rows = rows.filter((r) => r.l.out);
+  rows.sort((a, b) => s2Filter.sort === 'bytes' ? b.l.bytes - a.l.bytes : a.l.t.localeCompare(b.l.t));
+  const mb = (n) => n >= 1000000 ? (n / 1000000).toFixed(1) + ' MB' : n ? (n / 1000).toFixed(0) + ' KB' : '—';
+  L.s2.flags = L.s2.flags || {};
+  $('s2-table').innerHTML = `<table class="logtab"><thead><tr><th scope="col">Flag</th><th scope="col">Time (UTC)</th><th scope="col">Account</th><th scope="col">What happened</th><th scope="col">Address</th><th scope="col">Direction</th><th scope="col">Size</th></tr></thead>
+    <tbody>${rows.map(({ l, i }) => {
+      const rid = l.key || ('n' + i);
+      const flagged = L.s2.flags[rid];
+      return `<tr class="${l.night ? 'night' : ''} ${flagged ? 'flagged' : ''}" tabindex="0" role="button" aria-pressed="${flagged ? 'true' : 'false'}" data-rid="${rid}" data-night="${l.night ? 1 : 0}" aria-label="${escHTML(l.t + ' UTC, ' + l.user + ', ' + l.event + ', from ' + l.ip + (l.out ? ', outbound' : ', inbound') + (l.bytes ? ', ' + mb(l.bytes) : '') + (flagged ? '. Flagged.' : ''))}">
+        <td class="flagcell">${flagged ? '<span class="flagmark">⚑</span>' : ''}</td><td class="mono">${escHTML(l.t)}</td><td>${escHTML(l.user)}</td><td>${escHTML(l.event)}</td><td class="mono">${escHTML(l.ip)}</td><td>${l.out ? '<span class="outp">outbound ↗</span>' : 'inbound'}</td><td class="mono">${mb(l.bytes)}</td>
+      </tr>`;
+    }).join('')}</tbody></table>${rows.length === 0 ? '<p class="small muted">No rows match. Reset the filters.</p>' : ''}`;
+  $('s2-table').querySelectorAll('tr[role="button"]').forEach((tr) => {
+    const click = () => flagRow(tr.dataset.rid, tr.dataset.night === '1');
+    tr.addEventListener('click', click);
+    tr.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); click(); } });
+  });
+}
+function flagRow(rowId, night) {
+  const note = $('s2-note');
+  L.s2.flags = L.s2.flags || {};
+  L.s2.flags[rowId] = !L.s2.flags[rowId];   // clicking toggles the flag on/off
+  const on = L.s2.flags[rowId];
+  if (rowId === 'login') note.innerHTML = on ? `<div class="fb good"><b>Flagged.</b> A sign-in at 02:11 from an outside VPN address, when the clinic is closed. The real nrivera signs in from inside during the day. (This is one of the two rows to flag.)</div>` : '';
+  else if (rowId === 'exfil') note.innerHTML = on ? `<div class="fb good"><b>Flagged.</b> 48 MB leaving the network, outbound, to an outside server — minutes after the patient file was opened and zipped. That's the data walking out the door. (This is the other one.)</div>` : '';
+  else if (on) note.innerHTML = night
+    ? `<div class="fb warn"><b>That's part of the break-in too</b>, but it isn't one of the two rows you were asked to flag: the <em>sign-in</em> and the <em>outbound transfer</em>. Click it again to un-flag it.</div>`
+    : `<div class="fb warn">That's normal activity: a staff member, during the day, from inside the clinic (a 10.0.0.x address). Click it again to un-flag it.</div>`;
+  else note.innerHTML = '';
+  HSCT.log('flag', { rowId, on });
+  drawLogs(); renderS2();
+}
+function s2WrongFlagged() { const f = L.s2.flags || {}; return Object.keys(f).some((k) => f[k] && k !== 'login' && k !== 'exfil'); }
+function s2Pts() { const f = L.s2.flags || {}, clean = !s2WrongFlagged(); return ((f.login && clean) ? 3 : 0) + ((f.exfil && clean) ? 3 : 0) + (L.s2.account ? 2 : 0) + (L.s2.filtered ? 3 : 0) + (L.s2.sorted ? 3 : 0) + qPts(L.s2.q, 's2a') + qPts(L.s2.q, 's2b'); }
+function renderS2() {
+  taskList($('s2-tasks'), [
+    { ok: (L.s2.flags && L.s2.flags.login && !s2WrongFlagged()), html: 'Flag the out-of-place 2 a.m. <b>sign-in</b> (click the row)' + ((L.s2.flags && L.s2.flags.login && s2WrongFlagged()) ? ' <span class="small" style="color:var(--red)">— un-flag the rows that don\'t belong first</span>' : ''), pts: 3 },
+    { ok: (L.s2.flags && L.s2.flags.exfil && !s2WrongFlagged()), html: 'Flag the <b>outbound transfer</b> where the data left', pts: 3 },
+    { ok: !!L.s2.filtered, html: 'Use the <b>Account</b> filter to show only <code>nrivera</code>', pts: 3 },
+    { ok: !!L.s2.sorted, html: 'Sort <b>by size</b> to bring the big transfer to the top', pts: 3 },
+    { ok: !!L.s2.account, html: 'Name the account that was used', pts: 2 },
+    { ok: qPts(L.s2.q, 's2a') > 0 && qPts(L.s2.q, 's2b') > 0, html: 'Answer both questions', pts: 6 },
+  ]);
+  renderStepper();
+}
+function enterStop2() { drawLogs(); renderS2(); }
+
+/* ============================ STOP 3 ============================ */
+function initStop3() {
+  drawManifest();
+  // toy-hash demo
+  $('s3-hashdemo').innerHTML = `<label class="small" for="s3-hin"><b>Try it.</b> Type something, then change one character and watch the whole fingerprint change.</label>
+    <input id="s3-hin" type="text" value="patients_2026.csv" maxlength="40" autocomplete="off" spellcheck="false">
+    <p class="hashout">fingerprint: <code id="s3-hout"></code></p>
+    <p class="small muted" id="s3-hnote">This is a tiny demo hash so it fits on screen. A real one (SHA-256) is 64 characters — same idea, much harder to fake.</p>`;
+  const inp = $('s3-hin');
+  const upd = () => {
+    const h = toyHash(inp.value);
+    $('s3-hout').textContent = h;
+    L.s3.hashes.add(h);
+    if (L.s3.hashes.size >= 2) L.s3.demo = true;
+    renderS3();
+  };
+  inp.addEventListener('input', upd); upd(); L.s3.hashes = new Set();
+  qBlock($('s3-q'), ['s3a', 's3b'], L.s3.q, renderS3);
+}
+function flagFile(i) {
+  const f = MANIFEST[i];
+  const note = $('s3-note');
+  L.s3.flags = L.s3.flags || {};
+  L.s3.flags[i] = !L.s3.flags[i];
+  const on = L.s3.flags[i];
+  if (f.tampered) note.innerHTML = on ? `<div class="fb good"><b>Altered file flagged.</b> ${escHTML(f.name)} hashes differently now than the clinic recorded before the break-in. Something changed inside it.</div>` : '';
+  else if (f.planted) note.innerHTML = on ? `<div class="fb good"><b>Planted file flagged.</b> ${escHTML(f.name)} has no recorded hash at all — it wasn't on the drive before. A cleanup script the intruder dropped in.</div>` : '';
+  else if (on) note.innerHTML = `<div class="fb warn">Those two hashes are identical, so ${escHTML(f.name)} is unchanged. Click it again to un-flag it, and look for a row where the two don't match, and a row with no recorded hash at all.</div>`;
+  else note.innerHTML = '';
+  drawManifest();
+  HSCT.log('file', { name: f.name, on });
+  renderS3();
+}
+function s3WrongFlagged() { const f = L.s3.flags || {}; return MANIFEST.some((m, i) => f[i] && !m.tampered && !m.planted); }
+function drawManifest() {
+  L.s3.flags = L.s3.flags || {};
+  $('s3-manifest').innerHTML = `<table class="mantab"><thead><tr><th scope="col">File</th><th scope="col">Recorded before the break-in</th><th scope="col">On the drive now</th><th scope="col">Verdict</th></tr></thead>
+    <tbody>${MANIFEST.map((f, i) => `<tr tabindex="0" role="button" aria-pressed="${L.s3.flags[i] ? 'true' : 'false'}" data-i="${i}" aria-label="${escHTML(f.name)}, recorded ${f.good || 'not recorded'}, now ${f.now}${L.s3.flags[i] ? '. Flagged.' : ''}">
+      <td class="mono">${escHTML(f.name)}</td><td class="mono">${escHTML(f.good || '— not recorded —')}</td><td class="mono">${escHTML(f.now)}</td><td class="verdict">${L.s3.flags[i] ? (f.tampered ? '<span class="bad">altered ⚑</span>' : f.planted ? '<span class="bad">not recorded ⚑</span>' : '<span class="okv">unchanged ⚑</span>') : ''}</td></tr>`).join('')}</tbody></table>`;
+  $('s3-manifest').querySelectorAll('tr[role="button"]').forEach((tr) => {
+    const click = () => flagFile(+tr.dataset.i);
+    tr.addEventListener('click', click);
+    tr.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); click(); } });
+  });
+}
+function s3Pts() { const f = L.s3.flags || {}, clean = !s3WrongFlagged(); const tamp = MANIFEST.findIndex((m) => m.tampered), plant = MANIFEST.findIndex((m) => m.planted); return ((f[tamp] && clean) ? 3 : 0) + ((f[plant] && clean) ? 3 : 0) + (L.s3.demo ? 3 : 0) + qPts(L.s3.q, 's3a') + qPts(L.s3.q, 's3b'); }
+function renderS3() {
+  taskList($('s3-tasks'), [
+    { ok: (L.s3.flags && L.s3.flags[MANIFEST.findIndex((m) => m.tampered)] && !s3WrongFlagged()), html: 'Find the <b>altered</b> file (its hash changed)' + (s3WrongFlagged() ? ' <span class="small" style="color:var(--red)">— un-flag the unchanged files first</span>' : ''), pts: 3 },
+    { ok: (L.s3.flags && L.s3.flags[MANIFEST.findIndex((m) => m.planted)] && !s3WrongFlagged()), html: 'Find the <b>planted</b> file (no recorded hash)', pts: 3 },
+    { ok: !!L.s3.demo, html: 'Change one character and watch the fingerprint change', pts: 3 },
+    { ok: qPts(L.s3.q, 's3a') > 0 && qPts(L.s3.q, 's3b') > 0, html: 'Answer both questions', pts: 6 },
+  ]);
+  renderStepper();
+}
+function enterStop3() { renderS3(); }
+
+/* ============================ STOP 4 ============================ */
+function initStop4() {
+  $('s4-classify').innerHTML = IPS.map((ip, i) => `<div class="ipclass" data-i="${i}">
+    <code>${escHTML(ip.ip)}</code><span class="iprole">${escHTML(ip.role)}</span>
+    <span class="ipbtns" role="group" aria-label="Is ${escHTML(ip.ip)} public or private?"><button type="button" class="segbtn" data-i="${i}" data-v="public" aria-pressed="false">public</button><button type="button" class="segbtn" data-i="${i}" data-v="private" aria-pressed="false">private</button></span>
+    <span class="ipverdict"></span></div>`).join('');
+  $('s4-classify').querySelectorAll('.segbtn').forEach((b) => b.addEventListener('click', () => {
+    const i = +b.dataset.i; L.s4.cls[i] = b.dataset.v;
+    const row = $('s4-classify').querySelector(`.ipclass[data-i="${i}"]`);
+    row.querySelectorAll('.segbtn').forEach((x) => { const sel = x.dataset.v === b.dataset.v; x.classList.toggle('on', sel); x.setAttribute('aria-pressed', sel ? 'true' : 'false'); });
+    const ok = b.dataset.v === IPS[i].kind;
+    row.querySelector('.ipverdict').innerHTML = ok ? '<span class="okv">✓</span>' : '<span class="bad">try again</span>';
+    if (IPS.every((ip, k) => L.s4.cls[k] === ip.kind)) L.s4.classified = true;
+    const st = $('s4-classify-live'); if (st) st.textContent = `${IPS[i].ip} marked ${b.dataset.v}: ${ok ? 'correct' : 'try again'}.`;
+    HSCT.log('ipclass', { ip: IPS[i].ip, v: b.dataset.v, ok });
+    renderS4();
+  }));
+  // whois lookup + drop server + preservation contact
+  $('s4-whois').innerHTML = `<div class="whoisgrid"><div class="lookupcol">
+      <p class="small" style="margin:0 0 6px"><b>Look up an address.</b> Click one to see who owns it.</p>
+      ${IPS.filter((ip) => ip.kind === 'public').map((ip) => `<button type="button" class="lookbtn" data-ip="${ip.ip}"><code>${escHTML(ip.ip)}</code> <span class="small muted">${escHTML(ip.role)}</span></button>`).join('')}
+    </div><div class="recordcol" id="s4-record" aria-live="polite"><p class="small muted">No address selected.</p></div></div>`;
+  $('s4-whois').querySelectorAll('.lookbtn').forEach((b) => b.addEventListener('click', () => showWhois(b.dataset.ip)));
+  qBlock($('s4-q'), ['s4a', 's4b', 's4c'], L.s4.q, renderS4);
+}
+function showWhois(ip) {
+  const rec = IPS.find((x) => x.ip === ip);
+  L.s4.looked = L.s4.looked || {}; L.s4.looked[ip] = true;
+  const w = rec.whois;
+  const isDrop = ip === CASE.dropIP;
+  $('s4-record').innerHTML = `<div class="record">
+    <h4>WHOIS · <code>${escHTML(ip)}</code></h4>
+    <dl><dt>Owner</dt><dd>${escHTML(w.owner)}</dd><dt>Country</dt><dd>${escHTML(w.country)}</dd><dt>Abuse contact</dt><dd><code>${escHTML(w.abuse)}</code></dd></dl>
+    <p class="small muted">${escHTML(w.note)}</p>
+    <div class="row" style="margin-top:8px">
+      <button type="button" class="btn small ${isDrop ? '' : 'ghost'}" id="s4-mark">${L.s4.drop === ip ? '✓ marked as the drop server' : 'Mark this as the drop server'}</button>
+    </div>
+    <div id="s4-preserve"></div>
+  </div>`;
+  $('s4-mark').onclick = () => {
+    if (isDrop) { L.s4.drop = ip; showWhois(ip); renderS4(); }
+    else { $('s4-preserve').innerHTML = `<div class="fb warn">That address is the VPN the sign-in came through — it only hides where the person was. The <em>data</em> went somewhere else. Look up the other address.</div>`; }
+  };
+  if (isDrop && L.s4.drop === ip) {
+    $('s4-preserve').innerHTML = `<p class="small" style="margin:10px 0 6px"><b>Who do you send the evidence-preservation request to?</b></p>
+      <div class="row">${IPS.filter((x) => x.whois).map((x) => `<button type="button" class="pillbtn" data-a="${x.whois.abuse}">${escHTML(x.whois.abuse)}</button>`).join('')}<button type="button" class="pillbtn" data-a="self">just log in and delete it myself</button></div>
+      <div id="s4-preserve-note"></div>`;
+    $('s4-preserve').querySelectorAll('[data-a]').forEach((b) => b.addEventListener('click', () => {
+      const val = b.dataset.a;
+      $('s4-preserve').querySelectorAll('.pillbtn').forEach((x) => x.classList.remove('picked', 'wrongpick'));
+      if (val === 'abuse@havenhost.example') { L.s4.preserve = true; b.classList.add('picked'); $('s4-preserve-note').innerHTML = `<div class="fb good"><b>Right.</b> Havenhost owns the drop server, so its abuse team is who you ask — in writing, through legal process — to preserve the account and its logs as evidence.</div>`; }
+      else if (val === 'self') { b.classList.add('wrongpick'); $('s4-preserve-note').innerHTML = `<div class="fb bad"><b>No.</b> Logging into someone else's server is illegal, even to stop a thief. Do that and you've committed a crime and wrecked the case. Go through the host and the courts.</div>`; }
+      else { b.classList.add('wrongpick'); $('s4-preserve-note').innerHTML = `<div class="fb warn">That's the VPN provider from the sign-in, not the server that holds the stolen file. Send it to whoever owns the drop server.</div>`; }
+      HSCT.log('preserve', { val });
+      renderS4();
+    }));
+  }
+  HSCT.log('whois', { ip });
+  renderS4();
+}
+function s4Pts() { return (L.s4.classified ? 5 : 0) + (L.s4.drop === CASE.dropIP ? 3 : 0) + (L.s4.preserve ? 3 : 0) + qPts(L.s4.q, 's4a') + qPts(L.s4.q, 's4b') + qPts(L.s4.q, 's4c'); }
+function renderS4() {
+  taskList($('s4-tasks'), [
+    { ok: !!L.s4.classified, html: 'Sort all four addresses into <b>public</b> or <b>private</b>', pts: 5 },
+    { ok: L.s4.drop === CASE.dropIP, html: 'Look up the addresses and mark the <b>drop server</b>', pts: 3 },
+    { ok: !!L.s4.preserve, html: 'Pick who to send the <b>preservation request</b> to', pts: 3 },
+    { ok: qPts(L.s4.q, 's4a') > 0 && qPts(L.s4.q, 's4b') > 0 && qPts(L.s4.q, 's4c') > 0, html: 'Answer all three questions', pts: 9 },
+  ]);
+  renderStepper();
+}
+function enterStop4() { renderS4(); }
+
+/* ============================ STOP 5 ============================ */
+let ORD5 = null;
+function initStop5() {
+  const start = shuffle(TIMELINE).map((e) => ({ id: e.id, label: e.label }));   // no times shown: order by reasoning
+  if (arrEq(start.map((s) => s.id), TIMELINE.map((s) => s.id))) start.reverse();
+  ORD5 = new OrderList($('s5-timeline'), start, { onChange: () => { L.s5.checked = false; $('s5-check-note').innerHTML = ''; } });
+  $('s5-check').onclick = () => {
+    const right = arrEq(ORD5.order, TIMELINE.map((e) => e.id));
+    L.s5.checked = true;
+    if (right) {
+      L.s5.ordered = true;
+      $('s5-check-note').innerHTML = `<div class="fb good"><b>That's the sequence.</b> ${TIMELINE.map((e) => `<span class="tl-t">${escHTML(e.t)}</span>`).join(' → ')}. Sign in, open the file, zip it, send it out, sign out, then run a script to erase the tracks. Now the log times line up with it exactly.</div>`;
+      ORD5.items = TIMELINE.map((e) => ({ id: e.id, time: e.t, label: e.label })); ORD5.render();
+    } else {
+      $('s5-check-note').innerHTML = `<div class="fb bad">Not the right order yet. Reason it out: they have to get <em>in</em> before they can open anything, the file is opened before it's zipped, it's zipped before it's sent, and covering the tracks comes last.</div>`;
+    }
+    HSCT.log('timeline', { right });
+    renderS5();
+  };
+  qBlock($('s5-q'), ['s5a', 's5b'], L.s5.q, renderS5);
+}
+function s5Pts() { return (L.s5.ordered ? 9 : 0) + qPts(L.s5.q, 's5a') + qPts(L.s5.q, 's5b'); }
+function renderS5() {
+  taskList($('s5-tasks'), [
+    { ok: !!L.s5.ordered, html: 'Put the six events in the order they happened', pts: 9 },
+    { ok: qPts(L.s5.q, 's5a') > 0 && qPts(L.s5.q, 's5b') > 0, html: 'Answer both questions', pts: 6 },
+  ]);
+  renderStepper();
+}
+function enterStop5() { renderS5(); }
+
+/* ============================ STOP 6 ============================ */
+const normText = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+function reportOK(k) {
+  const v = L.s6.report[k] || '';
+  const words = normText(v).split(' ').filter(Boolean);
+  if (v.trim().length < 25 || words.length < 5 || new Set(words).size < 4) return false;
+  return !REPORT_FIELDS.some((f) => f.k !== k && normText(L.s6.report[f.k]) === normText(v));
+}
+function initStop6() {
+  qBlock($('s6-q'), ['s6a', 's6b', 's6c'], L.s6.q, renderS6);
+  $('s6-report').innerHTML = REPORT_FIELDS.map((f) => `<div class="field"><label for="rep-${f.k}">${escHTML(f.label)} <span class="small muted">(${f.pts} pts)</span> <span class="dstat" id="rep-${f.k}-st"></span></label><span class="help">${escHTML(f.help)}</span><textarea id="rep-${f.k}" maxlength="600"></textarea></div>`).join('');
+  REPORT_FIELDS.forEach((f) => {
+    const el = $('rep-' + f.k);
+    el.value = L.s6.report[f.k] || '';
+    el.addEventListener('input', () => { L.s6.report[f.k] = el.value; renderS6(); });
+    el.addEventListener('change', () => HSCT.log('report', { k: f.k, len: el.value.length }));
+  });
+  $('s6-export').onclick = exportReport;
+}
+function s6Pts() {
+  return qPts(L.s6.q, 's6a') + qPts(L.s6.q, 's6b') + qPts(L.s6.q, 's6c') + REPORT_FIELDS.filter((f) => reportOK(f.k)).reduce((n, f) => n + f.pts, 0);
+}
+function renderS6() {
+  REPORT_FIELDS.forEach((f) => { const st = $('rep-' + f.k + '-st'); if (st) { const ok = reportOK(f.k); st.className = 'dstat' + (ok ? ' ok' : ''); st.textContent = ok ? '✓' : ''; } });
+  renderStepper();
+}
+function enterStop6() { renderS6(); }
+
+function exportReport() {
+  const r = L.s6.report, name = (L.name || 'Analyst');
+  const line = (s) => (s && s.trim() ? s.trim() : '(not written yet)');
+  const facts = [];
+  if (L.s2.account) facts.push('- Account used: ' + CASE.account + ' (an outside sign-in, not the usual clinic PC)');
+  if (L.s2.flags && L.s2.flags.exfil && !s2WrongFlagged()) facts.push('- A large outbound transfer left the network at 02:31 UTC on ' + CASE.day);
+  if (L.s3.flags && !s3WrongFlagged() && L.s3.flags[MANIFEST.findIndex((m) => m.tampered)]) facts.push('- A file on the drive was altered (its hash no longer matches the recorded one)');
+  if (L.s4.drop === CASE.dropIP) facts.push('- Drop server identified: ' + CASE.dropIP + ' (port 443)');
+  if (L.s4.preserve) facts.push('- Preservation request sent to the host through legal process (abuse@havenhost.example)');
+  if (L.s5.ordered) facts.push('- Timeline: sign in -> open patient file -> compress -> send out -> sign out -> run cleanup script');
+  if (s1OrderRight()) facts.push('- Original drive imaged through a write-blocker; image hash matches the original, so the evidence is intact');
+  facts.push('- The stolen records remain sealed evidence and were not disclosed');
+  const txt = `NORTHSIDE CLINIC — DIGITAL FORENSICS FINDINGS
+Case: theft of ${CASE.stolen} from ${CASE.victim}
+Evidence item: ${CASE.evidence} (seized laptop)
+Analyst: ${name}
+Prepared in "The Seized Drive" on HSCT TechHub
+
+1. WHAT WAS TAKEN
+${line(r.what)}
+
+2. WHEN IT LEFT THE NETWORK
+${line(r.when)}
+
+3. WHERE IT WENT / HOW INTEGRITY WAS PRESERVED
+${line(r.where)}
+
+--- ESTABLISHED FACTS (only the parts you worked out appear here) ---
+${facts.length ? facts.join('\n') : '(Work through the steps to fill this in.)'}
+
+Note: at no point did we access the suspect's systems ourselves. Everything went through authorization, imaging, and the courts.
+`;
+  download('forensics_findings.txt', txt, 'text/plain');
+  HSCT.log('export', {});
+}
+
+/* =====================================================================
+   MAIN: register the lesson, the intro, the stepper, scoring, the end.
+   ===================================================================== */
+HSCT.lesson({ id: 'seized-drive-forensics', title: 'The Seized Drive: a digital forensics case', version: '1.0', course: 'it-network', possible: 100 });
+
+const STOPS = [
+  { n: 1, name: 'Chain of custody', short: 'Custody', pts: 15, blurb: 'You have the laptop and a warrant. Handle it so the evidence holds up.' },
+  { n: 2, name: 'Read the logs', short: 'Logs', pts: 20, blurb: 'Find the out-of-place sign-in and the moment the data left the network.' },
+  { n: 3, name: 'Verify the files', short: 'Hashes', pts: 15, blurb: 'Use hashes to find what he altered and what he planted.' },
+  { n: 4, name: 'Trace the destination', short: 'Trace', pts: 20, blurb: 'Follow the address the data went to, and do it the legal way.' },
+  { n: 5, name: 'Build the timeline', short: 'Timeline', pts: 15, blurb: 'Put the events in order into one clear story.' },
+  { n: 6, name: 'Close the case', short: 'The case', pts: 15, blurb: 'What holds up in court, where the line is, and your findings report.' },
+];
+const stopFns = (n) => ({ init: globalThis['initStop' + n], enter: globalThis['enterStop' + n], pts: globalThis['s' + n + 'Pts'] });
+let L = null, ended = false, leaving = false, workInit = false;
+
+function freshState() {
+  return {
+    stop: 1,
+    s1: { q: {} },
+    s2: { found: {}, q: {} },
+    s3: { hashes: new Set(), q: {} },
+    s4: { cls: {}, q: {} },
+    s5: { q: {} },
+    s6: { report: {}, q: {} },
+  };
+}
+
+$('intro-art').innerHTML = ['drive', 'magnify', 'folder', 'doc', 'fingerprint', 'clock', 'shield', 'server', 'suspect', 'lockedpacket'].map((k) => `<img src="${spriteURL(k)}" alt="">`).join('');
+$('intro-stops').innerHTML = STOPS.map((s) => `<li><span class="n">${s.n}</span><span><b>${s.name}.</b> <span class="muted">${s.blurb}</span></span><span class="pts">${s.pts} pts</span></li>`).join('');
+$('start').onclick = () => {
+  const name = $('name').value.trim().replace(/\s+/g, ' ');
+  if (name.length < 2) { $('name-err').hidden = false; $('name').focus(); return; }
+  $('name-err').hidden = true;
+  L = freshState(); L.name = name;
+  HSCT.start(name);
+  show('view-work');
+  initWork();
+  goStop(1);
+};
+$('name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('start').click(); });
+
+function scoreAll() {
+  const by = {}; let total = 0;
+  for (const s of STOPS) { const f = stopFns(s.n).pts; by[s.n] = Math.max(0, Math.min(s.pts, f ? f() : 0)); total += by[s.n]; }
+  return { by, total };
+}
+function renderStepper() {
+  if (!L || !workInit) return;
+  const sc = scoreAll();
+  $('stepper').innerHTML = STOPS.map((s) => {
+    const cls = ['step']; if (s.n === L.stop) cls.push('current'); if (sc.by[s.n] >= s.pts) cls.push('done');
+    return `<button class="${cls.join(' ')}" data-step="${s.n}" ${s.n === L.stop ? 'aria-current="step"' : ''} aria-label="Stop ${s.n}, ${escHTML(s.name)}, ${sc.by[s.n]} of ${s.pts} points"><span class="num" aria-hidden="true">${sc.by[s.n] >= s.pts ? '✓' : s.n}</span><span class="sname" aria-hidden="true">${s.short}</span><span class="spts" aria-hidden="true">${sc.by[s.n]}/${s.pts}</span></button>`;
+  }).join('') + `<span class="points">Points <b>${sc.total}</b> / 100</span>`;
+  $('stepper').querySelectorAll('[data-step]').forEach((b) => b.addEventListener('click', () => goStop(+b.dataset.step)));
+}
+function initWork() {
+  if (workInit) return;
+  for (let n = 1; n <= 6; n++) { const f = stopFns(n).init; if (f) f(); }
+  workInit = true; renderStepper();
+}
+function goStop(n) {
+  L.stop = n;
+  for (let i = 1; i <= 6; i++) $('stop-' + i).hidden = i !== n;
+  HSCT.log('stop', { n });
+  const f = stopFns(n).enter; if (f) f();
+  renderStepper();
+  const sin = $('stepper'), cur = sin.querySelector('.step.current');
+  if (cur && (cur.offsetLeft < sin.scrollLeft || cur.offsetLeft + cur.offsetWidth > sin.scrollLeft + sin.clientWidth - 110)) sin.scrollLeft = Math.max(0, cur.offsetLeft - 12);
+  window.scrollTo(0, 0);
+  const h = $('stop-' + n).querySelector('h2'); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); }
+}
+document.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => goStop(+b.dataset.go)));
+
+/* ---------- finish ---------- */
+function missingList() { const sc = scoreAll(); return STOPS.filter((s) => sc.by[s.n] < s.pts).map((s) => `Stop ${s.n} (${s.short}): ${sc.by[s.n]} of ${s.pts}`); }
+function tryFinish(force) {
+  const miss = missingList();
+  if (miss.length && !force) {
+    $('finish-confirm').innerHTML = `<div class="confirm"><p style="margin-top:0"><b>Points still on the table:</b></p><ul class="small">${miss.map((m) => `<li>${escHTML(m)}</li>`).join('')}</ul><p class="small">Your result file is made once. After this you can't change it without starting over.</p><div class="row"><button class="btn maroon" id="fin-yes" type="button">Finish anyway</button><button class="btn ghost" id="fin-no" type="button">Keep working</button></div></div>`;
+    $('fin-yes').onclick = () => tryFinish(true);
+    $('fin-no').onclick = () => { $('finish-confirm').innerHTML = ''; $('finish').focus(); };
+    $('fin-yes').focus();
+    return;
+  }
+  renderEnd();
+}
+$('finish').addEventListener('click', () => tryFinish(false));
+
+function cap(s, n) { s = String(s || ''); return s.length > n ? s.slice(0, n) + '…' : s; }
+function renderEnd() {
+  if (ended) return;
+  ended = true;
+  const sc = scoreAll();
+  const tier = sc.total >= 90 ? 'Case closed' : sc.total >= 70 ? 'Solid casework' : 'Reopen the case';
+  show('view-end');
+  $('end-h1').textContent = sc.total >= 90 ? 'Case closed.' : sc.total >= 70 ? 'Strong casework.' : 'Reopen the case.';
+  $('end-h1').focus();
+  $('end-lede').textContent = sc.total >= 90
+    ? 'You imaged the drive without touching it, read the logs, proved what was altered, traced where the data went, and built a timeline that holds together — all by the book.'
+    : sc.total >= 70 ? 'Good work. Your breakdown is below; the findings file has everything you established.'
+      : 'Every case gets reopened. The explanations under each step are the lesson — read back through the ones you missed.';
+  $('end-breakdown').innerHTML = STOPS.map((s) => `<tr><td>${s.n}. ${escHTML(s.name)}</td><td>${sc.by[s.n]} / ${s.pts}</td></tr>`).join('') + `<tr><td><b>Total</b></td><td><b>${sc.total} / 100</b></td></tr>`;
+  HSCT.log('finish', { total: sc.total });
+  HSCT.endScreen('#hsct-result', {
+    earned: sc.total, possible: 100, tier,
+    sections: STOPS.map((s) => ({ id: 'stop' + s.n, title: `${s.n}. ${s.name}`, earned: sc.by[s.n], possible: s.pts })),
+    extra: {
+      account_named: !!L.s2.account, drop_server_found: L.s4.drop === CASE.dropIP, preservation_contact: !!L.s4.preserve,
+      timeline_built: !!L.s5.ordered, custody_order: !!L.s1.ordered,
+      report: { what: cap(L.s6.report.what, 500), when: cap(L.s6.report.when, 500), where: cap(L.s6.report.where, 500) },
+    },
+  });
+  $('end-export').onclick = exportReport;
+}
+$('again').addEventListener('click', () => {
+  $('again-confirm').innerHTML = `<div class="confirm"><p style="margin-top:0">Start the whole case over? Your result file above is already made; download it first if you haven't.</p><div class="row"><button class="btn" id="ag-yes" type="button">Start over</button><button class="btn ghost" id="ag-no" type="button">Cancel</button></div></div>`;
+  $('ag-yes').onclick = () => { leaving = true; location.reload(); };
+  $('ag-no').onclick = () => { $('again-confirm').innerHTML = ''; $('again').focus(); };
+  $('ag-yes').focus();
+});
+window.addEventListener('beforeunload', (e) => { if (L && !ended && !leaving) { e.preventDefault(); e.returnValue = ''; } });
+
+</script>
+</body>
+</html>
