@@ -8,6 +8,55 @@ import './site.css';
 const KEY_STORE = 'hsct:verify-private-key';
 const fmtDate = (iso) => { try { return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch { return iso; } };
 
+/**
+ * Written work a lesson sent back in `extra.report` (see lesson-template/README.md):
+ * [{ title, rows: [[label, value], ...], text, note }]. Shown as readable tables and
+ * paragraphs, each value with its own Copy button (handy for re-typing into another portal).
+ */
+function StudentWork({ report }) {
+  const [copied, setCopied] = useState('');
+  const copy = async (id, value) => {
+    try { await navigator.clipboard.writeText(String(value)); setCopied(id); setTimeout(() => setCopied((c) => (c === id ? '' : c)), 1400); }
+    catch { /* clipboard blocked — the text is selectable */ }
+  };
+  const sections = report.filter((s) => s && typeof s === 'object');
+  if (!sections.length) return null;
+  return (
+    <div className="vf-work">
+      <h3>Student work</h3>
+      {sections.map((sec, i) => (
+        <div className="vf-work-sec" key={i}>
+          <div className="vf-work-head">
+            <h4>{String(sec.title || `Part ${i + 1}`)}{sec.note && <small> · {String(sec.note)}</small>}</h4>
+            {sec.text && <button type="button" className="vf-copy" onClick={() => copy(`${i}-text`, sec.text)}>{copied === `${i}-text` ? 'Copied' : 'Copy'}</button>}
+          </div>
+          {Array.isArray(sec.rows) && sec.rows.length > 0 && (
+            <table className="syl-table vf-work-table"><tbody>
+              {sec.rows.map((row, j) => {
+                const [label, value] = Array.isArray(row) ? row : [row?.label, row?.value];
+                const v = value == null ? '' : String(value);
+                const id = `${i}-${j}`;
+                return (
+                  <tr key={j}>
+                    <td>{String(label ?? '')}</td>
+                    <td>{v || '—'}</td>
+                    <td>{v && <button type="button" className="vf-copy" onClick={() => copy(id, v)}>{copied === id ? 'Copied' : 'Copy'}</button>}</td>
+                  </tr>
+                );
+              })}
+            </tbody></table>
+          )}
+          {sec.text && (
+            <div className="vf-work-text">
+              {String(sec.text).split(/\n{2,}/).map((p, j) => <p key={j}>{p}</p>)}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function VerifyPage() {
   useFonts();
   useEffect(() => { document.title = 'Verify result files · HSCT TechHub'; }, []);
@@ -212,6 +261,7 @@ export default function VerifyPage() {
                                     </details>
                                   )}
                                 </div>
+                                {Array.isArray(r.payload?.extra?.report) && <StudentWork report={r.payload.extra.report} />}
                               </td>
                             </tr>
                           )}

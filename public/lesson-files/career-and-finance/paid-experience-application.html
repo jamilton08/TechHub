@@ -1,0 +1,1899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paid experience application — HSCT</title>
+<!--
+  HSCT LESSON — Paid experience application (Career & Finance · Resumes & interviews)
+  Built from lesson-template/lesson-starter.html. Three screens:
+    1. #view-intro   what this is, the rules, the student's name            -> HSCT.start(name)
+    2. #view-work    six steps: school, application, parent, brainstorm,
+                     essay, review                                          -> HSCT.log(...) as they go
+    3. #view-end     wrap-up, the student's own copy, standard result card  -> HSCT.endScreen(...)
+  The score (out of 100) checks completeness and essay structure only; the essay itself is graded by the teacher.
+  extra.report carries the whole application and essay so /lessons/verify can show it as readable work.
+  Drafts: autosaved to sessionStorage for this tab only (the lesson needs it: long writing task; cleared when
+  the tab closes, so nothing is left on shared lab computers), plus an optional draft file the student keeps.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#101a3f;--royal:#1f3fae;--royal-deep:#142a7a;--maroon:#7a1c2c;--maroon-deep:#56111f;--peri:#a9b7ea;
+  --paper:#f5f7fc;--paper-2:#e9edf8;--line:#d3d9ee;--mute:#5b6485;--faint:#8a92ad;--soft:#f8f9fd;
+  --good:#1f7a3d;--good-soft:#e1f2e6;--warn:#8a4b00;--warn-soft:#fdf0dc;--bad:#b3261e;--bad-soft:#fbe3e1;
+  --hl:#fdf1cc;--hl-line:#d9a520;
+  --c1:#1f3fae;--c2:#0f7b6c;--c3:#7a1c2c;--c4:#6a3fa0;
+  --hsct-color:var(--royal);   /* the result card picks up this color */
+  --r:12px;--shadow:0 1px 2px rgba(16,26,63,.04),0 10px 30px rgba(16,26,63,.07);
+  --display:"Sora","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"IBM Plex Sans","Helvetica Neue",system-ui,sans-serif;
+  --serif:Georgia,"Times New Roman",serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+html,body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 var(--body)}
+h1,h2,h3,h4{font-family:var(--display);line-height:1.2;margin:0;letter-spacing:-.01em}
+p{margin:0 0 .8rem}
+a{color:var(--royal)}
+button{font:inherit;cursor:pointer}
+.muted{color:var(--mute)}.small{font-size:13.5px}
+.linkbtn{background:none;border:0;padding:0;color:var(--royal);font-weight:600;text-decoration:underline;cursor:pointer;font-size:inherit}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible,label.btn:focus-visible,.linkbtn:focus-visible{outline:3px solid var(--peri);outline-offset:2px}
+
+.view{display:none}.view.active{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.view.active,.step.on{animation:none!important}*{transition:none!important;scroll-behavior:auto!important}}
+.wrap{max-width:1140px;margin:0 auto;padding:32px 20px 60px}
+.wrap.narrow{max-width:820px}
+.kicker{color:var(--mute);font-size:14px;margin-bottom:6px}
+h1{font-size:clamp(26px,3.4vw,34px);font-weight:700;margin-bottom:.4rem}
+.lede{color:var(--mute);font-size:1.08rem;margin-bottom:1.3rem;max-width:760px}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1.5px solid var(--line);background:#fff;color:var(--ink);padding:10px 16px;border-radius:8px;font-weight:600;font-size:15px;text-decoration:none;line-height:1.2;transition:background .15s,border-color .15s,filter .15s;font-family:var(--body)}
+.btn:hover{border-color:#b6c0de;background:var(--soft)}
+.btn.primary{background:var(--royal);border-color:var(--royal);color:#fff}
+.btn.primary:hover{filter:brightness(.92);background:var(--royal)}
+.btn.maroon{background:var(--maroon);border-color:var(--maroon);color:#fff}
+.btn.maroon:hover{background:var(--maroon-deep)}
+.btn.ghost{background:transparent;border-color:var(--royal);color:var(--royal)}
+.btn.small{font-size:13.5px;padding:7px 12px}
+.btn.danger{color:var(--bad)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:22px;margin-bottom:18px}
+.card>h2,.card>h3{font-size:18px;margin-bottom:4px}
+.card>.sub{color:var(--mute);margin:0 0 16px;font-size:15px}
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px}
+.grid>.card{margin:0}
+.s2{grid-column:span 2}.s4{grid-column:span 4}.s5{grid-column:span 5}.s6{grid-column:span 6}.s12{grid-column:span 12}
+@media(max-width:760px){.grid>*{grid-column:span 12!important}}
+
+/* ===== Intro ===== */
+.hero{display:grid;grid-template-columns:1.15fr 1fr;gap:18px;align-items:stretch;margin-bottom:18px}
+@media(max-width:860px){.hero{grid-template-columns:1fr}}
+.qcard{position:relative;overflow:hidden;color:#fff;border-radius:16px;padding:28px 30px;background:linear-gradient(112deg,var(--royal-deep) 0 60%,var(--maroon-deep) 60.2% 100%);display:flex;flex-direction:column;justify-content:space-between;min-height:250px}
+.qcard::after{content:"";position:absolute;right:-60px;bottom:-60px;width:220px;height:220px;border-radius:50%;border:28px solid rgba(169,183,234,.16);pointer-events:none}
+.qcard .eyebrow{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#c9d3f3;font-weight:600}
+.qcard .q{font-family:var(--display);font-weight:600;font-size:clamp(24px,3vw,32px);line-height:1.2;margin:12px 0 18px;max-width:460px}
+.qcard .meta{display:flex;gap:8px;flex-wrap:wrap;position:relative;z-index:1}
+.qcard .meta span{background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:4px 11px;font-size:13px}
+.start-card{margin:0;display:flex;flex-direction:column}
+.start-card h2{font-size:20px;margin-bottom:8px}
+.rules{margin:0 0 4px;padding-left:1.2rem;font-size:15px}.rules li{margin:.32rem 0}
+.name-row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.name-row input{flex:1;min-width:200px}
+.name-err{color:var(--bad);margin-top:8px;font-size:14px;font-weight:600}
+.resume{margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--good-soft);border:1px solid #bfe2c9;border-radius:10px;padding:10px 12px;font-size:14.5px}
+.draftline{margin:12px 0 0;font-size:14px;color:var(--mute)}
+.howto{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}
+@media(max-width:860px){.howto{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.how{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px}
+.how .n{width:30px;height:30px;border-radius:8px;background:var(--paper-2);color:var(--royal);display:grid;place-items:center;font-weight:700;font-family:var(--display);margin-bottom:8px}
+.how b{display:block;margin-bottom:2px;font-family:var(--display);font-weight:600}
+.how span{font-size:14px;color:var(--mute)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:760px){.two{grid-template-columns:1fr}}
+.two .card{margin:0}
+.needs{margin:6px 0 12px;padding-left:20px;font-size:15px}.needs li{margin:6px 0}
+.pts{width:100%;border-collapse:collapse;font-size:14.5px;margin-top:6px}
+.pts td{padding:6px 0;border-top:1px solid var(--line)}.pts td:last-child{text-align:right;font-variant-numeric:tabular-nums;color:var(--mute);white-space:nowrap}
+
+/* Notes */
+.note{display:flex;gap:12px;border-radius:10px;padding:12px 14px;font-size:14.5px;background:var(--paper-2);border:1px solid var(--line)}
+.note .ic{flex:0 0 auto;width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:#fff;color:var(--royal)}
+.note .t b:first-child{display:block}
+
+/* ===== Work: top bar ===== */
+.bar{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.95);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.bar-in{max-width:1140px;margin:0 auto;padding:9px 20px;display:flex;align-items:center;gap:12px}
+.stepper{flex:1;min-width:0;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.stepper::-webkit-scrollbar{display:none}
+.stepper button{flex:0 0 auto;display:flex;align-items:center;gap:7px;background:#fff;border:1px solid var(--line);color:var(--ink);border-radius:999px;padding:4px 12px 4px 4px;font-size:13.5px;white-space:nowrap}
+.stepper button:hover{border-color:#b6c0de}
+.stepper .n{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--paper-2);color:var(--mute);font-size:11.5px;font-weight:700}
+.stepper button.done .n{background:var(--good);color:#fff}
+.stepper button.on{background:var(--royal);border-color:var(--royal);color:#fff;font-weight:600}
+.stepper button.on .n{background:#fff;color:var(--royal)}
+.stepper button.on.done .n{color:var(--good)}
+.bar-act{flex:0 0 auto;display:flex;align-items:center;gap:8px}
+.save-status{font-size:12.5px;color:var(--mute);white-space:nowrap}
+.save-status.ok::before{content:"●";color:var(--good);margin-right:5px}
+@media(max-width:640px){.save-status{display:none}.bar-in{padding:8px 12px}}
+
+main.work{max-width:1140px;margin:0 auto;padding:24px 20px 120px}
+.step{display:none}
+.step.on{display:block;animation:fade .25s ease}
+.head{margin:0 0 18px}
+.head .k{font-size:12.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--royal)}
+.head h2{font-size:24px;margin:4px 0 6px}
+.head p{color:var(--mute);margin:0;max-width:780px}
+
+/* Fields */
+.lbl{display:block;font-weight:600;font-size:14.5px;margin-bottom:6px}
+.req{color:var(--bad)}
+.opt{color:var(--faint);font-weight:500;font-size:12.5px}
+input[type=text],input[type=email],input[type=tel],input[type=date],input[type=number],select,textarea{width:100%;font:inherit;color:var(--ink);background:#fff;border:1.5px solid var(--line);border-radius:8px;padding:10px 12px;transition:border-color .15s,box-shadow .15s}
+textarea{resize:vertical;line-height:1.6}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--royal);box-shadow:0 0 0 4px rgba(31,63,174,.13)}
+.field.bad input,.field.bad select{border-color:var(--bad)}
+.hint{font-size:13px;color:var(--mute);margin-top:5px}
+.err{font-size:13px;color:var(--bad);margin-top:5px;font-weight:600}
+.err:empty{display:none}
+.inline{display:flex;gap:8px}
+.pills{display:flex;flex-wrap:wrap;gap:8px}
+.pill{position:relative}
+.pill input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.pill span{display:inline-block;padding:9px 18px;border:1.5px solid var(--line);border-radius:999px;background:#fff;font-weight:600;font-size:14.5px;cursor:pointer;transition:all .15s}
+.pill input:checked+span{background:var(--royal);border-color:var(--royal);color:#fff}
+.pill input:focus-visible+span{outline:3px solid var(--peri);outline-offset:2px}
+.checks{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+.check{display:flex;gap:10px;align-items:flex-start;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;background:#fff;font-size:14.5px;transition:all .15s}
+.check:hover{border-color:#b6c0de}
+.check input{margin-top:3px;width:17px;height:17px;accent-color:var(--royal);flex:0 0 auto}
+.check.on{border-color:var(--royal);background:var(--paper-2)}
+.badge{display:inline-block;font-style:normal;font-size:11px;font-weight:700;background:var(--paper-2);color:var(--royal);border-radius:6px;padding:1px 6px;margin-left:4px;vertical-align:1px}
+.tagpill{display:inline-block;font-size:11.5px;font-weight:700;font-family:var(--body);background:var(--warn-soft);color:var(--warn);border-radius:99px;padding:2px 9px;vertical-align:3px;margin-left:6px;letter-spacing:0}
+.switch{display:inline-flex;align-items:center;gap:10px;cursor:pointer;font-weight:600;font-size:14.5px}
+.switch input{appearance:none;-webkit-appearance:none;width:42px;height:24px;background:var(--line);border-radius:99px;position:relative;cursor:pointer;transition:background .15s;margin:0;flex:0 0 auto}
+.switch input::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .15s}
+.switch input:checked{background:var(--good)}
+.switch input:checked::after{left:21px}
+
+/* Chips */
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:5px 11px;font-size:13.5px;color:var(--ink);text-align:left;line-height:1.35}
+.chip:hover{border-color:var(--pc,var(--royal));background:var(--soft)}
+.chip.static{cursor:default;background:var(--soft)}
+.chip.warnchip{border-color:#efcf9f;background:var(--warn-soft);color:var(--warn);font-weight:600}
+.mini{display:block;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);margin-bottom:6px}
+
+/* Mind map */
+.mm{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 190px minmax(0,1fr);grid-template-areas:"a . b" ". c ." "d . e";gap:20px 28px}
+.mm-lines{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:0;overflow:visible}
+.mm-center{grid-area:c;justify-self:center;align-self:center;position:relative;z-index:1;width:184px;height:184px;border-radius:50%;background:linear-gradient(112deg,var(--royal-deep) 0 58%,var(--maroon-deep) 58.2% 100%);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:22px;box-shadow:0 0 0 10px var(--paper-2),var(--shadow)}
+.mm-center b{font-family:var(--display);font-size:16.5px;line-height:1.3;font-weight:600}
+.mm-center small{display:block;margin-top:8px;font-size:11px;color:#c9d3f3;letter-spacing:.08em;text-transform:uppercase}
+.mm-branch{position:relative;z-index:1;background:#fff;border:2px solid var(--bc);border-radius:14px;padding:16px;box-shadow:var(--shadow)}
+.mm-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.mm-tag{font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--bc)}
+.mm-count{min-width:24px;height:24px;border-radius:99px;background:var(--bc);color:#fff;font-size:12px;font-weight:800;display:grid;place-items:center;padding:0 7px}
+.mm-branch h3{font-size:17px}
+.mm-q{font-size:14px;color:var(--mute);margin:4px 0 10px}
+.mm-ideas{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.idea{display:inline-flex;align-items:center;gap:2px;background:var(--soft);background:color-mix(in srgb,var(--bc) 8%,#fff);border:1px solid var(--line);border-color:color-mix(in srgb,var(--bc) 30%,#fff);border-radius:999px;padding:3px 3px 3px 11px;font-size:14px}
+.x{border:0;background:transparent;width:24px;height:24px;border-radius:50%;color:var(--mute);font-size:17px;line-height:1;display:inline-grid;place-items:center;flex:0 0 auto}
+.x:hover{background:rgba(0,0,0,.07);color:var(--bad)}
+.mm-ideas .empty{font-size:13.5px;color:var(--faint);font-style:italic}
+.mm-add{display:flex;gap:6px}
+.mm-add input{padding:8px 10px;font-size:14.5px}
+.mm-ex{font-size:12.5px;color:var(--faint);margin-top:8px}
+@media(max-width:760px){.mm{grid-template-columns:1fr;grid-template-areas:"c" "a" "b" "d" "e"}.mm-lines{display:none}.mm-center{width:auto;height:auto;border-radius:14px;justify-self:stretch;box-shadow:var(--shadow)}}
+
+/* Experience chart */
+.exp-form{display:grid;grid-template-columns:2.2fr 1.5fr 1fr .8fr 1.6fr auto;gap:8px;align-items:end;margin-bottom:16px}
+.exp-form label{font-size:12.5px;font-weight:700;color:var(--mute);display:block;margin-bottom:4px}
+@media(max-width:980px){.exp-form{grid-template-columns:1fr 1fr}.exp-form .w2{grid-column:span 2}}
+.exp-layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:20px;align-items:start}
+@media(max-width:980px){.exp-layout{grid-template-columns:1fr}}
+.tblwrap{overflow-x:auto}
+.exp-table{width:100%;border-collapse:collapse;font-size:14px}
+.exp-table th{text-align:left;font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.exp-table td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.exp-table .num{text-align:right}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
+.empty-box{border:2px dashed var(--line);border-radius:12px;padding:22px;text-align:center;color:var(--mute);font-size:14.5px}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:6px}
+.stats div{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center}
+.stats b{display:block;font-size:22px;color:var(--royal);line-height:1.2;font-family:var(--display)}
+.stats span{font-size:12px;color:var(--mute)}
+.chartbox h4{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin:14px 0 8px;font-family:var(--body)}
+.bar-row{display:grid;grid-template-columns:128px minmax(0,1fr) auto;gap:8px;align-items:center;margin-bottom:7px;font-size:13px}
+.bar-track{height:14px;background:var(--paper-2);border-radius:99px;overflow:hidden}
+.barfill{height:100%;border-radius:99px;transition:width .3s}
+.bar-val{color:var(--mute);font-size:12.5px;white-space:nowrap}
+.goal{font-size:13.5px;color:var(--mute);margin:-6px 0 14px}
+.goal b{color:var(--ink)}
+
+/* Essay */
+.prompt{display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:space-between;background:linear-gradient(112deg,var(--royal-deep) 0 62%,var(--maroon-deep) 62.2% 100%);color:#fff;border-radius:14px;padding:16px 22px;margin-bottom:16px}
+.prompt .eyebrow{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#c9d3f3;font-weight:600}
+.prompt .q{font-family:var(--display);font-size:20px;font-weight:600;line-height:1.25}
+.prompt .meta{display:flex;gap:8px;flex-wrap:wrap}
+.prompt .meta span{background:rgba(255,255,255,.13);border-radius:999px;padding:4px 11px;font-size:13px}
+.tabs{display:flex;gap:4px;border-bottom:2px solid var(--line);margin:0 0 18px;overflow-x:auto;scrollbar-width:none}
+.tab{background:none;border:0;border-bottom:3px solid transparent;margin-bottom:-2px;padding:10px 14px;font-weight:600;color:var(--mute);white-space:nowrap;font-family:var(--display);font-size:14.5px}
+.tab:hover{color:var(--ink)}
+.tab.on{color:var(--royal);border-bottom-color:var(--maroon)}
+.panel{display:none}.panel.on{display:block}
+.write{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:start}
+@media(max-width:980px){.write{grid-template-columns:1fr}}
+.pcard{background:#fff;border:1px solid var(--line);border-top:4px solid var(--pc);border-radius:var(--r);padding:18px;margin-bottom:16px;box-shadow:var(--shadow)}
+.phead{display:flex;gap:12px;align-items:flex-start;margin-bottom:8px}
+.pnum{flex:0 0 auto;width:34px;height:34px;border-radius:9px;background:var(--pc);color:#fff;display:grid;place-items:center;font-weight:700;font-family:var(--display)}
+.ptitle{flex:1;min-width:0}
+.ptitle h3{font-size:16.5px}
+.ptitle p{margin:2px 0 0;color:var(--mute);font-size:14.5px}
+.wc{font-size:12.5px;font-weight:700;color:var(--mute);background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:3px 10px;white-space:nowrap}
+.wc.good{color:var(--good);background:var(--good-soft);border-color:#bfe2c9}
+.wc.warn{color:var(--warn);background:var(--warn-soft);border-color:#efcf9f}
+.pinc{margin:4px 0 12px;font-size:14.5px}
+.pinc summary{cursor:pointer;font-weight:600;color:var(--royal)}
+.pinc ul{margin:8px 0 0;padding-left:20px}
+.pinc li{margin:3px 0}
+.starters,.from-brain{margin-bottom:12px}
+.pcard textarea{font-family:var(--serif);font-size:16.5px;min-height:170px}
+.pmeter{height:6px;background:var(--paper-2);border-radius:99px;margin-top:8px;overflow:hidden}
+.pmeter-fill{height:100%;width:0;background:var(--faint);border-radius:99px;transition:width .2s,background .2s}
+.checker{padding:18px}
+@media(min-width:981px){.checker{position:sticky;top:70px}}
+.ck-total{display:flex;align-items:baseline;gap:6px}
+.ck-total b{font-size:34px;line-height:1;color:var(--royal);font-family:var(--display)}
+.ck-total span{color:var(--mute);font-size:14px}
+.ck-bars{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:12px 0 4px}
+.ck-bar{height:42px;background:var(--paper-2);border-radius:8px;position:relative;overflow:hidden}
+.ck-bar i{position:absolute;left:0;right:0;bottom:0;background:var(--pc);opacity:.85;transition:height .2s}
+.ck-bar span{position:absolute;inset:0;display:grid;place-items:center;font-size:12px;font-weight:800;color:var(--ink)}
+.checker h4{font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--mute);margin:16px 0 8px;font-family:var(--body)}
+.ck-list{list-style:none;margin:0;padding:0}
+.ck-list li{display:flex;gap:9px;align-items:flex-start;font-size:14px;padding:4px 0}
+.ck-ic{flex:0 0 auto;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:800;background:var(--paper-2);color:var(--faint);margin-top:1px}
+.ck-list li.ok .ck-ic{background:var(--good);color:#fff}
+.ck-list li.no .ck-ic{background:var(--warn-soft);color:var(--warn);border:1px solid #efcf9f}
+.swap{font-size:13.5px;padding:7px 10px;background:var(--warn-soft);border-radius:8px;margin-bottom:6px}
+.swap b{color:var(--warn)}
+.ck-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.checker p{margin:0}
+
+/* Sample */
+.sample-wrap{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:18px;align-items:start}
+@media(max-width:980px){.sample-wrap{grid-template-columns:1fr}}
+.sample-wrap .card{margin:0}
+.sample-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.paper{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:30px 34px;box-shadow:var(--shadow);font-family:var(--serif);font-size:17px;line-height:1.8}
+@media(max-width:600px){.paper{padding:20px 18px;font-size:16px}}
+.paper .ptop{font-family:var(--body);font-size:13px;color:var(--mute);margin-bottom:14px;line-height:1.4}
+.paper p{margin:0 0 1em}
+.paper mark{background:none;color:inherit}
+.paper.show mark{background:var(--hl);box-shadow:inset 0 -2px 0 var(--hl-line);border-radius:3px;padding:1px 2px}
+.paper.show mark::before{content:attr(data-tag);display:inline-block;white-space:nowrap;font:700 10px/1 var(--body);letter-spacing:.04em;text-transform:uppercase;background:var(--royal-deep);color:#fff;border-radius:4px;padding:3px 5px;margin-right:5px;vertical-align:2px}
+.moves{padding-left:20px;margin:0}
+.moves li{margin:0 0 10px;font-size:14.5px}
+
+/* Tips & tools */
+.tips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media(max-width:860px){.tips{grid-template-columns:1fr}}
+.tips .card{margin:0}
+.tip.wide{grid-column:1/-1}
+.tipn{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:8px;background:var(--paper-2);color:var(--royal);font-weight:700;font-family:var(--display);margin-bottom:8px}
+.tip h3{font-size:16.5px;margin-bottom:6px}
+.tip p{margin:0 0 8px;font-size:15px}
+.swaptbl{width:100%;border-collapse:collapse;font-size:14.5px}
+.swaptbl th{text-align:left;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);padding:4px 8px 6px 0}
+.swaptbl td{padding:8px 8px 8px 0;border-top:1px solid var(--line);vertical-align:top}
+.swaptbl td:first-child{color:var(--bad);text-decoration:line-through;text-decoration-color:rgba(179,38,30,.4);width:40%}
+.swaptbl td:last-child{color:var(--good)}
+.dodont{display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:14.5px}
+.dodont ul{margin:4px 0 0;padding-left:18px}
+.dodont b{font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+.ba{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:760px){.ba,.dodont{grid-template-columns:1fr}}
+.ba>div{border-radius:12px;padding:14px 16px;font-family:var(--serif);font-size:15.5px;line-height:1.65}
+.ba .before{background:var(--bad-soft);border:1px solid #f3c7c3}
+.ba .after{background:var(--good-soft);border:1px solid #bfe2c9}
+.ba .lab{display:block;font:700 11.5px/1 var(--body);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+.ba .before .lab{color:var(--bad)}.ba .after .lab{color:var(--good)}
+.why{font-size:14px;color:var(--mute);margin:10px 0 0}
+.tools{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-bottom:18px}
+.tool{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:var(--shadow)}
+.tool .tt{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px}
+.tool h3{font-size:15.5px}
+.tool p{margin:0 0 8px;font-size:14.5px;color:var(--mute)}
+.tool a{font-size:14px;font-weight:600}
+.tag{font-size:11px;font-weight:700;border-radius:99px;padding:2px 8px;background:var(--paper-2);color:var(--royal);white-space:nowrap}
+.tag.here{background:var(--good-soft);color:var(--good)}
+.tag.ai{background:var(--warn-soft);color:var(--warn)}
+.steps-list{margin:0;padding-left:20px;font-size:14.5px}
+.steps-list li{margin:0 0 8px}
+
+/* Review */
+.review{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+@media(max-width:980px){.review{grid-template-columns:1fr}}
+@media(min-width:981px){.review aside{position:sticky;top:70px}}
+.ready{display:flex;gap:18px;align-items:flex-start}
+@media(max-width:520px){.ready{flex-direction:column}}
+.ring{flex:0 0 auto;width:92px;height:92px;border-radius:50%;background:conic-gradient(var(--rc,var(--good)) calc(var(--p) * 1%),var(--paper-2) 0);display:grid;place-items:center}
+.ring span{width:72px;height:72px;border-radius:50%;background:#fff;display:grid;place-items:center;font-weight:700;font-size:20px;font-family:var(--display);line-height:1}
+.ring span small{display:block;font-size:11px;color:var(--mute);font-weight:500;font-family:var(--body);margin-top:2px}
+.ready-body{flex:1;min-width:0}
+.ready h3{font-size:19px;margin-bottom:4px}
+.ready p{margin:0 0 10px;color:var(--mute);font-size:14.5px}
+.scorelist{list-style:none;margin:6px 0 12px;padding:0}
+.scorelist li{display:grid;grid-template-columns:minmax(0,1fr) 90px 54px;gap:10px;align-items:center;font-size:14px;padding:5px 0;border-top:1px solid var(--line)}
+.scorelist .mbar{height:8px;background:var(--paper-2);border-radius:99px;overflow:hidden}
+.scorelist .mbar i{display:block;height:100%;border-radius:99px;background:var(--royal)}
+.scorelist .mbar i.full{background:var(--good)}
+.scorelist b{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.sumtbl{width:100%;border-collapse:collapse;font-size:15px}
+.sumtbl th{text-align:left;font-weight:600;color:var(--mute);width:36%;padding:9px 10px 9px 0;vertical-align:top;border-top:1px solid var(--line)}
+.sumtbl td{padding:9px 0;border-top:1px solid var(--line);vertical-align:top;overflow-wrap:anywhere}
+.sumtbl td.cp{width:70px;text-align:right}
+.copy{border:1px solid var(--line);background:#fff;border-radius:7px;font-size:12px;font-weight:700;padding:4px 9px;color:var(--royal);white-space:nowrap}
+.copy:hover{border-color:var(--royal)}
+.copy.done{color:var(--good);border-color:#bfe2c9}
+.missing{color:var(--warn);font-weight:700}
+.essay-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:4px}
+.essay-view p{font-family:var(--serif);font-size:16px;line-height:1.7;margin:0 0 .9em}
+.finish-card h3{font-size:18px;margin-bottom:6px}
+.finish-card p{font-size:14.5px;color:var(--mute)}
+.finish-card .btn.primary{width:100%;padding:13px 16px;font-size:16px}
+.stack{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.stack .btn{justify-content:flex-start}
+
+/* Bottom step nav */
+.stepnav{position:fixed;left:0;right:0;bottom:0;z-index:25;background:rgba(255,255,255,.96);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-top:1px solid var(--line)}
+.prog{height:4px;background:var(--paper-2)}
+.prog i{display:block;height:100%;background:linear-gradient(90deg,var(--royal),var(--maroon));width:0;transition:width .3s}
+.stepnav-in{max-width:1140px;margin:0 auto;padding:9px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.where{font-size:13.5px;color:var(--mute);text-align:center}
+@media(max-width:520px){.where{display:none}}
+
+/* End */
+.end-time{color:var(--mute);font-size:14.5px;margin:-6px 0 0}
+.copy-card h2{font-size:18px;margin-bottom:6px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+.toast{position:fixed;left:50%;bottom:84px;transform:translate(-50%,20px);background:var(--ink);color:#fff;padding:11px 18px;border-radius:10px;font-size:14.5px;box-shadow:0 10px 30px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:all .2s;z-index:50;max-width:calc(100% - 32px);text-align:center}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+
+<!-- ===== 1. INTRO ===== -->
+<section class="view active" id="view-intro">
+  <div class="wrap">
+    <p class="kicker">Career &amp; Finance · Resumes &amp; interviews</p>
+    <h1>Paid experience application</h1>
+    <p class="lede">Fill out your application the way the NYC Career Pathways portal asks for it, map your ideas, and write a four-paragraph essay. At the end you get a result file to submit in Google Classroom.</p>
+
+    <div class="hero">
+      <div class="qcard">
+        <div>
+          <div class="eyebrow">Your essay question</div>
+          <div class="q">Why are you interested in a paid experience?</div>
+        </div>
+        <div class="meta"><span>4 paragraphs</span><span>280–450 words</span><span>Your own words</span><span>About 60 min</span></div>
+      </div>
+      <div class="card start-card">
+        <h2>Before you start</h2>
+        <ul class="rules">
+          <li>The clock starts when you click Start and stops when you finish.</li>
+          <li>Write the essay in your own words. Your result file records how long you worked and when text is pasted in.</li>
+          <li>Your <b>SSN/ITIN</b> never goes on this page — only in the official portal.</li>
+        </ul>
+        <div class="name-row">
+          <input id="name" type="text" placeholder="Your full name (goes on your result)" autocomplete="off" maxlength="60" aria-label="Your full name">
+          <button type="button" class="btn primary" id="start">Start</button>
+        </div>
+        <div class="name-err" id="name-err" hidden>Enter your full name first — it goes on your result file.</div>
+        <div class="resume" id="resumeBox" hidden>
+          <span>Your application in this tab is saved for <b id="resumeName"></b>.</span>
+          <button type="button" class="btn small primary" id="resumeTab">Continue where I left off</button>
+        </div>
+        <p class="draftline">Working over more than one class? <label class="linkbtn" for="draftFile" tabindex="0" role="button">Continue from a draft file</label></p>
+        <input type="file" id="draftFile" accept=".json,.html,.htm,application/json,text/html" hidden>
+      </div>
+    </div>
+
+    <div class="howto">
+      <div class="how"><div class="n">1</div><b>Your info</b><span>School, student, application, and parent/guardian details.</span></div>
+      <div class="how"><div class="n">2</div><b>Brainstorm</b><span>A mind map and an experience chart, so you never stare at a blank page.</span></div>
+      <div class="how"><div class="n">3</div><b>Write 4 paragraphs</b><span>Sentence starters, a sample essay, and a checker that reads as you type.</span></div>
+      <div class="how"><div class="n">4</div><b>Finish &amp; submit</b><span>Download your result file for Google Classroom and keep your own copy.</span></div>
+    </div>
+
+    <div class="two">
+      <div class="card">
+        <h3>Have these ready</h3>
+        <ul class="needs">
+          <li>Your <b>OSIS</b> number (9 digits)</li>
+          <li>Your <b>birth date</b> and <b>grade</b></li>
+          <li>A parent/guardian’s <b>name, email, and phone</b></li>
+        </ul>
+        <div class="note">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>
+          <div class="t"><b>Private.</b>Nothing is sent anywhere while you work. Your result file is encrypted — only Mr. Cruz can open it. Work autosaves in this tab and clears when you close it, so use <b>Save draft</b> to keep it between classes.</div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>How you’re scored (100)</h3>
+        <p class="muted small" style="margin:2px 0 6px">The score checks that your application is complete and your essay has the right parts. Mr. Cruz reads and grades what you actually wrote.</p>
+        <table class="pts">
+          <tr><td>Application: you, your school, details, parent/guardian</td><td>30</td></tr>
+          <tr><td>Brainstorm: mind map + experience chart</td><td>10</td></tr>
+          <tr><td>Essay: 4 full paragraphs, 280–450 words</td><td>30</td></tr>
+          <tr><td>Essay: explains why <i>paid</i></td><td>10</td></tr>
+          <tr><td>Essay: pathway, specifics, a goal, polish</td><td>20</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 2. WORK ===== -->
+<section class="view" id="view-work">
+  <div class="bar">
+    <div class="bar-in">
+      <nav class="stepper" id="stepper" aria-label="Application steps"></nav>
+      <div class="bar-act">
+        <span class="save-status" id="saveStatus"></span>
+        <button type="button" class="btn small" id="btnSaveTop" title="Download a draft file you can load next class">Save draft</button>
+      </div>
+    </div>
+  </div>
+
+  <main class="work">
+
+  <!-- STEP 1: YOU & SCHOOL -->
+  <section class="step" data-step="0" aria-label="You and your school">
+    <div class="head">
+      <div class="k">Step 1 of 6</div>
+      <h2>You &amp; your school</h2>
+      <p>Use your legal name exactly as it appears in school records. Fields marked <span class="req">*</span> are required.</p>
+    </div>
+    <div class="card">
+      <h3>School information</h3>
+      <p class="sub">These are filled in for HSCT — change them only if yours are different.</p>
+      <div class="grid">
+        <div class="field s6">
+          <label class="lbl" for="f-school">School <span class="req">*</span></label>
+          <input type="text" id="f-school" data-f="school" autocomplete="off">
+          <div class="err" data-err="school"></div>
+        </div>
+        <div class="field s6">
+          <label class="lbl" for="f-shared">Shared Instruction Site <span class="opt">optional</span></label>
+          <input type="text" id="f-shared" data-f="sharedSite" autocomplete="off">
+          <div class="hint">Leave blank unless you take CTE classes at another site.</div>
+        </div>
+        <div class="field s6">
+          <label class="lbl" for="f-pathway">Pathway <span class="req">*</span></label>
+          <input type="text" id="f-pathway" data-f="pathway" autocomplete="off">
+          <div class="err" data-err="pathway"></div>
+        </div>
+        <div class="field s6">
+          <label class="lbl" for="f-term">Term</label>
+          <input type="text" id="f-term" data-f="term" autocomplete="off">
+          <div class="hint">Type: School Year</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Student information</h3>
+      <p class="sub">This has to match your school records so your application can be matched to you.</p>
+      <div class="grid">
+        <div class="field s5">
+          <label class="lbl" for="f-first">First name <span class="req">*</span></label>
+          <input type="text" id="f-first" data-f="firstName" maxlength="30" autocomplete="off">
+          <div class="err" data-err="firstName"></div>
+        </div>
+        <div class="field s2">
+          <label class="lbl" for="f-mi">Middle initial</label>
+          <input type="text" id="f-mi" data-f="middleInitial" data-mi maxlength="1" autocomplete="off">
+        </div>
+        <div class="field s5">
+          <label class="lbl" for="f-last">Last name <span class="req">*</span></label>
+          <input type="text" id="f-last" data-f="lastName" maxlength="30" autocomplete="off">
+          <div class="err" data-err="lastName"></div>
+        </div>
+        <div class="field s4">
+          <label class="lbl" for="f-osis">OSIS <span class="req">*</span></label>
+          <input type="text" id="f-osis" data-f="osis" data-digits="9" inputmode="numeric" maxlength="20" placeholder="9 digits" autocomplete="off">
+          <div class="hint">On your student ID, program card, or NYC Schools Account.</div>
+          <div class="err" data-err="osis"></div>
+        </div>
+        <div class="field s4">
+          <label class="lbl" for="f-bd">Birth date <span class="req">*</span></label>
+          <input type="date" id="f-bd" data-f="birthDate" min="1995-01-01" max="2016-12-31">
+          <div class="err" data-err="birthDate"></div>
+        </div>
+        <div class="field s4">
+          <label class="lbl" for="f-grade">Grade <span class="req">*</span></label>
+          <select id="f-grade" data-f="grade">
+            <option value="">Choose…</option>
+            <option>9</option><option>10</option><option>11</option><option>12</option><option>13</option><option>14</option>
+          </select>
+          <div class="err" data-err="grade"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 2: APPLICATION -->
+  <section class="step" data-step="1" aria-label="Application details">
+    <div class="head">
+      <div class="k">Step 2 of 6</div>
+      <h2>Application details</h2>
+      <p>Tell the program what you’re looking for and how to keep you safe.</p>
+    </div>
+    <div class="grid" style="margin-bottom:18px">
+      <div class="card s6">
+        <h3>SSN / ITIN <span class="tagpill">Portal only</span></h3>
+        <p class="sub" style="margin-bottom:10px">Your Social Security Number or ITIN is entered <b>only in the official portal</b>.</p>
+        <div class="note">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>
+          <div class="t">To protect your identity, don’t type it on this page or save it in any file. Have it ready for when your application goes into the portal.</div>
+        </div>
+      </div>
+      <div class="card s6">
+        <h3>Resume <span class="tagpill">Coming later</span></h3>
+        <p class="sub" style="margin-bottom:10px">You’ll build and attach your resume in a later lesson. If you already have one, write its file name here.</p>
+        <div class="field">
+          <label class="lbl" for="f-resume">Resume file name <span class="opt">optional</span></label>
+          <div class="inline">
+            <input type="text" id="f-resume" data-f="resumeFileName" maxlength="100" placeholder="FirstLastResume2026.pdf" autocomplete="off">
+            <button type="button" class="btn small" id="resumeSuggest">Suggest</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Health &amp; safety</h3>
+      <p class="sub">So your worksite can keep you safe.</p>
+      <div class="grid">
+        <div class="field s6">
+          <span class="lbl" id="l-allergy">Do you have any allergies? (Animals, foods, etc.) <span class="req">*</span></span>
+          <div class="pills" role="radiogroup" aria-labelledby="l-allergy">
+            <label class="pill"><input type="radio" name="allergy" data-f="allergy" value="Yes"><span>Yes</span></label>
+            <label class="pill"><input type="radio" name="allergy" data-f="allergy" value="No"><span>No</span></label>
+          </div>
+          <div class="err" data-err="allergy"></div>
+        </div>
+        <div class="field s6" id="allergyInfoWrap" hidden>
+          <label class="lbl" for="f-allergyInfo">Please specify your allergies <span class="req">*</span></label>
+          <input type="text" id="f-allergyInfo" data-f="allergyInfo" maxlength="200" autocomplete="off">
+          <div class="err" data-err="allergyInfo"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Career cluster(s) <span class="req">*</span></h3>
+      <p class="sub">In which Career Cluster(s) would you be interested in having an internship? Pick the 1–3 that fit you best.</p>
+      <div class="checks" id="clusterBox"></div>
+      <div class="err" data-err="clusters"></div>
+    </div>
+    <div class="card">
+      <h3>Experience opportunities <span class="req">*</span></h3>
+      <p class="sub">Which of the following internship experience opportunities are you applying for? Not sure? Ask Mr. Cruz or your CTE coordinator before you choose.</p>
+      <div class="checks" id="oppBox"></div>
+      <div class="err" data-err="opportunities"></div>
+    </div>
+    <div class="card">
+      <h3>Access &amp; environment</h3>
+      <p class="sub">Helps match you with in-person, virtual, or hybrid opportunities.</p>
+      <div class="grid">
+        <div class="field s6">
+          <span class="lbl" id="l-device">Do you have access to an electronic device with internet accessibility? <span class="req">*</span></span>
+          <div class="pills" role="radiogroup" aria-labelledby="l-device">
+            <label class="pill"><input type="radio" name="deviceAccess" data-f="deviceAccess" value="Yes"><span>Yes</span></label>
+            <label class="pill"><input type="radio" name="deviceAccess" data-f="deviceAccess" value="No"><span>No</span></label>
+          </div>
+          <div class="err" data-err="deviceAccess"></div>
+        </div>
+        <div class="field s6">
+          <span class="lbl" id="l-internet">Do you have access to the internet? <span class="req">*</span></span>
+          <div class="pills" role="radiogroup" aria-labelledby="l-internet">
+            <label class="pill"><input type="radio" name="internetAccess" data-f="internetAccess" value="Yes"><span>Yes</span></label>
+            <label class="pill"><input type="radio" name="internetAccess" data-f="internetAccess" value="No"><span>No</span></label>
+          </div>
+          <div class="err" data-err="internetAccess"></div>
+        </div>
+        <div class="field s12">
+          <span class="lbl" id="l-env">What internship environment are you looking for? <span class="req">*</span></span>
+          <div class="pills" role="radiogroup" aria-labelledby="l-env">
+            <label class="pill"><input type="radio" name="environment" data-f="environment" value="In-Person"><span>In-Person</span></label>
+            <label class="pill"><input type="radio" name="environment" data-f="environment" value="Virtual"><span>Virtual</span></label>
+            <label class="pill"><input type="radio" name="environment" data-f="environment" value="Hybrid (in-person and remote)"><span>Hybrid (in-person and remote)</span></label>
+          </div>
+          <div class="err" data-err="environment"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 3: PARENT -->
+  <section class="step" data-step="2" aria-label="Parent or guardian">
+    <div class="head">
+      <div class="k">Step 3 of 6</div>
+      <h2>Parent / guardian</h2>
+      <p>Who should the program contact about you? Double-check the email and phone numbers — a typo means they can’t reach anyone.</p>
+    </div>
+    <div class="card">
+      <h3>Parent / guardian information</h3>
+      <p class="sub">Phone numbers: 10 digits, numbers only (like 7185550123). Add at least one.</p>
+      <div class="grid">
+        <div class="field s4">
+          <label class="lbl" for="f-pfirst">First name <span class="req">*</span></label>
+          <input type="text" id="f-pfirst" data-f="parentFirst" maxlength="30" autocomplete="off">
+          <div class="err" data-err="parentFirst"></div>
+        </div>
+        <div class="field s4">
+          <label class="lbl" for="f-plast">Last name <span class="req">*</span></label>
+          <input type="text" id="f-plast" data-f="parentLast" maxlength="30" autocomplete="off">
+          <div class="err" data-err="parentLast"></div>
+        </div>
+        <div class="field s4">
+          <label class="lbl" for="f-prel">Relation <span class="req">*</span></label>
+          <input type="text" id="f-prel" data-f="parentRelation" maxlength="50" list="relations" placeholder="Mother, Father, Guardian…" autocomplete="off">
+          <datalist id="relations"><option value="Mother"><option value="Father"><option value="Guardian"><option value="Grandmother"><option value="Grandfather"><option value="Aunt"><option value="Uncle"><option value="Sibling"><option value="Foster Parent"><option value="Other"></datalist>
+          <div class="err" data-err="parentRelation"></div>
+        </div>
+        <div class="field s6">
+          <label class="lbl" for="f-pemail">Email <span class="req">*</span></label>
+          <input type="email" id="f-pemail" data-f="parentEmail" maxlength="100" autocomplete="off">
+          <div class="err" data-err="parentEmail"></div>
+        </div>
+        <div class="field s4">
+          <label class="lbl" for="f-phome">Home phone</label>
+          <input type="tel" id="f-phome" data-f="parentHome" data-digits="10" inputmode="numeric" maxlength="20" autocomplete="off">
+          <div class="err" data-err="parentHome"></div>
+        </div>
+        <div class="field s4">
+          <label class="lbl" for="f-pwork">Work phone</label>
+          <input type="tel" id="f-pwork" data-f="parentWork" data-digits="10" inputmode="numeric" maxlength="20" autocomplete="off">
+          <div class="err" data-err="parentWork"></div>
+        </div>
+        <div class="field s4">
+          <label class="lbl" for="f-pcell">Cell phone</label>
+          <input type="tel" id="f-pcell" data-f="parentCell" data-digits="10" inputmode="numeric" maxlength="20" autocomplete="off">
+          <div class="err" data-err="parentCell"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 4: BRAINSTORM -->
+  <section class="step" data-step="3" aria-label="Brainstorm">
+    <div class="head">
+      <div class="k">Step 4 of 6 · Brainstorm</div>
+      <h2>Map your ideas before you write</h2>
+      <p>Each branch of the mind map becomes one paragraph of your essay. Short phrases are perfect — you’ll turn them into sentences later.</p>
+    </div>
+    <p class="goal">For full points: <b>3+ ideas on every branch</b> and <b>2+ experiences</b> in the chart.</p>
+    <div class="card">
+      <div class="mm" id="mm">
+        <svg class="mm-lines" id="mmLines" aria-hidden="true"></svg>
+        <div class="mm-center" id="mmCenter"><b>Why am I interested in a paid experience?</b><small>Your essay</small></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Experience chart</h3>
+      <p class="sub">List everything that counts: classes, projects, jobs, volunteering, clubs, certifications — even family responsibilities like babysitting or translating. These become your proof in paragraph 2.</p>
+      <form id="expForm" class="exp-form" autocomplete="off">
+        <div class="w2"><label for="x-what">What did you do?</label><input type="text" id="x-what" name="what" maxlength="90" placeholder="e.g., Set up 15 laptops for the computer lab"></div>
+        <div><label for="x-type">Type</label><select id="x-type" name="type"></select></div>
+        <div><label for="x-when">When</label><input type="text" id="x-when" name="when" maxlength="30" placeholder="e.g., Spring 2026"></div>
+        <div><label for="x-hours">Hours</label><input type="number" id="x-hours" name="hours" min="0" max="5000" step="1" placeholder="~20"></div>
+        <div class="w2"><label for="x-skill">Skill(s) gained</label><input type="text" id="x-skill" name="skill" maxlength="90" placeholder="e.g., imaging, patience"></div>
+        <div class="w2"><button class="btn primary" type="submit" style="width:100%">Add</button></div>
+      </form>
+      <div class="exp-layout">
+        <div id="expList" class="tblwrap"></div>
+        <div id="expChart" class="chartbox"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 5: ESSAY -->
+  <section class="step" data-step="4" aria-label="Essay">
+    <div class="prompt">
+      <div><div class="eyebrow">Step 5 of 6 · Essay question</div><div class="q">Why are you interested in a paid experience?</div></div>
+      <div class="meta"><span>4 paragraphs</span><span>280–450 words</span><span>Your own words</span></div>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Essay tools">
+      <button type="button" class="tab on" role="tab" data-tab="write" aria-selected="true">Write</button>
+      <button type="button" class="tab" role="tab" data-tab="sample" aria-selected="false">Sample essay</button>
+      <button type="button" class="tab" role="tab" data-tab="sound" aria-selected="false">Make it sound good</button>
+      <button type="button" class="tab" role="tab" data-tab="tools" aria-selected="false">Writing tools</button>
+    </div>
+
+    <div class="panel on" data-panel="write" role="tabpanel">
+      <div class="write">
+        <div id="paraCards"></div>
+        <aside class="card checker" aria-label="Essay checker">
+          <div class="ck-total"><b id="ckWords">0</b><span>words · aim for 280–450</span></div>
+          <div class="ck-bars" id="ckBars"></div>
+          <h4>Essay checker</h4>
+          <ul class="ck-list" id="ckList"></ul>
+          <h4>Word swaps</h4>
+          <div id="ckWeak"></div>
+          <h4>Overused phrases</h4>
+          <div id="ckCliche"></div>
+          <div class="ck-actions">
+            <button type="button" class="btn small" id="btnRead">▶ Read it aloud</button>
+            <button type="button" class="btn small" data-copy-essay>Copy essay</button>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <div class="panel" data-panel="sample" role="tabpanel">
+      <div class="sample-wrap">
+        <div>
+          <div class="sample-bar">
+            <label class="switch"><input type="checkbox" id="annToggle" checked> Show what makes it work</label>
+            <span class="muted small">Made-up student · about 300 words</span>
+          </div>
+          <article class="paper show" id="paper">
+            <div class="ptop">Sample — “Why are you interested in a paid experience?”</div>
+            <p><mark data-tag="Hook">The first time I fixed something for someone else, it was my grandmother’s tablet.</mark> <mark data-tag="Specific detail">It took me two hours, three tutorial videos, and one long phone call</mark>, but when her video call finally connected and she could see my cousins, I understood that technology is about people. <mark data-tag="Connects to pathway">That moment is why I chose the Information Technology Support Services pathway</mark>, and <mark data-tag="States the purpose">it is why I am applying for a paid work experience this year.</mark></p>
+            <p><mark data-tag="Topic sentence">Over the past two years, I have built a foundation I am proud of.</mark> In my IT class, I <mark data-tag="Strong verbs + numbers">imaged and configured 15 laptops</mark> for our computer lab and learned to troubleshoot common network problems. Outside of school, I volunteer at my community center’s front desk, where I help seniors reset passwords and print documents. <mark data-tag="Shows, doesn’t tell">These experiences taught me how to stay calm when something breaks and how to explain technical steps without making anyone feel lost.</mark></p>
+            <p><mark data-tag="Answers the question">I am interested in a paid experience because I want to be held to a professional standard.</mark> <mark data-tag="Why paid matters">When a job pays you, people are counting on you to show up on time, communicate clearly, and finish what you start.</mark> That kind of responsibility pushes me to grow faster than I would on my own. <mark data-tag="Practical reason">A paid position would also let me help out at home and save for my CompTIA A+ exam</mark>, so every hour I invest goes straight into my future. <mark data-tag="Skills to learn">I want to learn how a real IT team handles tickets, prioritizes problems, and supports users who are frustrated or in a hurry.</mark></p>
+            <p><mark data-tag="Callback to the hook">In return, I will bring reliability, curiosity, and the patience I learned helping my grandmother and the seniors at the community center.</mark> <mark data-tag="Future goal">My goal is to earn my A+ certification by the end of senior year and study cybersecurity in college.</mark> A paid experience would be the bridge between what I have learned in the classroom and the career I am working toward. <mark data-tag="Confident close">I am ready to take that step, and I would welcome the chance to prove it.</mark></p>
+          </article>
+        </div>
+        <aside class="card">
+          <h3>Borrow the moves, not the words</h3>
+          <p class="sub">This student is made up. Your essay has to be your story — but you can use the same structure.</p>
+          <ol class="moves">
+            <li><b>¶1 opens with a moment</b>, not a definition. A real scene pulls the reader in, then it connects to the pathway.</li>
+            <li><b>¶2 proves it</b> with numbers (15 laptops, two years) and says what each experience taught.</li>
+            <li><b>¶3 answers the actual question</b> in its first sentence — and explains why <i>paid</i> matters, not just why “experience” matters.</li>
+            <li><b>¶4 looks forward</b> with a specific goal, calls back to the opening story, and ends with confidence.</li>
+          </ol>
+        </aside>
+      </div>
+    </div>
+
+    <div class="panel" data-panel="sound" role="tabpanel">
+      <div class="tips">
+        <div class="card tip">
+          <span class="tipn">1</span>
+          <h3>Answer the real question</h3>
+          <p>The question isn’t “why do you want experience?” It’s why a <b>paid</b> experience. Say it directly in paragraph 3: <i>“I am interested in a paid experience because…”</i></p>
+          <p>Then explain what being paid changes: responsibility, being counted on, professional standards, contributing at home, or saving for a goal.</p>
+        </div>
+        <div class="card tip">
+          <span class="tipn">2</span>
+          <h3>Specific beats general</h3>
+          <table class="swaptbl">
+            <tr><th>Instead of…</th><th>Try something like…</th></tr>
+            <tr><td>I like computers.</td><td>I rebuilt an old desktop with my uncle and got it running again.</td></tr>
+            <tr><td>I am a hard worker.</td><td>I balance school with picking up my brother every afternoon.</td></tr>
+            <tr><td>I want to gain experience.</td><td>I want to learn how a help desk prioritizes tickets.</td></tr>
+            <tr><td>It would help me a lot.</td><td>The pay would help me save for my CompTIA A+ exam.</td></tr>
+          </table>
+        </div>
+        <div class="card tip">
+          <span class="tipn">3</span>
+          <h3>Use strong verbs</h3>
+          <p>Verbs show what you <i>did</i>. Swap “I did,” “I helped with,” and “I worked on” for one of these (only if it’s true):</p>
+          <div class="chips">
+            <span class="chip static">built</span><span class="chip static">configured</span><span class="chip static">troubleshot</span><span class="chip static">installed</span><span class="chip static">repaired</span><span class="chip static">designed</span><span class="chip static">coded</span><span class="chip static">organized</span><span class="chip static">led</span><span class="chip static">trained</span><span class="chip static">supported</span><span class="chip static">solved</span><span class="chip static">documented</span><span class="chip static">presented</span><span class="chip static">tested</span><span class="chip static">upgraded</span><span class="chip static">managed</span><span class="chip static">collaborated</span>
+          </div>
+        </div>
+        <div class="card tip">
+          <span class="tipn">4</span>
+          <h3>Sound professional — still sound like you</h3>
+          <div class="dodont">
+            <div><b style="color:var(--good)">Do</b><ul><li>Complete sentences</li><li>Capital “I” every time</li><li>Real names and numbers</li><li>“I am” over “I’m” (mostly)</li><li>Your best self on a good day</li></ul></div>
+            <div><b style="color:var(--bad)">Skip</b><ul><li>Slang or text-speak (gonna, u, lol)</li><li>Emojis and ALL CAPS</li><li>Big words you’d never say out loud</li><li>Someone else’s story</li></ul></div>
+          </div>
+        </div>
+        <div class="card tip">
+          <span class="tipn">5</span>
+          <h3>Skip the clichés</h3>
+          <p>Readers see these in almost every essay, so they stop noticing them:</p>
+          <p class="muted">“Ever since I was little…” · “I have always been passionate about…” · “I am a hard worker / team player / people person” · “It would be a dream come true” · “In today’s society…”</p>
+          <p>Replace each one with a <b>moment</b> or a <b>fact</b> that proves it.</p>
+        </div>
+        <div class="card tip">
+          <span class="tipn">6</span>
+          <h3>One job per paragraph</h3>
+          <p>¶1 hook + who you are · ¶2 proof · ¶3 why <b>paid</b> · ¶4 what you bring + your future.</p>
+          <p>Start each paragraph with a topic sentence that tells the reader what it’s about, then back it up.</p>
+        </div>
+        <div class="card tip wide">
+          <span class="tipn">7</span>
+          <h3>Same idea, two versions</h3>
+          <div class="ba">
+            <div class="before"><span class="lab">Before</span>I am interested in a paid experience because I really like computers and I want to get experience and money. I am a hard worker and I am good with technology. I think it would help me a lot in the future.</div>
+            <div class="after"><span class="lab">After</span>I am interested in a paid experience because I want to be held to the same standard as the IT professionals I hope to work beside. When a job pays you, people count on you — and I am ready for that. The pay would also help me save for my CompTIA A+ exam, the next step toward a help-desk career.</div>
+          </div>
+          <p class="why">What changed: it answers the question in the first sentence, explains what <i>paid</i> means, names a real goal, and cuts the weak words (really, a lot, good) and the cliché (hard worker).</p>
+        </div>
+        <div class="card tip wide">
+          <span class="tipn">8</span>
+          <h3>Read it out loud</h3>
+          <p>Your ear catches what your eyes skip. Use <b>▶ Read it aloud</b> on the Write tab. If you run out of breath, the sentence is too long. If it sounds like a robot, add a real detail. If you wouldn’t say it to an interviewer, rewrite it.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" data-panel="tools" role="tabpanel">
+      <div class="tools">
+        <div class="tool"><div class="tt"><h3>Mind map &amp; experience chart</h3><span class="tag here">In this lesson</span></div><p>Collect ideas and proof before you write. Your ideas show up next to each paragraph.</p><button type="button" class="linkbtn" data-go="3">Go to Brainstorm →</button></div>
+        <div class="tool"><div class="tt"><h3>Starters &amp; live checker</h3><span class="tag here">In this lesson</span></div><p>Click a sentence starter, type over the blank, and watch the checker flag weak words, clichés, and length.</p><button type="button" class="linkbtn" data-tab="write">Go to Write →</button></div>
+        <div class="tool"><div class="tt"><h3>Read aloud</h3><span class="tag here">In this lesson</span></div><p>Hear your essay read back to you. Also in Microsoft Edge: right-click any text → Read aloud.</p></div>
+        <div class="tool"><div class="tt"><h3>Google Docs</h3><span class="tag">Free</span></div><p>Use Voice typing (Tools → Voice typing) to talk out ideas, then write the essay here in your own words.</p><a href="https://docs.google.com" target="_blank" rel="noopener">docs.google.com</a></div>
+        <div class="tool"><div class="tt"><h3>LanguageTool</h3><span class="tag">Free</span></div><p>Grammar, spelling, and style checker. Paste your finished essay in and fix what it flags back here.</p><a href="https://languagetool.org" target="_blank" rel="noopener">languagetool.org</a></div>
+        <div class="tool"><div class="tt"><h3>Grammarly</h3><span class="tag">Free tier</span></div><p>Catches grammar and clarity issues. Accept suggestions only when they still sound like you.</p><a href="https://www.grammarly.com" target="_blank" rel="noopener">grammarly.com</a></div>
+        <div class="tool"><div class="tt"><h3>Hemingway Editor</h3><span class="tag">Free</span></div><p>Highlights long, hard-to-read sentences and weak words so your writing gets tighter.</p><a href="https://hemingwayapp.com" target="_blank" rel="noopener">hemingwayapp.com</a></div>
+        <div class="tool"><div class="tt"><h3>Thesaurus</h3><span class="tag">Free</span></div><p>Find a sharper word — but only use words you’d actually say in an interview.</p><a href="https://www.merriam-webster.com/thesaurus" target="_blank" rel="noopener">merriam-webster.com/thesaurus</a></div>
+        <div class="tool"><div class="tt"><h3>A real person</h3><span class="tag">Best tool</span></div><p>Mr. Cruz, your CTE coordinator, a counselor, a parent, or a classmate. Ask: “What’s my strongest sentence? Where did you get confused?”</p></div>
+        <div class="tool"><div class="tt"><h3>AI tools</h3><span class="tag ai">Feedback only</span></div><p>Ask for feedback (“What’s unclear? Where am I vague?”), not for the essay itself. It has to be your story — and you may be asked about it in an interview.</p></div>
+      </div>
+      <div class="card">
+        <h3>Peer review checklist</h3>
+        <p class="sub">Trade essays with a classmate. They answer these about yours:</p>
+        <ol class="steps-list">
+          <li>After reading, can you say in one sentence why they want a <b>paid</b> experience?</li>
+          <li>What’s the most specific detail? Where could they add a number or name?</li>
+          <li>Which sentence sounds the most like them? Which sounds the least like them?</li>
+          <li>Does the last sentence end with confidence?</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 6: REVIEW -->
+  <section class="step" data-step="5" aria-label="Review and finish">
+    <div class="head">
+      <div class="k">Step 6 of 6</div>
+      <h2>Review &amp; finish</h2>
+      <p>Check everything below, then finish to get your result file. The Copy buttons help when your application goes into the portal.</p>
+    </div>
+    <div class="review">
+      <div>
+        <div class="card" id="readyBox"></div>
+        <div id="sumBox"></div>
+        <div class="card" id="essayCard"></div>
+      </div>
+      <aside>
+        <div class="card finish-card">
+          <h3>Finish</h3>
+          <p>Finishing seals your whole application and essay into an encrypted result file for Google Classroom. You can still revise afterward — you’d just submit the newer file.</p>
+          <button type="button" class="btn primary" id="finishBtn">Finish &amp; get my result file</button>
+          <div class="stack">
+            <button type="button" class="btn small" id="btnSaveSide">Save a draft file instead</button>
+            <button type="button" class="btn small danger js-clear">Clear everything &amp; start over</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>What happens next</h3>
+          <ol class="steps-list" style="margin-top:10px">
+            <li><b>Submit your result file</b> in Google Classroom.</li>
+            <li><b>Resume</b> — coming in a later lesson. You’ll add it before your application goes into the portal.</li>
+            <li><b>Into the portal</b> — your answers get entered in NYC Career Pathways. SSN/ITIN goes directly into the portal.</li>
+          </ol>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  </main>
+
+  <div class="stepnav">
+    <div class="prog"><i id="progFill"></i></div>
+    <div class="stepnav-in">
+      <button type="button" class="btn" id="prevBtn">← Back</button>
+      <div class="where" id="where"></div>
+      <button type="button" class="btn primary" id="nextBtn">Next →</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 3. END ===== -->
+<section class="view" id="view-end">
+  <div class="wrap narrow">
+    <p class="kicker">Career &amp; Finance · Paid experience application</p>
+    <h1>Application finished.</h1>
+    <p class="lede" id="end-lede"></p>
+    <p class="end-time" id="end-time"></p>
+    <!-- The kit renders the standard result card (score, time, code, download) into this element. -->
+    <div id="hsct-result"></div>
+    <div class="card copy-card">
+      <h2>Keep your own copy</h2>
+      <p class="muted">The result file is for Mr. Cruz. This copy is for you — print it, save it as a PDF, or keep the file to load back in later.</p>
+      <div class="actions">
+        <button type="button" class="btn primary" id="dlPrint">Print / Save as PDF</button>
+        <button type="button" class="btn" id="dlHtml">Download my copy (.html)</button>
+        <button type="button" class="btn" data-copy-essay>Copy essay</button>
+      </div>
+      <p style="margin:12px 0 0"><label class="switch small" style="font-weight:500"><input type="checkbox" data-f="includeBrainstorm"> Include my brainstorm &amp; experience chart</label></p>
+      <p class="small muted" style="margin:10px 0 0">Your copy is not encrypted: it shows your OSIS and your parent’s contact info. Keep it in your own Google Drive, not a shared folder.</p>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn ghost" id="revise">Revise my application</button>
+      <button type="button" class="btn ghost danger js-clear">Start over</button>
+    </div>
+  </div>
+</section>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!-- HSCT KIT START — do not edit; copy the whole block from lesson-template/hsct-lesson.js -->
+<script>
+/* ============================================================================
+   HSCT LESSON KIT  v1.0
+   Every lesson on HSCT TechHub inlines this block unchanged (between the
+   <!-- HSCT KIT START --> and <!-- HSCT KIT END --> markers). It gives a
+   lesson three things:
+
+     1. A clock.   HSCT.start(name) when the student begins. The kit records
+                   wall-clock time and "active" time (tab visible).
+     2. A log.     HSCT.log(type, data) for anything worth remembering —
+                   answers, hints, retries. Ends up inside the result file.
+     3. A result.  HSCT.endScreen(el, {...scores}) renders the standard result
+                   card: name, score, time taken, badge code, and a button
+                   that downloads the encrypted result file the student
+                   submits in Google Classroom.
+
+   The file is encrypted with the teacher's PUBLIC key below (RSA-OAEP wrapping
+   an AES-256-GCM key). It can only be opened with the matching private key,
+   on the site's /lessons/verify page. Students can't read or edit it.
+
+   API (all on window.HSCT):
+     HSCT.lesson({ id, title, version, course, possible })   once, at load
+     HSCT.start(name)                                        when work begins
+     HSCT.log(type, data)                                    any time
+     HSCT.elapsed()   -> { seconds, activeSeconds }
+     HSCT.finish({ earned, possible, sections, tier, extra }) -> Promise<result>
+     HSCT.endScreen(el, { earned, possible, sections, tier, extra, note })
+                      -> Promise<result>   (calls finish, renders the card)
+     HSCT.download()  / HSCT.copyCode()                      after finish
+   ========================================================================== */
+(function () {
+  'use strict';
+  var KIT = '1.0';
+
+  /* Mr. Cruz's public key. Replace the whole object if the key pair is ever
+     regenerated on /lessons/verify — and keep the private key out of git. */
+  var PUBLIC_KEY = {"kty":"RSA","n":"rZUBRxn7dUikufJq7z2XVn-on4Of0IyQr_YaPSTgIUaGsYKcrZ4FNROL4A_ZM5JShLf6OVp2ZeAI7XN_7iX0tvd79RqAWRM9an6rx-s6bMYSW1wmtRxZyL-BX56vTtikVRLNO7uyzCb8kevJE71Fi6nlPhdXa-iS4vtIEm2Wjh4cLPinAKhMnkO3BpGHUhtFw7Hyus1w04EdLxowk4UcN7d0w4MQRnBV8ehXQVoLVQ0_QtfrtPTQOpScHuwyaw9nwnTA7h7BEOv1ZkbEyq2N4TFixSSCsneUsc3PlbZOndDzMGMmdMr00ulntRZBfyioFzRcsRUGGwAqpB9SuH7XGQ","e":"AQAB","alg":"RSA-OAEP-256","ext":true};
+
+  var VERIFY_URL = 'hsct.tech/lessons/verify';
+
+  var cfg = null;      // lesson config
+  var ses = null;      // current session
+  var ticker = null;   // active-time interval
+  var result = null;   // { badge, filename, text, envelope, payload }
+
+  /* ---------- small helpers ---------- */
+  var enc = new TextEncoder();
+  function b64(buf) {
+    var bytes = new Uint8Array(buf), s = '';
+    for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return btoa(s);
+  }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function fmtDuration(sec) {
+    sec = Math.max(0, Math.round(sec || 0));
+    var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+    if (h) return h + ' h ' + pad(m) + ' min';
+    if (m) return m + ' min ' + pad(s) + ' s';
+    return s + ' s';
+  }
+  function fmtDate(iso) {
+    try { return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+    catch (e) { return iso; }
+  }
+  function slug(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'student'; }
+  function stamp(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes()); }
+
+  /* Badge code: 8 characters from a SHA-256 of the result, shown on screen
+     so a screenshot can be matched to its file. */
+  var ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ23456789';
+  function badgeFrom(hashBuf) {
+    var bytes = new Uint8Array(hashBuf), out = '';
+    for (var i = 0; i < 8; i++) out += ALPHABET[bytes[i] % ALPHABET.length];
+    return out.slice(0, 4) + '-' + out.slice(4);
+  }
+
+  function needSubtle() {
+    if (!(window.crypto && crypto.subtle)) {
+      throw new Error('Result files need a secure page (https). Open this lesson from the TechHub site and finish again.');
+    }
+  }
+
+  /* ---------- public API ---------- */
+  function lesson(c) {
+    if (!c || !c.id || !c.title) throw new Error('HSCT.lesson needs { id, title }');
+    cfg = { version: '1.0', course: '', possible: 100 };
+    for (var k in c) cfg[k] = c[k];
+    return HSCT;
+  }
+
+  function start(name) {
+    if (!cfg) throw new Error('Call HSCT.lesson({...}) before HSCT.start(name)');
+    name = String(name || '').trim().replace(/\s+/g, ' ');
+    if (name.length < 2) throw new Error('HSCT.start needs the student\'s name');
+    ses = { name: name, started: new Date().toISOString(), t0: Date.now(), active: 0, events: [] };
+    result = null;
+    clearInterval(ticker);
+    ticker = setInterval(function () { if (document.visibilityState === 'visible') ses.active += 1; }, 1000);
+    log('start');
+    return HSCT;
+  }
+
+  function log(type, data) {
+    if (!ses) return HSCT;
+    var e = { t: Math.round((Date.now() - ses.t0) / 100) / 10, type: String(type) };
+    if (data && typeof data === 'object') for (var k in data) if (k !== 't' && k !== 'type') e[k] = data[k];
+    if (ses.events.length < 800) ses.events.push(e);
+    return HSCT;
+  }
+
+  function elapsed() {
+    if (!ses) return { seconds: 0, activeSeconds: 0 };
+    return { seconds: Math.round((Date.now() - ses.t0) / 1000), activeSeconds: ses.active };
+  }
+
+  /* Build, seal, and keep the result. Resolves to { badge, filename, text, payload }. */
+  async function finish(opts) {
+    if (!cfg || !ses) throw new Error('HSCT.start(name) was never called');
+    needSubtle();
+    opts = opts || {};
+    clearInterval(ticker);
+    var finished = new Date();
+    var el = elapsed();
+    var earned = Number(opts.earned || 0), possible = Number(opts.possible || cfg.possible || 0);
+    var payload = {
+      kit: KIT,
+      lesson: { id: cfg.id, title: cfg.title, version: cfg.version, course: cfg.course },
+      student: { name: ses.name },
+      started: ses.started,
+      finished: finished.toISOString(),
+      seconds: el.seconds,
+      activeSeconds: el.activeSeconds,
+      score: { earned: earned, possible: possible, percent: possible ? Math.round(1000 * earned / possible) / 10 : null },
+      tier: opts.tier || null,
+      sections: (opts.sections || []).map(function (s) { return { id: s.id, title: s.title, earned: s.earned, possible: s.possible, status: s.status }; }),
+      extra: opts.extra || null,
+      events: ses.events,
+      env: { tz: Intl.DateTimeFormat().resolvedOptions().timeZone, ua: navigator.userAgent, url: location.href.split('?')[0] },
+    };
+    var hash = await crypto.subtle.digest('SHA-256', enc.encode(JSON.stringify(payload)));
+    var badge = badgeFrom(hash);
+    payload.badge = badge;
+
+    /* header travels in the clear but is authenticated (AES-GCM additional data) */
+    var header = { hsct: 1, kit: KIT, lesson: cfg.id, title: cfg.title, student: ses.name, finished: payload.finished, badge: badge };
+    var pub = await crypto.subtle.importKey('jwk', PUBLIC_KEY, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['wrapKey']);
+    var aes = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt']);
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    var data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv, additionalData: enc.encode(JSON.stringify(header)) }, aes, enc.encode(JSON.stringify(payload)));
+    var wrapped = await crypto.subtle.wrapKey('raw', aes, pub, { name: 'RSA-OAEP' });
+    var envelope = {};
+    for (var k in header) envelope[k] = header[k];
+    envelope.key = b64(wrapped); envelope.iv = b64(iv); envelope.data = b64(data);
+
+    result = {
+      badge: badge,
+      filename: 'HSCT_' + cfg.id + '_' + slug(ses.name) + '_' + stamp(finished) + '.hsct',
+      text: JSON.stringify(envelope),
+      payload: payload,
+    };
+    return result;
+  }
+
+  function download() {
+    if (!result) throw new Error('Nothing to download yet — call HSCT.finish first');
+    var blob = new Blob([result.text], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = result.filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+    return result.filename;
+  }
+
+  async function copyCode() {
+    if (!result) throw new Error('Nothing to copy yet — call HSCT.finish first');
+    try { await navigator.clipboard.writeText(result.text); return true; }
+    catch (e) {
+      var ta = document.createElement('textarea'); ta.value = result.text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      var ok = false; try { ok = document.execCommand('copy'); } catch (e2) {}
+      ta.remove(); return ok;
+    }
+  }
+
+  /* ---------- the standard end screen ---------- */
+  var CSS = '.hsct-card{--hsct-ink:#101a3f;--hsct-mute:#5b6485;--hsct-line:#d3d9ee;--hsct-accent:var(--hsct-color,#1f3fae);--hsct-ok:#1f7a3d;--hsct-bad:#b3261e;'
+    + 'font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;color:var(--hsct-ink);background:#fff;border:1px solid var(--hsct-line);border-left:6px solid var(--hsct-accent);border-radius:12px;padding:20px 22px;margin:20px 0;line-height:1.45}'
+    + '.hsct-card *{box-sizing:border-box}.hsct-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--hsct-mute)}.hsct-head b{color:var(--hsct-accent)}'
+    + '.hsct-name{font-size:22px;font-weight:700;margin:6px 0 2px}.hsct-score{font-size:15px;margin:0 0 12px}.hsct-score b{font-size:28px;font-weight:700}.hsct-score .hsct-tier{display:inline-block;margin-left:8px;padding:2px 10px;border-radius:999px;background:var(--hsct-accent);color:#fff;font-size:13px;font-weight:600;vertical-align:middle}'
+    + '.hsct-facts{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0 0 14px;font-size:14px}.hsct-facts dt{color:var(--hsct-mute)}.hsct-facts dd{margin:0}.hsct-facts code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;letter-spacing:.08em;font-weight:600}'
+    + '.hsct-secs{width:100%;border-collapse:collapse;font-size:14px;margin:0 0 14px}.hsct-secs td{padding:5px 0;border-top:1px solid var(--hsct-line)}.hsct-secs td:last-child{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}'
+    + '.hsct-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.hsct-btn{font:600 15px "IBM Plex Sans","Segoe UI",system-ui,sans-serif;padding:11px 18px;border-radius:8px;border:2px solid var(--hsct-accent);background:var(--hsct-accent);color:#fff;cursor:pointer}.hsct-btn:hover{filter:brightness(.92)}.hsct-btn.hsct-alt{background:transparent;color:var(--hsct-accent)}.hsct-btn:focus-visible{outline:3px solid #a9b7ea;outline-offset:2px}.hsct-btn:disabled{opacity:.55;cursor:wait}'
+    + '.hsct-note{margin:12px 0 0;font-size:13.5px;color:var(--hsct-mute)}.hsct-status{margin:8px 0 0;font-size:14px;min-height:1.4em}.hsct-status.ok{color:var(--hsct-ok)}.hsct-status.bad{color:var(--hsct-bad)}'
+    + '@media print{.hsct-actions,.hsct-note,.hsct-status{display:none}}';
+
+  function injectCss() {
+    if (document.getElementById('hsct-kit-css')) return;
+    var s = document.createElement('style'); s.id = 'hsct-kit-css'; s.textContent = CSS; document.head.appendChild(s);
+  }
+
+  /* Renders the card into `el` and seals the result. Resolves with the result. */
+  async function endScreen(el, opts) {
+    if (typeof el === 'string') el = document.querySelector(el);
+    if (!el) throw new Error('HSCT.endScreen needs an element');
+    injectCss();
+    opts = opts || {};
+    var elp = elapsed();
+    var possible = Number(opts.possible || cfg.possible || 0), earned = Number(opts.earned || 0);
+    var pct = possible ? Math.round(100 * earned / possible) : null;
+    var secs = (opts.sections || []).map(function (s) {
+      var right = s.status != null ? esc(s.status) : (s.possible != null ? esc(s.earned) + ' / ' + esc(s.possible) : esc(s.earned));
+      return '<tr><td>' + esc(s.title) + '</td><td>' + right + '</td></tr>';
+    }).join('');
+    el.innerHTML = '<div class="hsct-card">'
+      + '<div class="hsct-head"><span><b>HSCT TechHub</b> result</span><span>' + esc(cfg.title) + '</span></div>'
+      + '<div class="hsct-name">' + esc(ses ? ses.name : '') + '</div>'
+      + '<div class="hsct-score"><b>' + esc(earned) + '</b> / ' + esc(possible) + (pct != null ? ' <span>(' + pct + '%)</span>' : '') + (opts.tier ? '<span class="hsct-tier">' + esc(opts.tier) + '</span>' : '') + '</div>'
+      + '<dl class="hsct-facts"><dt>Finished</dt><dd>' + esc(fmtDate(new Date().toISOString())) + '</dd>'
+      + '<dt>Time taken</dt><dd>' + esc(fmtDuration(elp.seconds)) + (elp.activeSeconds < elp.seconds - 60 ? ' <span style="color:var(--hsct-mute)">(' + esc(fmtDuration(elp.activeSeconds)) + ' with the tab open)</span>' : '') + '</dd>'
+      + '<dt>Code</dt><dd><code class="hsct-badge">........</code></dd></dl>'
+      + (secs ? '<table class="hsct-secs"><tbody>' + secs + '</tbody></table>' : '')
+      + '<div class="hsct-actions"><button type="button" class="hsct-btn hsct-dl" disabled>Download your result file</button><button type="button" class="hsct-btn hsct-alt hsct-copy" disabled>Copy result code</button></div>'
+      + '<p class="hsct-note">' + esc(opts.note || 'Submit the file in Google Classroom. If downloads are blocked, copy the code and paste it instead. The file is encrypted: only your teacher can open it.') + '</p>'
+      + '<p class="hsct-status" aria-live="polite">Preparing your result file…</p>'
+      + '</div>';
+    var status = el.querySelector('.hsct-status'), dl = el.querySelector('.hsct-dl'), cp = el.querySelector('.hsct-copy');
+    try {
+      var r = await finish(opts);
+      el.querySelector('.hsct-badge').textContent = r.badge;
+      status.textContent = 'Ready: ' + r.filename;
+      dl.disabled = false; cp.disabled = false;
+      dl.onclick = function () { try { download(); status.className = 'hsct-status ok'; status.textContent = 'Downloaded ' + r.filename + ' — now submit it.'; } catch (e) { status.className = 'hsct-status bad'; status.textContent = e.message; } };
+      cp.onclick = async function () { var ok = await copyCode(); status.className = 'hsct-status ' + (ok ? 'ok' : 'bad'); status.textContent = ok ? 'Code copied — paste it into your submission.' : 'Copy failed. Use the download instead.'; };
+      return r;
+    } catch (e) {
+      status.className = 'hsct-status bad';
+      status.textContent = e.message || String(e);
+      throw e;
+    }
+  }
+
+  var HSCT = {
+    kit: KIT, verifyUrl: VERIFY_URL,
+    lesson: lesson, start: start, log: log, elapsed: elapsed,
+    finish: finish, download: download, copyCode: copyCode, endScreen: endScreen,
+    get result() { return result; },
+    get session() { return ses ? { name: ses.name, started: ses.started } : null; },
+    fmtDuration: fmtDuration,
+  };
+  window.HSCT = HSCT;
+})();
+</script>
+<!-- HSCT KIT END -->
+
+<script>
+(function(){
+'use strict';
+
+/* ---------- lesson identity: `id` must equal the slug in src/site/lessons.js ---------- */
+var LESSON_ID='paid-experience-application';
+HSCT.lesson({ id: LESSON_ID, title: 'Paid experience application', version: '1.0', course: 'career-and-finance', possible: 100 });
+
+var DRAFT_KEY='hsct:'+LESSON_ID+':draft', FILE_APP='hsct-'+LESSON_ID;
+var STEPS=['You & School','Application','Parent / Guardian','Brainstorm','Essay','Review & Finish'];
+var CLUSTERS=['Agriculture, Food & Natural Resources','Architecture & Construction','Arts, A/V Technology & Communications','Business Management & Administration','Education & Training','Finance','Government & Public Administration','Health Sciences','Hospitality & Tourism','Human Services','Information Technology','Law, Public Safety, Corrections & Security','Manufacturing','Marketing','Science, Technology, Engineering & Mathematics','Transportation, Distribution & Logistics'];
+var OPPS=['Industry Scholars Program [Internship]','Industry Scholars Program [Workplace Challenge]','Supplemental Work Experience Funding (SWEF) (School-Managed)'];
+var EXP_TYPES=[['Class / Course','#1f3fae'],['School Project','#0f7b6c'],['Job / Internship','#c05a12'],['Volunteer / Community','#b02a5b'],['Club / Team / Competition','#6a3fa0'],['Certification / Training','#0b6e8a'],['Family Responsibility','#8a6a00'],['Personal Project','#4b5370']];
+var BR=[
+  {id:'spark',area:'a',color:'var(--c1)',p:1,title:'My spark',q:'When did tech click for you? A problem you solved, someone you helped, something you built.',ex:['Fixed my grandma’s tablet','Built my first website in 9th grade','The family’s go-to tech person']},
+  {id:'done',area:'b',color:'var(--c2)',p:2,title:'What I’ve done',q:'Classes, projects, jobs, volunteering, clubs, responsibilities at home — proof you’re ready.',ex:['Set up the lab printers','Python final project','Pick up my brother every day']},
+  {id:'whyPaid',area:'d',color:'var(--c3)',p:3,title:'Why PAID?',q:'What does being paid mean to you? Responsibility, money goals, being treated like a pro, skills you want.',ex:['Held to a real work standard','Save for college / A+ exam','Learn how a help desk runs']},
+  {id:'future',area:'e',color:'var(--c4)',p:4,title:'What I bring & where I’m going',q:'Qualities you’ll bring (with proof) and where you’re headed after high school.',ex:['Patient explaining tech','Major in cybersecurity','Reliable — never miss a deadline']}
+];
+var PARAS=[
+  {title:'Hook & who you are',color:'var(--c1)',br:'spark',goal:'Grab attention with a real moment, then introduce yourself and say what you’re applying for.',
+   inc:['A hook: a moment, a problem you solved, or someone you helped','Your grade and your pathway (Information Technology Support Services)','One clear sentence saying you’re applying for a paid experience'],
+   st:['The first time I ___, I realized ___.','As a ___-grade student in the Information Technology Support Services pathway, I ___.','Most people see a broken ___; I see a puzzle to solve.','That moment is why I am applying for a paid work experience this year.']},
+  {title:'What you’ve done so far',color:'var(--c2)',br:'done',goal:'Prove you’re ready with real experiences — classes, projects, jobs, volunteering, responsibilities at home.',
+   inc:['1–3 specific experiences (use your experience chart)','Numbers and details: how many, how long, which tools','What each experience taught you'],
+   st:['Over the past ___ years, I have ___.','In my ___ class, I ___, which taught me ___.','Outside of school, I ___.','One challenge I faced was ___. I handled it by ___.']},
+  {title:'Why a PAID experience?',color:'var(--c3)',br:'whyPaid',goal:'The heart of the question. Explain why being paid matters to you — not just why experience matters.',
+   inc:['Say it directly: “I am interested in a paid experience because…”','What changes when you’re paid: responsibility, professional standards, people counting on you','How the pay would help — a goal, savings, helping at home (share only what you’re comfortable with)','Skills you want to learn on the job'],
+   st:['I am interested in a paid experience because ___.','When a job pays you, ___.','Earning a paycheck would allow me to ___.','I want to learn how a real ___ team ___.']},
+  {title:'What you’ll bring & where you’re going',color:'var(--c4)',br:'future',goal:'Show what the employer gets, connect it to your future, and end with confidence.',
+   inc:['2–3 qualities you bring — backed by proof from earlier','A specific future goal (certification, college major, career)','A confident closing sentence (skip “thank you for reading”)'],
+   st:['In return, I will bring ___.','My goal is to ___ by ___.','This experience would be the bridge between ___ and ___.','I am ready to ___, and I would welcome the chance to ___.']}
+];
+var WEAK=[['very','Cut it, or pick a stronger word (“very big” → “massive”).'],['really','Usually safe to delete.'],['stuff','Name the actual thing.'],['things','Name the actual things.'],['a lot','Give a number or an example.'],['good','Say how: reliable? fast? creative?'],['nice','Be specific.'],['basically','Delete it.'],['literally','Delete it.'],['kinda','Delete it or say “somewhat.”'],['kind of','Usually safe to delete.'],['gonna','Write “going to.”'],['wanna','Write “want to.”'],['gotta','Write “have to.”'],['lol','Remove — keep it professional.'],['u','Write “you.”'],['ur','Write “your.”'],['idk','Write it out.'],['etc','Name the examples instead.'],['awesome','Too casual — be specific.'],['cool','Too casual — be specific.']];
+var TEXTSPEAK=['gonna','wanna','gotta','lol','u','ur','idk'];
+var CLICHE=['ever since i was','since i was little','since i was a kid','since i was young','i have always been passionate','passion for','passionate about','hard worker','hard-working','team player','people person','dream come true','in today’s society',"in today's society",'think outside the box','110%','go-getter','fast learner'];
+var STEP_KEYS={0:['school','pathway','firstName','lastName','osis','birthDate','grade'],1:['allergy','allergyInfo','clusters','opportunities','deviceAccess','internetAccess','environment'],2:['parentFirst','parentLast','parentRelation','parentEmail','parentHome','parentWork','parentCell']};
+var LABELS={firstName:'Student first name',lastName:'Student last name',osis:'OSIS',birthDate:'Birth date',grade:'Grade',school:'School',pathway:'Pathway',allergy:'Allergies (yes/no)',allergyInfo:'Allergy details',clusters:'Career cluster',opportunities:'Experience opportunity',deviceAccess:'Device access',internetAccess:'Internet access',environment:'Internship environment',parentFirst:'Parent first name',parentLast:'Parent last name',parentRelation:'Parent relation',parentEmail:'Parent email'};
+
+/* ---------- helpers ---------- */
+function $(s,r){return (r||document).querySelector(s);}
+function $$(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function wc(s){s=String(s||'').trim();return s?s.split(/\s+/).length:0;}
+function reEsc(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
+function cleanName(s){return String(s||'').trim().replace(/\s+/g,' ');}
+function fmtDate(v){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(v||'');return m?m[2]+'/'+m[3]+'/'+m[1]:(v||'');}
+function fmtPhone(v){return /^\d{10}$/.test(v)?'('+v.slice(0,3)+') '+v.slice(3,6)+'-'+v.slice(6):v;}
+function typeColor(t){for(var i=0;i<EXP_TYPES.length;i++){if(EXP_TYPES[i][0]===t)return EXP_TYPES[i][1];}return '#6b7280';}
+function essayText(){return S.essay.map(function(s){return s.trim();}).filter(Boolean).join('\n\n');}
+function totalIdeas(){return BR.reduce(function(n,b){return n+S.ideas[b.id].length;},0);}
+var toastT;
+function toast(m){var t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(function(){t.classList.remove('on');},3400);}
+
+/* ---------- state ---------- */
+function blank(){return{term:'CTE School Year 2026 / 2027',school:'High School of Computers and Technology',sharedSite:'',pathway:'Information Technology Support Services',firstName:'',middleInitial:'',lastName:'',osis:'',birthDate:'',grade:'',resumeFileName:'',allergy:'',allergyInfo:'',clusters:[],opportunities:[],deviceAccess:'',internetAccess:'',environment:'',parentFirst:'',parentLast:'',parentRelation:'',parentEmail:'',parentHome:'',parentWork:'',parentCell:'',essay:['','','',''],ideas:{spark:[],done:[],whyPaid:[],future:[]},experiences:[],includeBrainstorm:false};}
+function normalize(d){
+  var b=blank(); if(!d||typeof d!=='object') return b;
+  Object.keys(b).forEach(function(k){
+    var v=d[k]; if(v===undefined||v===null) return;
+    if(k==='essay'){ if(Array.isArray(v)) b.essay=[0,1,2,3].map(function(i){return String(v[i]||'');}); }
+    else if(k==='ideas'){ Object.keys(b.ideas).forEach(function(bk){ if(v&&Array.isArray(v[bk])) b.ideas[bk]=v[bk].map(String).slice(0,40); }); }
+    else if(k==='experiences'){ if(Array.isArray(v)) b.experiences=v.filter(function(e){return e&&typeof e==='object';}).slice(0,60).map(function(e){return {what:String(e.what||''),type:String(e.type||EXP_TYPES[0][0]),when:String(e.when||''),hours:(e.hours===''||e.hours==null)?'':String(e.hours),skill:String(e.skill||'')};}); }
+    else if(Array.isArray(b[k])){ if(Array.isArray(v)) b[k]=v.map(String); }
+    else if(typeof b[k]==='boolean'){ b[k]=!!v; }
+    else { b[k]=String(v); }
+  });
+  return b;
+}
+function freshStats(){return {pastes:0,pastedChars:0,starters:0,sampleViews:0,pasteLog:[]};}
+function loadStats(o){var s=Object.assign(freshStats(),o&&typeof o==='object'?o:{});s.pasteLog=Array.isArray(s.pasteLog)?s.pasteLog.slice(-50):[];return s;}
+var S=blank(), cur=0, touched={}, running=false, finished=false, base=0, sessions=0, stats=freshStats(), dirty=false, lastWords=[0,0,0,0];
+function totalSeconds(){ return running ? base+HSCT.elapsed().seconds : base; }
+
+/* ---------- validation ---------- */
+function req(v){return String(v||'').trim()?'':'Required';}
+function phoneOk(v){return /^\d{10}$/.test(v);}
+var RULES={
+  school:req,pathway:req,firstName:req,lastName:req,
+  osis:function(v){return !v?'Required':(/^\d{9}$/.test(v)?'':'OSIS must be exactly 9 digits');},
+  birthDate:function(v){return v?'':'Required';},
+  grade:function(v){return v?'':'Choose your grade';},
+  allergy:function(v){return v?'':'Choose Yes or No';},
+  allergyInfo:function(v){return (S.allergy==='Yes'&&!String(v).trim())?'Please list your allergies':'';},
+  clusters:function(v){return v.length?'':'Pick at least one';},
+  opportunities:function(v){return v.length?'':'Pick at least one';},
+  deviceAccess:function(v){return v?'':'Choose Yes or No';},
+  internetAccess:function(v){return v?'':'Choose Yes or No';},
+  environment:function(v){return v?'':'Choose one';},
+  parentFirst:req,parentLast:req,parentRelation:req,
+  parentEmail:function(v){v=String(v||'').trim();return !v?'Required':(/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)?'':'That email doesn’t look right');},
+  parentHome:function(v){return (v&&!phoneOk(v))?'Needs exactly 10 digits':'';},
+  parentWork:function(v){return (v&&!phoneOk(v))?'Needs exactly 10 digits':'';},
+  parentCell:function(v){if(v&&!phoneOk(v))return 'Needs exactly 10 digits';if(!S.parentHome&&!S.parentWork&&!S.parentCell)return 'Add at least one parent/guardian phone number';return '';}
+};
+function err(k){return RULES[k]?RULES[k](S[k]):'';}
+function fieldItems(st){
+  return STEP_KEYS[st].filter(function(k){return !(k==='allergyInfo'&&S.allergy!=='Yes')&&k!=='parentHome'&&k!=='parentWork';}).map(function(k){
+    if(k==='parentCell') return {key:'parentCell',step:st,label:'Parent phone',ok:!err('parentHome')&&!err('parentWork')&&!err('parentCell')};
+    return {key:k,step:st,label:LABELS[k],ok:!err(k)};
+  });
+}
+function brainScore(){return BR.filter(function(b){return S.ideas[b.id].length>=3;}).length*2+(S.experiences.length>=2?2:0);}
+function stepOK(i){
+  if(i<=2) return fieldItems(i).every(function(x){return x.ok;});
+  if(i===3) return brainScore()===10;
+  if(i===4) return S.essay.every(function(p){return wc(p)>=40;});
+  return false;
+}
+function missingItems(){
+  var out=[];
+  [0,1,2].forEach(function(st){fieldItems(st).forEach(function(x){if(!x.ok)out.push(x);});});
+  BR.forEach(function(b){ if(S.ideas[b.id].length<3) out.push({key:'idea-'+b.id,step:3,label:'Mind map: '+b.title+' (3+ ideas)',ok:false}); });
+  if(S.experiences.length<2) out.push({key:'exp',step:3,label:'Experience chart (2+)',ok:false});
+  S.essay.forEach(function(p,i){ if(wc(p)<40) out.push({key:'essay'+i,step:4,label:'Essay paragraph '+(i+1)+' (40+ words)',ok:false}); });
+  return out;
+}
+function updateErrors(){
+  Object.keys(RULES).forEach(function(k){
+    var box=$('[data-err="'+k+'"]'); if(!box) return;
+    var m=touched[k]?err(k):''; box.textContent=m;
+    var f=box.closest('.field'); if(f) f.classList.toggle('bad',!!m);
+  });
+}
+
+/* ---------- essay checks + score ---------- */
+function essayChecks(){
+  var P=S.essay.map(function(s){return s.trim();}), text=P.filter(Boolean).join('\n\n'), total=wc(text);
+  var low=text.toLowerCase(), lowW=low.replace(/\bu\.s\.(a\.)?/g,'usa');
+  var sents=text.split(/[.!?]+["”’)]*\s+|\n+/).map(function(s){return s.trim();}).filter(function(s){return s.length>2;});
+  var iS=sents.filter(function(s){return /^I\b/.test(s);}).length;
+  function count(w){var m=lowW.match(new RegExp('\\b'+reEsc(w)+'\\b','g'));return m?m.length:0;}
+  var weak=WEAK.map(function(w){var n=count(w[0]);return n?{w:w[0],tip:w[1],n:n}:null;}).filter(Boolean);
+  var speak=TEXTSPEAK.filter(function(w){return count(w)>0;});
+  var capI=!/(^|[\s(“"])i(?=[\s,.!?’']|$)/m.test(text);
+  return {
+    P:P,text:text,total:total,empty:!total,sents:sents.length,iS:iS,
+    full:P.filter(function(p){return wc(p)>=40;}).length,
+    len:total>=280&&total<=450, lenNear:total>=200&&total<=600,
+    paid:/\b(paid|pay|paycheck|earn|earning|earned|stipend|wages?|salary)\b/i.test(text),
+    tech:/\bIT\b/.test(text)||/information technology|\btech|computer|network|help ?desk|hardware|software|\bcod(e|ing)\b|cyber|pathway/i.test(text),
+    numbers:/\d/.test(text)||/\b(two|three|four|five|six|seven|eight|nine|ten|twelve|fifteen|twenty|thirty|fifty|hundred)\b/i.test(text),
+    future:/\b(goal|future|college|career|certif\w*|major|degree|plan to|hope to|one day)\b/i.test(text),
+    variety:sents.length<3||iS/sents.length<=0.45,
+    capI:capI, speak:speak, weak:weak,
+    cliche:CLICHE.filter(function(c){return low.indexOf(c)>-1;}),
+    polish:total>0&&capI&&!speak.length
+  };
+}
+function scoreAll(){
+  var c=essayChecks();
+  var f=[0,1,2].map(function(st){var it=fieldItems(st),ok=it.filter(function(x){return x.ok;}).length;return Math.round(10*ok/it.length);});
+  var secs=[
+    {id:'school',title:'You & school',earned:f[0],possible:10},
+    {id:'application',title:'Application details',earned:f[1],possible:10},
+    {id:'parent',title:'Parent / guardian',earned:f[2],possible:10},
+    {id:'brainstorm',title:'Brainstorm: mind map + experience chart',earned:brainScore(),possible:10},
+    {id:'paragraphs',title:'Essay: 4 paragraphs, 40+ words each',earned:c.full*5,possible:20},
+    {id:'length',title:'Essay: 280–450 words',earned:c.len?10:(c.lenNear?5:0),possible:10},
+    {id:'paid',title:'Essay: explains why PAID',earned:c.paid?10:0,possible:10},
+    {id:'pieces',title:'Essay: pathway, specifics, goal, polish',earned:(c.tech?5:0)+(c.numbers?5:0)+(c.future?5:0)+(c.polish?5:0),possible:20}
+  ];
+  var earned=secs.reduce(function(n,s){return n+s.earned;},0);
+  return {earned:earned,possible:100,sections:secs,checks:c,tier:earned>=90?'Ready to submit':(earned>=70?'Almost ready':'Needs work')};
+}
+
+/* ---------- build UI ---------- */
+function buildStepper(){
+  $('#stepper').innerHTML=STEPS.map(function(s,i){return '<button type="button" data-go="'+i+'"><span class="n">'+(i+1)+'</span>'+esc(s)+'</button>';}).join('');
+}
+function buildChecks(){
+  $('#clusterBox').innerHTML=CLUSTERS.map(function(c){return '<label class="check"><input type="checkbox" data-f="clusters" value="'+esc(c)+'"><span>'+esc(c)+(c==='Information Technology'?' <em class="badge">IT pathway match</em>':'')+'</span></label>';}).join('');
+  $('#oppBox').innerHTML=OPPS.map(function(c){return '<label class="check"><input type="checkbox" data-f="opportunities" value="'+esc(c)+'"><span>'+esc(c)+'</span></label>';}).join('');
+  $('#x-type').innerHTML=EXP_TYPES.map(function(t){return '<option>'+esc(t[0])+'</option>';}).join('');
+}
+function buildMap(){
+  $('#mm').insertAdjacentHTML('beforeend',BR.map(function(b){
+    return '<div class="mm-branch" id="br-'+b.id+'" style="grid-area:'+b.area+';--bc:'+b.color+'">'+
+      '<div class="mm-head"><span class="mm-tag">Paragraph '+b.p+'</span><span class="mm-count" id="cnt-'+b.id+'" title="Ideas">0</span></div>'+
+      '<h3>'+esc(b.title)+'</h3><p class="mm-q">'+esc(b.q)+'</p>'+
+      '<ul class="mm-ideas" id="ideas-'+b.id+'"></ul>'+
+      '<form class="mm-add" data-branch="'+b.id+'" autocomplete="off"><input type="text" maxlength="90" placeholder="e.g., '+esc(b.ex[0])+'" aria-label="Add an idea to '+esc(b.title)+'"><button class="btn small" type="submit">Add</button></form>'+
+      '<div class="mm-ex">Ideas: '+b.ex.map(esc).join(' · ')+'</div></div>';
+  }).join(''));
+}
+function buildParas(){
+  $('#paraCards').innerHTML=PARAS.map(function(p,i){
+    return '<article class="pcard" style="--pc:'+p.color+'">'+
+      '<div class="phead"><span class="pnum">'+(i+1)+'</span><div class="ptitle"><h3>'+esc(p.title)+'</h3><p>'+esc(p.goal)+'</p></div><span class="wc" id="wc'+i+'">0 words</span></div>'+
+      '<details class="pinc"'+(i===0?' open':'')+'><summary>What to include</summary><ul>'+p.inc.map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ul></details>'+
+      '<div class="starters"><span class="mini">Sentence starters — click to insert, then type over the ___</span><div class="chips">'+p.st.map(function(s,k){return '<button type="button" class="chip" data-insert="'+i+'" data-k="'+k+'" data-text="'+esc(s)+'">'+esc(s)+'</button>';}).join('')+'</div></div>'+
+      '<div class="from-brain" id="fb'+i+'"></div>'+
+      '<textarea data-p="'+i+'" rows="7" spellcheck="true" autocomplete="off" placeholder="Paragraph '+(i+1)+'…" aria-label="Essay paragraph '+(i+1)+'"></textarea>'+
+      '<div class="pmeter"><div class="pmeter-fill" id="pm'+i+'"></div></div></article>';
+  }).join('');
+}
+
+/* ---------- form sync ---------- */
+function fillForm(){
+  $$('[data-f]').forEach(function(el){
+    var k=el.dataset.f, v=S[k];
+    if(el.type==='checkbox'){
+      el.checked=(typeof v==='boolean')?v:(Array.isArray(v)&&v.indexOf(el.value)>-1);
+      var c=el.closest('.check'); if(c) c.classList.toggle('on',el.checked);
+    } else if(el.type==='radio'){ el.checked=(v===el.value); }
+    else { el.value=(v==null?'':v); }
+  });
+  $$('textarea[data-p]').forEach(function(t){t.value=S.essay[+t.dataset.p]||'';});
+  lastWords=S.essay.map(wc);
+}
+function setField(el){
+  var k=el.dataset.f;
+  if(el.type==='checkbox'){
+    if(typeof S[k]==='boolean'){ S[k]=el.checked; }
+    else {
+      S[k]=$$('[data-f="'+k+'"]').filter(function(x){return x.checked;}).map(function(x){return x.value;});
+      var c=el.closest('.check'); if(c) c.classList.toggle('on',el.checked);
+      touched[k]=true;
+    }
+  } else if(el.type==='radio'){
+    if(el.checked) S[k]=el.value; touched[k]=true;
+  } else {
+    var v=el.value;
+    if(el.dataset.digits){ var nv=v.replace(/\D/g,'').slice(0,+el.dataset.digits); if(nv!==v) el.value=nv; v=nv; }
+    if(el.hasAttribute('data-mi')){ var mv=v.replace(/[^A-Za-z]/g,'').slice(0,1).toUpperCase(); if(mv!==v) el.value=mv; v=mv; }
+    S[k]=v;
+  }
+  if(k==='allergy') toggleAllergy();
+  changed();
+}
+function toggleAllergy(){ $('#allergyInfoWrap').hidden=(S.allergy!=='Yes'); }
+
+/* ---------- autosave (this tab only) ---------- */
+var saveT;
+function changed(){ dirty=true; clearTimeout(saveT); saveT=setTimeout(persist,250); updateStepper(); updateErrors(); }
+function setStatus(t,ok){var s=$('#saveStatus');s.textContent=t;s.classList.toggle('ok',!!ok);}
+function persist(){
+  if(!running&&!finished) return;
+  try{
+    sessionStorage.setItem(DRAFT_KEY,JSON.stringify({v:1,name:HSCT.session?HSCT.session.name:'',S:S,step:cur,total:totalSeconds(),sessions:sessions,stats:stats,finished:finished,savedAt:new Date().toISOString()}));
+    setStatus('Saved in this tab',true);
+  }catch(e){ setStatus('Use Save draft to keep your work',false); }
+}
+function readTabDraft(){
+  try{ var raw=sessionStorage.getItem(DRAFT_KEY); if(!raw) return null; var o=JSON.parse(raw); return (o&&o.S&&cleanName(o.name).length>=2)?o:null; }catch(e){ return null; }
+}
+function hasContent(){
+  return ['firstName','lastName','osis','parentFirst','parentEmail'].some(function(k){return S[k];})||S.essay.some(function(p){return p.trim();})||totalIdeas()>0||S.experiences.length>0;
+}
+
+/* ---------- views + navigation ---------- */
+function showView(id){ $$('.view').forEach(function(v){v.classList.toggle('active',v.id===id);}); window.scrollTo(0,0); }
+function updateStepper(){
+  $$('#stepper button').forEach(function(b,i){
+    var d=stepOK(i); b.classList.toggle('on',i===cur); b.classList.toggle('done',d);
+    b.querySelector('.n').textContent=d?'✓':String(i+1);
+    if(i===cur) b.setAttribute('aria-current','step'); else b.removeAttribute('aria-current');
+  });
+  $('#progFill').style.width=scoreAll().earned+'%';
+}
+function goTo(i,instant){
+  i=Math.max(0,Math.min(STEPS.length-1,i)); var from=cur; cur=i;
+  $$('.step').forEach(function(s){s.classList.toggle('on',+s.dataset.step===i);});
+  $('#prevBtn').style.visibility=i===0?'hidden':'visible';
+  var nb=$('#nextBtn'); nb.style.visibility=i===STEPS.length-1?'hidden':'visible';
+  nb.textContent=i===STEPS.length-2?'Review & finish →':'Next →';
+  $('#where').textContent='Step '+(i+1)+' of '+STEPS.length+' · '+STEPS[i];
+  updateStepper();
+  var st=$('#stepper'), sb=$('#stepper button.on');
+  if(st&&sb){ st.scrollLeft+=(sb.getBoundingClientRect().left-st.getBoundingClientRect().left)-st.clientWidth/2+sb.offsetWidth/2; }
+  if(i===3) requestAnimationFrame(drawLines);
+  if(i===4){ renderFromBrain(); updateEssayUI(); }
+  if(i===5) renderReview();
+  if(running&&from!==i) HSCT.log('step',{to:STEPS[i]});
+  if(!instant) window.scrollTo(0,0);
+  persist();
+}
+function focusKey(k){
+  var el;
+  if(/^essay\d$/.test(k)){ setTab('write'); el=$('textarea[data-p="'+k.slice(5)+'"]'); }
+  else if(/^idea-/.test(k)){ el=$('form.mm-add[data-branch="'+k.slice(5)+'"] input'); }
+  else if(k==='exp'){ el=$('#x-what'); }
+  else el=$('[data-f="'+k+'"]');
+  if(el){ el.scrollIntoView({block:'center'}); try{el.focus({preventScroll:true});}catch(e){el.focus();} }
+}
+function setTab(id){
+  $$('.tab').forEach(function(b){var on=b.dataset.tab===id;b.classList.toggle('on',on);b.setAttribute('aria-selected',on?'true':'false');});
+  $$('.panel').forEach(function(p){p.classList.toggle('on',p.dataset.panel===id);});
+}
+
+/* ---------- runs (the kit's clock) ---------- */
+function beginRun(name,opts){
+  opts=opts||{};
+  HSCT.start(name);                       // clock starts here
+  running=true; finished=false; sessions+=1;
+  HSCT.log('begin',{from:opts.from||'new',session:sessions,priorSeconds:base});
+  if(!S.firstName&&!S.lastName){ var parts=name.split(' '); S.firstName=parts[0].slice(0,30); if(parts.length>1) S.lastName=parts[parts.length-1].slice(0,30); }
+  fillForm(); renderAll();
+  showView('view-work'); cur=-1; goTo(opts.step||0,true);
+  persist();
+}
+function resetAll(){
+  S=blank(); touched={}; base=0; sessions=0; stats=freshStats(); running=false; finished=false; dirty=false;
+  try{sessionStorage.removeItem(DRAFT_KEY);}catch(e){}
+  fillForm(); renderAll();
+}
+function refreshResumeBox(){
+  var d=readTabDraft(); $('#resumeBox').hidden=!d;
+  if(d) $('#resumeName').textContent=cleanName(d.name);
+}
+
+/* ---------- mind map ---------- */
+function renderMap(){
+  BR.forEach(function(b){
+    var arr=S.ideas[b.id];
+    $('#ideas-'+b.id).innerHTML=arr.length?arr.map(function(t,i){return '<li class="idea"><span>'+esc(t)+'</span><button type="button" class="x" data-del-idea="'+b.id+'" data-i="'+i+'" aria-label="Remove idea">×</button></li>';}).join(''):'<li class="empty">No ideas yet — aim for 3+</li>';
+    $('#cnt-'+b.id).textContent=arr.length;
+  });
+  drawLines();
+}
+function drawLines(){
+  var mm=$('#mm'), svg=$('#mmLines'); if(!mm||!svg||!mm.offsetParent) return;
+  if(getComputedStyle(svg).display==='none') return;
+  var r=mm.getBoundingClientRect(), c=$('#mmCenter').getBoundingClientRect();
+  var cx=c.left+c.width/2-r.left, cy=c.top+c.height/2-r.top;
+  svg.setAttribute('viewBox','0 0 '+Math.round(r.width)+' '+Math.round(r.height));
+  svg.innerHTML=BR.map(function(b){
+    var e=$('#br-'+b.id).getBoundingClientRect(), x=e.left+e.width/2-r.left, y=e.top+e.height/2-r.top, mx=(cx+x)/2;
+    return '<path d="M'+cx+','+cy+' C'+mx+','+cy+' '+mx+','+y+' '+x+','+y+'" fill="none" style="stroke:'+b.color+'" stroke-width="3" stroke-linecap="round" opacity=".45"/>';
+  }).join('');
+}
+
+/* ---------- experience chart ---------- */
+function renderExp(){
+  var ex=S.experiences, list=$('#expList'), chart=$('#expChart');
+  if(!ex.length){
+    list.innerHTML='<div class="empty-box">No experiences yet. Add classes, projects, jobs, volunteering — anything that shows what you can do.</div>';
+    chart.innerHTML='<div class="stats"><div><b>0</b><span>experiences</span></div><div><b>0</b><span>hours</span></div><div><b>0</b><span>skills</span></div></div>';
+    return;
+  }
+  list.innerHTML='<table class="exp-table"><thead><tr><th>Experience</th><th>Type</th><th>When</th><th class="num">Hours</th><th>Skill gained</th><th></th></tr></thead><tbody>'+
+    ex.map(function(e,i){return '<tr><td>'+esc(e.what)+'</td><td><span class="dot" style="background:'+typeColor(e.type)+'"></span>'+esc(e.type)+'</td><td>'+(esc(e.when)||'—')+'</td><td class="num">'+(esc(e.hours)||'—')+'</td><td>'+(esc(e.skill)||'—')+'</td><td><button type="button" class="x" data-del-exp="'+i+'" aria-label="Remove experience">×</button></td></tr>';}).join('')+'</tbody></table>';
+  var by={}, order=[];
+  ex.forEach(function(e){ if(!by[e.type]){by[e.type]={n:0,h:0};order.push(e.type);} by[e.type].n++; by[e.type].h+=(parseFloat(e.hours)||0); });
+  function idx(t){for(var i=0;i<EXP_TYPES.length;i++){if(EXP_TYPES[i][0]===t)return i;}return 99;}
+  order.sort(function(a,b){return idx(a)-idx(b);});
+  var totalH=Math.round(ex.reduce(function(s,e){return s+(parseFloat(e.hours)||0);},0)*10)/10, useH=totalH>0;
+  var max=Math.max.apply(null,order.map(function(t){return useH?by[t].h:by[t].n;}).concat([1]));
+  var rows=order.map(function(t){var v=by[t],val=useH?v.h:v.n;return '<div class="bar-row"><div>'+esc(t)+'</div><div class="bar-track"><div class="barfill" style="width:'+Math.max(4,val/max*100)+'%;background:'+typeColor(t)+'"></div></div><div class="bar-val">'+v.n+' item'+(v.n>1?'s':'')+(v.h?' · '+(Math.round(v.h*10)/10)+' hrs':'')+'</div></div>';}).join('');
+  var seen={}, skills=[];
+  ex.forEach(function(e){e.skill.split(/[,;\/]+/).forEach(function(s){s=s.trim();if(s&&!seen[s.toLowerCase()]){seen[s.toLowerCase()]=1;skills.push(s);}});});
+  chart.innerHTML='<div class="stats"><div><b>'+ex.length+'</b><span>experiences</span></div><div><b>'+totalH+'</b><span>hours (approx.)</span></div><div><b>'+skills.length+'</b><span>skills</span></div></div>'+
+    '<h4>'+(useH?'Hours':'Experiences')+' by type</h4>'+rows+
+    '<h4>Skills you can name in your essay</h4><div class="chips">'+(skills.length?skills.map(function(s){return '<span class="chip static">'+esc(s)+'</span>';}).join(''):'<span class="muted small">Add a skill to each experience.</span>')+'</div>';
+}
+
+/* ---------- essay ---------- */
+function renderFromBrain(){
+  PARAS.forEach(function(p,i){
+    var ideas=S.ideas[p.br].slice();
+    if(i===1) S.experiences.forEach(function(e){ideas.push(e.what+(e.skill?' → '+e.skill:''));});
+    $('#fb'+i).innerHTML=ideas.length?'<span class="mini">From your brainstorm</span><div class="chips">'+ideas.map(function(t){return '<span class="chip static">'+esc(t)+'</span>';}).join('')+'</div>':'<span class="mini" style="text-transform:none;letter-spacing:0;font-weight:500">Tip: add ideas on the Brainstorm step and they’ll show up here.</span>';
+  });
+}
+function updateEssayUI(){
+  S.essay.forEach(function(p,i){
+    var n=wc(p), w=$('#wc'+i); if(!w) return;
+    var good=n>=60&&n<=130, over=n>140;
+    w.textContent=n+' word'+(n===1?'':'s'); w.className='wc'+(good?' good':(over?' warn':''));
+    var m=$('#pm'+i); m.style.width=Math.min(100,n/120*100)+'%'; m.style.background=good?'var(--good)':(over?'var(--hl-line)':'var(--faint)');
+  });
+  renderChecker();
+}
+function renderChecker(){
+  var c=essayChecks(), empty=c.empty;
+  $('#ckWords').textContent=c.total;
+  $('#ckBars').innerHTML=c.P.map(function(p,i){var n=wc(p);return '<div class="ck-bar" style="--pc:'+PARAS[i].color+'" title="Paragraph '+(i+1)+': '+n+' words"><i style="height:'+Math.min(100,n/120*100)+'%"></i><span>¶'+(i+1)+'</span></div>';}).join('');
+  var checks=[
+    [c.full===4,'All 4 paragraphs written ('+c.full+'/4 have 40+ words)'],
+    [c.len,'Length: '+c.total+' words — aim for 280–450'],
+    [c.paid,'Answers why <b>paid</b> (uses “paid,” “pay,” or “earn”)'],
+    [c.tech,'Connects to your pathway or tech'],
+    [c.numbers,'Uses specific numbers or details'],
+    [c.future,'Mentions a future goal'],
+    [c.variety,'Sentence variety: '+c.iS+' of '+c.sents+' sentences start with “I”'],
+    [c.capI&&!c.speak.length,'Polished: capital “I” every time, no text-speak']
+  ];
+  $('#ckList').innerHTML=checks.map(function(x){return '<li class="'+(empty?'':(x[0]?'ok':'no'))+'"><span class="ck-ic">'+(empty?'·':(x[0]?'✓':'!'))+'</span><span>'+x[1]+'</span></li>';}).join('');
+  $('#ckWeak').innerHTML=c.weak.length?c.weak.map(function(x){return '<div class="swap"><b>“'+esc(x.w)+'”</b>'+(x.n>1?' ×'+x.n:'')+' — '+esc(x.tip)+'</div>';}).join(''):'<p class="muted small">'+(empty?'Start writing to see suggestions.':'No weak words found. Nice.')+'</p>';
+  $('#ckCliche').innerHTML=c.cliche.length?c.cliche.map(function(x){return '<div class="swap"><b>“'+esc(x)+'”</b> — show it with a real example instead.</div>';}).join(''):'<p class="muted small">'+(empty?'—':'None found.')+'</p>';
+}
+function onEssay(t){ S.essay[+t.dataset.p]=t.value; updateEssayUI(); changed(); }
+function insertStarter(i,k,text){
+  var ta=$('textarea[data-p="'+i+'"]'); if(!ta) return;
+  var v=ta.value, s, e;
+  if(ta.dataset.used){ s=ta.selectionStart; e=ta.selectionEnd; } else { s=e=v.length; }
+  var before=v.slice(0,s), after=v.slice(e);
+  var pad=(before&&!/\s$/.test(before))?' ':'';
+  ta.value=before+pad+text+((after&&!/^\s/.test(after))?' ':'')+after;
+  var start=(before+pad).length, b=text.indexOf('___');
+  ta.focus();
+  if(b>=0) ta.setSelectionRange(start+b,start+b+3); else ta.setSelectionRange(start+text.length,start+text.length);
+  ta.dataset.used='1';
+  stats.starters++; HSCT.log('starter',{p:i,k:k});
+  onEssay(ta);
+}
+
+/* ---------- review ---------- */
+function groups(){
+  var app=[['SSN/ITIN',null,'ssn'],['Resume',S.resumeFileName,'resume'],['Essay',null,'essay'],['Allergies',S.allergy]];
+  if(S.allergy==='Yes') app.push(['Allergy Details',S.allergyInfo]);
+  app=app.concat([['Career Cluster(s)',S.clusters.join('; ')],['Experience Opportunities',S.opportunities.join('; ')],['Electronic device with internet',S.deviceAccess],['Access to the internet',S.internetAccess],['Internship environment',S.environment]]);
+  return [
+    {t:'School Information',rows:[['School',S.school],['Shared Instruction Site',S.sharedSite,'opt'],['Pathway',S.pathway],['Term',S.term,'opt']]},
+    {t:'Student Information',rows:[['First Name',S.firstName],['Middle Initial',S.middleInitial,'opt'],['Last Name',S.lastName],['OSIS',S.osis],['Birth Date',fmtDate(S.birthDate)],['Grade',S.grade]]},
+    {t:'Application Information',rows:app},
+    {t:'Parent / Guardian Information',rows:[['First Name',S.parentFirst],['Last Name',S.parentLast],['Relation',S.parentRelation],['Email',S.parentEmail],['Home Phone',S.parentHome,'opt'],['Work Phone',S.parentWork,'opt'],['Cell Phone',S.parentCell,'opt']]}
+  ];
+}
+function copyBtn(v){return '<button type="button" class="copy" data-copy="'+esc(v)+'">Copy</button>';}
+function rowHTML(r){
+  var l=r[0], v=r[1], kind=r[2];
+  if(kind==='ssn') return '<tr><th>'+l+'</th><td><span class="muted">Enter directly in the official portal — not collected here.</span></td><td class="cp"></td></tr>';
+  if(kind==='essay') return '<tr><th>'+l+'</th><td>See below ('+wc(essayText())+' words)</td><td class="cp"></td></tr>';
+  if(kind==='resume') return '<tr><th>'+l+'</th><td>'+(v?esc(v):'<span class="muted">Coming later</span>')+'</td><td class="cp">'+(v?copyBtn(v):'')+'</td></tr>';
+  var val=String(v||'').trim();
+  var shown=/Phone/.test(l)?fmtPhone(val):val;
+  return '<tr><th>'+l+'</th><td>'+(val?esc(shown):(kind==='opt'?'<span class="muted">—</span>':'<span class="missing">Missing</span>'))+'</td><td class="cp">'+(val?copyBtn(val):'')+'</td></tr>';
+}
+function renderReview(){
+  var sc=scoreAll(), miss=missingItems(), p=sc.earned;
+  var ringColor=p>=90?'var(--good)':(p>=70?'var(--royal)':'var(--maroon)');
+  $('#readyBox').innerHTML='<div class="ready"><div class="ring" style="--p:'+p+';--rc:'+ringColor+'"><span>'+p+'<small>of 100</small></span></div><div class="ready-body">'+
+    '<h3>'+esc(sc.tier)+'</h3>'+
+    '<p>'+(miss.length?'Your readiness score. Click an item to jump to it — or finish now and the missing parts just cost points.':'Everything required is in. Finish to get your result file.')+'</p>'+
+    '<ul class="scorelist">'+sc.sections.map(function(s){var w=Math.round(s.earned/s.possible*100);return '<li><span>'+esc(s.title)+'</span><span class="mbar"><i class="'+(w===100?'full':'')+'" style="width:'+w+'%"></i></span><b>'+s.earned+' / '+s.possible+'</b></li>';}).join('')+'</ul>'+
+    (miss.length?'<div class="chips">'+miss.map(function(m){return '<button type="button" class="chip warnchip" data-goto="'+m.step+'" data-focus="'+m.key+'">'+esc(m.label)+' →</button>';}).join('')+'</div>':'')+'</div></div>';
+  $('#sumBox').innerHTML=groups().map(function(g){return '<div class="card"><h3>'+g.t+'</h3><table class="sumtbl" style="margin-top:10px">'+g.rows.map(rowHTML).join('')+'</table></div>';}).join('');
+  $('#essayCard').innerHTML='<div class="essay-head"><h3>Essay</h3><button type="button" class="copy" data-copy-essay>Copy essay</button></div>'+
+    '<p class="muted small" style="margin:0 0 12px">Why are you interested in a paid experience? · '+wc(essayText())+' words</p><div class="essay-view">'+
+    S.essay.map(function(t,i){return t.trim()?'<p>'+esc(t.trim()).replace(/\n+/g,'<br>')+'</p>':'<p class="missing">Paragraph '+(i+1)+' is missing</p>';}).join('')+'</div>';
+}
+
+/* ---------- finish ---------- */
+function buildReport(){
+  var out=groups().map(function(g){
+    return {title:g.t,rows:g.rows.filter(function(r){return r[2]!=='essay';}).map(function(r){
+      var l=r[0], v=r[1], k=r[2];
+      if(k==='ssn') return [l,'Not collected — enter it in the portal'];
+      if(k==='resume') return [l,v||'Coming later'];
+      return [l,String(v||'').trim()];
+    })};
+  });
+  out.splice(3,0,{title:'Essay: Why are you interested in a paid experience?',text:essayText(),note:wc(essayText())+' words'});
+  out.push({title:'Mind map',rows:BR.map(function(b){return [b.title,S.ideas[b.id].join(' · ')];})});
+  if(S.experiences.length) out.push({title:'Experience chart',rows:S.experiences.map(function(e){return [e.what,[e.type,e.when,e.hours?('~'+e.hours+' hrs'):'',e.skill?('Skill: '+e.skill):''].filter(Boolean).join(' · ')];})});
+  out.push({title:'Writing process',rows:[
+    ['Total time (all sessions)',HSCT.fmtDuration(totalSeconds())],
+    ['Sessions',String(sessions)],
+    ['Text pasted into the essay',stats.pastes?(stats.pastes+' paste'+(stats.pastes>1?'s':'')+', '+stats.pastedChars+' characters'):'None'],
+    ['Pastes',stats.pasteLog.map(function(x){return '¶'+x.p+': '+x.words+' words (session '+x.session+', at '+HSCT.fmtDuration(x.at)+')';}).join(' · ')],
+    ['Sentence starters used',String(stats.starters)],
+    ['Opened the sample essay',stats.sampleViews?(stats.sampleViews+' time'+(stats.sampleViews>1?'s':'')):'No']
+  ]});
+  return out;
+}
+function finishRun(){
+  var sc=scoreAll(), c=sc.checks;
+  HSCT.log('finish',{score:sc.earned,words:c.total});
+  base=totalSeconds(); running=false; finished=true; dirty=false;
+  showView('view-end');
+  $('#end-lede').textContent='Readiness score '+sc.earned+' / 100 — '+sc.tier+'. Download your result file below and submit it in Google Classroom. Mr. Cruz reads and grades the essay itself.';
+  $('#end-time').textContent='Total time on this application: '+HSCT.fmtDuration(base)+(sessions>1?' across '+sessions+' sessions.':'.');
+  HSCT.endScreen('#hsct-result',{
+    earned:sc.earned, possible:100, tier:sc.tier,
+    sections:sc.sections.concat([{id:'time',title:'Total time, all sessions',status:HSCT.fmtDuration(base)+(sessions>1?' ('+sessions+' sessions)':'')}]),
+    extra:{
+      report:buildReport(),
+      application:JSON.parse(JSON.stringify(S)),
+      checks:{paid:c.paid,pathway:c.tech,numbers:c.numbers,goal:c.future,variety:c.variety,capitalI:c.capI,textSpeak:c.speak,weakWords:c.weak.map(function(w){return w.w;}),cliches:c.cliche},
+      writing:{words:c.total,perParagraph:c.P.map(wc),pastes:stats.pastes,pastedChars:stats.pastedChars,pasteLog:stats.pasteLog,startersUsed:stats.starters,sampleViews:stats.sampleViews},
+      totalSeconds:base, sessions:sessions
+    },
+    note:'Submit this file in Google Classroom. It holds your whole application and essay, encrypted — only Mr. Cruz can open it. If downloads are blocked, copy the code and paste it instead.'
+  }).catch(function(){});
+  persist();
+}
+
+/* ---------- the student's own copy + draft files ---------- */
+function fullName(){return [S.firstName,S.middleInitial?S.middleInitial+'.':'',S.lastName].filter(Boolean).join(' ');}
+function fileBase(){var n=(fullName()||(HSCT.session&&HSCT.session.name)||'Student');return ('PaidExperienceApp_'+n).replace(/[^A-Za-z0-9_-]+/g,'-').replace(/-+$/,'');}
+function envelope(step){return JSON.stringify({app:FILE_APP,version:1,name:HSCT.session?HSCT.session.name:'',savedAt:new Date().toISOString(),step:step,totalSeconds:totalSeconds(),sessions:sessions,stats:stats,data:S});}
+function download(name,content,type){
+  var blob=new Blob([content],{type:type}), url=URL.createObjectURL(blob), a=document.createElement('a');
+  a.href=url; a.download=name; document.body.appendChild(a); a.click();
+  setTimeout(function(){URL.revokeObjectURL(url);a.remove();},2000);
+}
+function saveDraft(){
+  if(!running&&!finished) return;
+  download('Draft_'+fileBase()+'.json',envelope(cur),'application/json');
+  dirty=false; HSCT.log('draft-save',{step:STEPS[cur]});
+  toast('Draft saved. Next class, choose “Continue from a draft file” on the first screen.');
+}
+function docHTML(){
+  var name=fullName()||(HSCT.session&&HSCT.session.name)||'Student', miss='<span class="miss">MISSING</span>', n=wc(essayText());
+  function cell(l,v,kind){
+    if(kind==='ssn') return '<em>Enter directly in the official portal (not collected)</em>';
+    if(kind==='resume') return v?esc(v):'<em>Coming later</em>';
+    var s=String(v||'').trim(); return s?esc(/Phone/.test(l)?fmtPhone(s):s):(kind==='opt'?'<span class="na">—</span>':miss);
+  }
+  var essay='<div class="eq">Why are you interested in a paid experience? <span>('+n+' words)</span></div>'+S.essay.map(function(p,i){return p.trim()?'<p>'+esc(p.trim()).replace(/\n+/g,'<br>')+'</p>':'<p>'+miss+' Paragraph '+(i+1)+'</p>';}).join('');
+  var body=groups().map(function(g){return '<h2>'+g.t+'</h2><table>'+g.rows.map(function(r){
+    return r[2]==='essay'?'<tr class="er"><td colspan="2"><div class="el">Essay</div>'+essay+'</td></tr>':'<tr><th>'+r[0]+'</th><td>'+cell(r[0],r[1],r[2])+'</td></tr>';
+  }).join('')+'</table>';}).join('');
+  var brain='';
+  if(S.includeBrainstorm){
+    brain='<h2>Brainstorm</h2><table>'+BR.map(function(b){return '<tr><th>'+esc(b.title)+'</th><td>'+(S.ideas[b.id].length?S.ideas[b.id].map(esc).join(' · '):'<span class="na">—</span>')+'</td></tr>';}).join('')+
+      (S.experiences.length?'<tr><th>Experience chart</th><td><ul>'+S.experiences.map(function(e){return '<li><b>'+esc(e.what)+'</b> — '+esc(e.type)+(e.when?', '+esc(e.when):'')+(e.hours?', ~'+esc(e.hours)+' hrs':'')+(e.skill?'. Skill: '+esc(e.skill):'')+'</li>';}).join('')+'</ul></td></tr>':'')+'</table>';
+  }
+  var css='body{font:14px/1.5 "IBM Plex Sans",-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:#101a3f;margin:0;background:#f5f7fc}'+
+    '.page{max-width:820px;margin:16px auto 32px;background:#fff;padding:36px 44px;border-radius:10px;box-shadow:0 4px 20px rgba(16,26,63,.08)}'+
+    'header{border-bottom:3px solid #1f3fae;padding-bottom:14px;margin-bottom:6px}.k{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#7a1c2c;font-weight:700}'+
+    'h1{font-size:24px;margin:4px 0}.meta{color:#5b6485;font-size:13px}'+
+    'h2{font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;background:#142a7a;color:#fff;padding:7px 10px;margin:22px 0 0;border-radius:4px;-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
+    'table{width:100%;border-collapse:collapse}th{width:34%;text-align:left;color:#5b6485;font-weight:600;padding:8px 10px;border-bottom:1px solid #e3e8f4;vertical-align:top}'+
+    'td{padding:8px 10px;border-bottom:1px solid #e3e8f4;vertical-align:top;overflow-wrap:anywhere}ul{margin:0;padding-left:18px}'+
+    '.miss{color:#b3261e;font-weight:700}.na{color:#8a92ad}.el{color:#5b6485;font-weight:600;margin-bottom:4px}'+
+    '.eq{font-weight:700;margin:2px 0 10px}.eq span{color:#5b6485;font-weight:400}'+
+    '.er p{font-family:Georgia,"Times New Roman",serif;font-size:14.5px;line-height:1.7;text-indent:2em;margin:0 0 .8em}'+
+    '.foot{margin-top:24px;font-size:12px;color:#5b6485;border-top:1px solid #e3e8f4;padding-top:10px}'+
+    '.bar{max-width:820px;margin:16px auto 0;text-align:right;padding:0 12px}.bar button{font:600 14px system-ui,sans-serif;background:#1f3fae;color:#fff;border:0;border-radius:8px;padding:9px 16px;cursor:pointer}'+
+    '@media print{body{background:#fff}.page{box-shadow:none;margin:0;max-width:none;padding:0;border-radius:0}.bar{display:none}tr:not(.er){break-inside:avoid}}'+
+    '@media(max-width:600px){.page{padding:22px 18px;margin:0;border-radius:0}th{width:40%}}';
+  var data=envelope(5).replace(/</g,'\\u003c');
+  return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Application — '+esc(name)+'</title><style>'+css+'</style></head><body>'+
+    '<div class="bar"><button onclick="window.print()">Print / Save as PDF</button></div><div class="page">'+
+    '<header><div class="k">HSCT TechHub · Paid experience application</div><h1>'+esc(name)+'</h1><div class="meta">'+esc(S.term)+' · Type: School Year · Prepared '+esc(new Date().toLocaleDateString())+'</div></header>'+
+    body+brain+
+    '<div class="foot">Your own copy. The copy Mr. Cruz grades is the encrypted .hsct result file you submit in Google Classroom. To keep editing, open the lesson on hsct.tech and choose “Continue from a draft file” with this document.</div>'+
+    '</div><script type="application/json" id="'+FILE_APP+'-data">'+data+'<\/script></body></html>';
+}
+function printDoc(){
+  var f=document.createElement('iframe'); f.setAttribute('aria-hidden','true'); f.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+  document.body.appendChild(f);
+  var d=f.contentWindow.document; d.open(); d.write(docHTML()); d.close();
+  setTimeout(function(){
+    try{ f.contentWindow.focus(); f.contentWindow.print(); }
+    catch(e){ toast('Printing was blocked — download your copy and print it from there.'); }
+    setTimeout(function(){f.remove();},60000);
+  },350);
+}
+function parseLoaded(text){
+  var obj=null, t=String(text).trim();
+  if(t.charAt(0)==='{') obj=JSON.parse(t);
+  else { var m=t.match(new RegExp('<script type="application/json" id="'+FILE_APP+'-data">([\\s\\S]*?)<\\/script>')); if(m) obj=JSON.parse(m[1]); }
+  if(!obj||obj.app!==FILE_APP||!obj.data) throw new Error('Not a draft of this application');
+  return {S:normalize(obj.data),name:cleanName(obj.name),total:Math.max(0,+obj.totalSeconds||0),sessions:Math.max(0,+obj.sessions||0),stats:obj.stats&&typeof obj.stats==='object'?obj.stats:{},step:Math.max(0,Math.min(5,+obj.step||0))};
+}
+function copyText(text,btn){
+  function done(){ if(btn){ if(!btn.dataset.label) btn.dataset.label=btn.textContent; btn.textContent='Copied ✓'; btn.classList.add('done'); setTimeout(function(){btn.textContent=btn.dataset.label;btn.classList.remove('done');},1400);} else toast('Copied'); }
+  function fallback(){ var ta=document.createElement('textarea'); ta.value=text; ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); done(); }catch(e){ toast('Couldn’t copy — select the text and press Ctrl+C.'); } ta.remove(); }
+  if(navigator.clipboard&&window.isSecureContext){ navigator.clipboard.writeText(text).then(done,fallback); } else fallback();
+}
+function renderAll(){ renderMap(); renderExp(); renderFromBrain(); updateEssayUI(); toggleAllergy(); updateErrors(); updateStepper(); if(cur===5) renderReview(); }
+
+/* ---------- 1. intro ---------- */
+var nameEl=$('#name');
+function nameError(on){ $('#name-err').hidden=!on; if(on) nameEl.focus(); }
+$('#start').onclick=function(){
+  var name=cleanName(nameEl.value);
+  if(name.length<2){ nameError(true); return; }
+  nameError(false);
+  var d=readTabDraft();
+  if(d&&!confirm('Start a new application? This erases the one saved in this tab for '+cleanName(d.name)+'.')) return;
+  resetAll();
+  beginRun(name,{from:'new',step:0});
+};
+nameEl.addEventListener('keydown',function(e){ if(e.key==='Enter') $('#start').click(); });
+$('#resumeTab').onclick=function(){
+  var d=readTabDraft(); if(!d){ refreshResumeBox(); return; }
+  S=normalize(d.S); touched={}; base=Math.max(0,+d.total||0); sessions=Math.max(0,+d.sessions||0); stats=loadStats(d.stats);
+  beginRun(cleanName(d.name),{from:'tab',step:d.finished?5:Math.max(0,Math.min(5,+d.step||0))});
+};
+$('#draftFile').addEventListener('change',function(e){
+  var f=e.target.files&&e.target.files[0]; e.target.value=''; if(!f) return;
+  var r=new FileReader();
+  r.onload=function(){
+    var d; try{ d=parseLoaded(r.result); }catch(x){ toast('That file isn’t a draft of this application.'); return; }
+    var typed=cleanName(nameEl.value), name=typed.length>=2?typed:d.name;
+    if(name.length<2){ nameError(true); toast('Type your full name, then load the draft again.'); return; }
+    if(!typed) nameEl.value=name;
+    nameError(false);
+    S=d.S; touched={}; base=d.total; sessions=d.sessions; stats=loadStats(d.stats);
+    beginRun(name,{from:'file',step:d.step});
+    HSCT.log('draft-load',{file:f.name,draftName:d.name,priorSeconds:d.total});
+    toast('Draft loaded — welcome back.');
+  };
+  r.readAsText(f);
+});
+
+/* ---------- 2. work: events ---------- */
+document.addEventListener('input',function(e){
+  var t=e.target;
+  if(t.dataset&&t.dataset.f&&t.type!=='checkbox'&&t.type!=='radio') setField(t);
+  else if(t.matches&&t.matches('textarea[data-p]')) onEssay(t);
+});
+document.addEventListener('change',function(e){
+  var t=e.target; if(!t.dataset||!t.dataset.f) return;
+  setField(t);
+  if(t.tagName==='SELECT'||t.type==='date'){ touched[t.dataset.f]=true; updateErrors(); }
+});
+document.addEventListener('focusout',function(e){
+  var t=e.target;
+  if(t.dataset&&t.dataset.f&&t.type!=='checkbox'){ touched[t.dataset.f]=true; updateErrors(); }
+  if(t.matches&&t.matches('textarea[data-p]')){ var p=+t.dataset.p, n=wc(t.value); if(n!==lastWords[p]){ lastWords[p]=n; HSCT.log('para',{p:p,words:n}); } }
+});
+document.addEventListener('focusin',function(e){ var t=e.target; if(t.matches&&t.matches('textarea[data-p]')) t.dataset.used='1'; });
+document.addEventListener('paste',function(e){
+  var t=e.target; if(!(t.matches&&t.matches('textarea[data-p]'))) return;
+  var txt=''; try{ txt=(e.clipboardData||window.clipboardData).getData('text')||''; }catch(x){}
+  stats.pastes++; stats.pastedChars+=txt.length;
+  if(stats.pasteLog.length<50) stats.pasteLog.push({session:sessions,p:+t.dataset.p+1,words:wc(txt),chars:txt.length,at:Math.round(totalSeconds())});
+  HSCT.log('paste',{p:+t.dataset.p,chars:txt.length,words:wc(txt)});
+});
+document.addEventListener('click',function(e){
+  var t=e.target.closest('button'); if(!t) return;
+  if(t.dataset.go!=null){ goTo(+t.dataset.go); return; }
+  if(t.dataset.goto!=null){ var k=t.dataset.focus; goTo(+t.dataset.goto); setTimeout(function(){focusKey(k);},120); return; }
+  if(t.dataset.insert!=null){ insertStarter(+t.dataset.insert,+t.dataset.k,t.dataset.text); return; }
+  if(t.dataset.delIdea){ S.ideas[t.dataset.delIdea].splice(+t.dataset.i,1); renderMap(); changed(); return; }
+  if(t.dataset.delExp!=null){ S.experiences.splice(+t.dataset.delExp,1); renderExp(); changed(); return; }
+  if(t.dataset.copy!=null){ copyText(t.dataset.copy,t); return; }
+  if(t.hasAttribute('data-copy-essay')){ var et=essayText(); if(!et){toast('Write your essay first.');return;} copyText(et,t); return; }
+  if(t.dataset.tab){
+    setTab(t.dataset.tab);
+    if(t.dataset.tab!=='write'){ if(t.dataset.tab==='sample') stats.sampleViews++; HSCT.log('tab',{tab:t.dataset.tab}); }
+    return;
+  }
+  if(t.classList.contains('js-clear')){
+    if(!confirm('Erase everything in this application? Save a draft or your copy first if you want to keep it.')) return;
+    HSCT.log('start-over'); resetAll(); nameEl.value=''; refreshResumeBox(); showView('view-intro'); toast('Cleared — ready for a fresh start.');
+  }
+});
+document.addEventListener('submit',function(e){
+  var f=e.target;
+  if(f.classList.contains('mm-add')){
+    e.preventDefault(); var inp=f.querySelector('input'), v=inp.value.trim(); if(!v) return;
+    S.ideas[f.dataset.branch].push(v.slice(0,90)); inp.value=''; renderMap(); changed(); inp.focus();
+    HSCT.log('idea',{branch:f.dataset.branch,n:S.ideas[f.dataset.branch].length});
+  } else if(f.id==='expForm'){
+    e.preventDefault(); var fd=new FormData(f), what=String(fd.get('what')||'').trim();
+    if(!what){ f.querySelector('[name=what]').focus(); toast('Describe the experience first.'); return; }
+    S.experiences.push({what:what.slice(0,90),type:String(fd.get('type')),when:String(fd.get('when')||'').trim(),hours:String(fd.get('hours')||'').trim(),skill:String(fd.get('skill')||'').trim()});
+    f.reset(); renderExp(); changed(); f.querySelector('[name=what]').focus();
+    HSCT.log('experience',{n:S.experiences.length});
+  }
+});
+$('#prevBtn').addEventListener('click',function(){goTo(cur-1);});
+$('#nextBtn').addEventListener('click',function(){
+  if(STEP_KEYS[cur]){ STEP_KEYS[cur].forEach(function(k){touched[k]=true;}); updateErrors(); if(!stepOK(cur)) toast('A few required fields are still empty — you can come back anytime.'); }
+  goTo(cur+1);
+});
+$('#annToggle').addEventListener('change',function(e){$('#paper').classList.toggle('show',e.target.checked);});
+$('#resumeSuggest').addEventListener('click',function(){
+  var n=(S.firstName+S.lastName).replace(/[^A-Za-z0-9]/g,''); if(!n){toast('Fill in your name on step 1 first.');return;}
+  S.resumeFileName=n+'Resume'+new Date().getFullYear()+'.pdf'; $('[data-f="resumeFileName"]').value=S.resumeFileName; changed();
+});
+var btnRead=$('#btnRead');
+btnRead.addEventListener('click',function(){
+  if(!('speechSynthesis' in window)){toast('Read-aloud isn’t supported in this browser.');return;}
+  var synth=window.speechSynthesis;
+  if(synth.speaking){ synth.cancel(); btnRead.textContent='▶ Read it aloud'; return; }
+  var text=essayText(); if(!text){toast('Write something first.');return;}
+  var u=new SpeechSynthesisUtterance(text); u.rate=0.95;
+  u.onend=u.onerror=function(){btnRead.textContent='▶ Read it aloud';};
+  synth.speak(u); btnRead.textContent='■ Stop reading'; HSCT.log('read-aloud',{words:wc(text)});
+});
+$('#btnSaveTop').addEventListener('click',saveDraft);
+$('#btnSaveSide').addEventListener('click',saveDraft);
+$('#finishBtn').addEventListener('click',function(){
+  var miss=missingItems();
+  if(miss.length&&!confirm(miss.length+' item'+(miss.length>1?'s are':' is')+' still missing, so your readiness score will be lower. Finish anyway?')) return;
+  finishRun();
+});
+
+/* ---------- 3. end ---------- */
+$('#dlHtml').addEventListener('click',function(){ download(fileBase()+'.html',docHTML(),'text/html;charset=utf-8'); toast('Downloaded '+fileBase()+'.html'); });
+$('#dlPrint').addEventListener('click',printDoc);
+$('#revise').addEventListener('click',function(){
+  if(!confirm('Revise your application? When you finish again you’ll get a new result file — submit the newest one.')) return;
+  beginRun(HSCT.session?HSCT.session.name:cleanName(nameEl.value),{from:'revise',step:5});
+  toast('Revising. Finish again when you’re done.');
+});
+
+$$('label[role="button"][for]').forEach(function(l){ l.addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); document.getElementById(l.htmlFor).click(); } }); });
+window.addEventListener('beforeunload',function(e){ if(running&&dirty&&hasContent()){ e.preventDefault(); e.returnValue=''; } });
+window.addEventListener('resize',drawLines);
+if('ResizeObserver' in window){ new ResizeObserver(function(){drawLines();}).observe($('#mm')); }
+
+/* ---------- init ---------- */
+buildStepper(); buildChecks(); buildMap(); buildParas();
+fillForm(); renderAll(); goTo(0,true); refreshResumeBox();
+})();
+</script>
+</body>
+</html>
