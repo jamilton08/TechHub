@@ -156,7 +156,16 @@ export const CATEGORIES = [
           added: '2026-09-16',
           tags: ['help desk', 'BIOS', 'UEFI', 'POST', 'boot order', 'CSM', 'Legacy', 'Secure Boot', 'TPM', 'BitLocker', 'CMOS', 'coin cell', 'SATA', 'AHCI', 'INACCESSIBLE_BOOT_DEVICE', 'XMP', 'firmware password', 'PXE'],
         },
-
+        {
+          slug: 'it-support-shift-4',
+          title: 'Help Desk, Shift 4: new printer, empty room',
+          description: 'No ticket to diagnose this time. Room 333 got a router, a laptop and a network printer in boxes. Cable them, power them, configure each through its own interface — the Windows desktop, the printer\'s LCD, the router\'s admin page in Edge — and prove it with a test page. Then the supervisor flips the power strip and checks whether the printer kept its address.',
+          file: 'it-support-shift-4.html',
+          kind: 'game',
+          minutes: 45,
+          added: '2026-10-05',
+          tags: ['printer', 'router', 'WAN', 'LAN', 'DHCP', 'reservation', 'static IP', 'ipconfig', 'ping', '169.254', 'rogue DHCP', 'default password', 'SSID', 'Wi-Fi', 'Standard TCP/IP port', '9100', 'driver', 'test page', 'setup', 'simulation'],
+          },
         ],
       },
       { id: 'help-desk-skills', title: 'Help desk skills', lessons: [] },
