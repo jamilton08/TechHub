@@ -2,11 +2,39 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import SiteNav from './SiteNav.jsx';
 import SiteFooter from './SiteFooter.jsx';
 import { useFonts } from './useFonts.js';
-import { downloadText, fmtDuration, generateKeyPair, hasCrypto, importPrivateKey, openResult, parseEnvelopes, toCsv } from './hsctVerify.js';
+import { downloadText, fmtDuration, generateKeyPair, hasCrypto, importPrivateKey, isSave, openResult, parseEnvelopes, toCsv } from './hsctVerify.js';
 import './site.css';
 
 const KEY_STORE = 'hsct:verify-private-key';
 const fmtDate = (iso) => { try { return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch { return iso; } };
+const slugName = (n) => String(n || 'Student').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+/**
+ * A finished result can be turned back into something the lesson will load, so a student who lost
+ * their own copy gets their work back. Two ways a lesson can make that possible:
+ *   - generic: it put `{ filename, data }` in `extra.recover` — `data` is whatever its draft/resume
+ *     loader accepts (a v1.1 save envelope, or the lesson's own draft object)
+ *   - older lessons: handled here by name, from what they do put in `extra`
+ * Returns { filename, text } or null.
+ */
+function recoverable(r) {
+  const p = r.payload, x = p && p.extra;
+  if (!x || r.save) return null;
+  if (x.recover && x.recover.data) return { filename: x.recover.filename || `Recovered_${r.lesson}_${slugName(r.student)}.json`, text: typeof x.recover.data === 'string' ? x.recover.data : JSON.stringify(x.recover.data) };
+  if (r.lesson === 'paid-experience-application' && x.application) {
+    const w = x.writing || {};
+    return {
+      filename: `Draft_PaidExperienceApp_${slugName(r.student)}.json`,
+      text: JSON.stringify({
+        app: 'hsct-paid-experience-application', version: 1, name: r.student, savedAt: p.finished, step: 5,
+        totalSeconds: x.totalSeconds || p.seconds || 0, sessions: x.sessions || 1,
+        stats: { pastes: w.pastes || 0, pastedChars: w.pastedChars || 0, pasteLog: w.pasteLog || [], starters: w.startersUsed || 0, sampleViews: w.sampleViews || 0 },
+        data: x.application,
+      }),
+    };
+  }
+  return null;
+}
 
 /**
  * Written work a lesson sent back in `extra.report` (see lesson-template/README.md):
@@ -96,20 +124,25 @@ export default function VerifyPage() {
     for (const { envelope, file } of items) {
       const r = await openResult(envelope, key);
       const p = r.payload;
+      const save = isSave(envelope);
+      const sum = save && p ? p.summary : null;
       next.push({
-        id: `${envelope.badge}-${file}-${next.length}`,
+        id: `${save ? envelope.id : envelope.badge}-${file}-${next.length}`,
+        save,
+        kind: save ? 'save' : 'result',
         student: p ? p.student.name : envelope.student,
         lesson: p ? p.lesson.id : envelope.lesson,
         title: p ? p.lesson.title : envelope.title,
-        finished: p ? p.finished : envelope.finished,
+        finished: p ? (save ? p.saved : p.finished) : (save ? envelope.saved : envelope.finished),
         seconds: p ? p.seconds : null,
         activeSeconds: p ? p.activeSeconds : null,
-        earned: p ? p.score.earned : null,
-        possible: p ? p.score.possible : null,
-        percent: p ? p.score.percent : null,
-        tier: p ? p.tier : null,
-        badge: envelope.badge,
-        status: r.ok ? 'OK' : `FAILED — ${r.error}`,
+        earned: p ? (save ? (sum ? sum.earned : null) : p.score.earned) : null,
+        possible: p ? (save ? (sum ? sum.possible : null) : p.score.possible) : null,
+        percent: p ? (save ? (sum && sum.possible ? Math.round(1000 * sum.earned / sum.possible) / 10 : null) : p.score.percent) : null,
+        tier: p ? (save ? (sum && sum.label) || 'in progress' : p.tier) : null,
+        resumes: p && Array.isArray(p.resumes) ? p.resumes.length : 0,
+        badge: save ? envelope.id : envelope.badge,
+        status: r.ok ? (save ? 'SAVE — not finished' : 'OK') : `FAILED — ${r.error}`,
         ok: r.ok,
         file,
         payload: p,
@@ -127,7 +160,7 @@ export default function VerifyPage() {
     for (const f of Array.from(list || [])) {
       const text = await f.text();
       parseEnvelopes(text).forEach((envelope) => items.push({ envelope, file: f.name }));
-      if (!parseEnvelopes(text).length) items.push({ envelope: { hsct: 1, badge: '—', student: '—', lesson: '—', finished: '', data: '', key: '', iv: '' }, file: `${f.name} (not a result file)` });
+      if (!parseEnvelopes(text).length) items.push({ envelope: { hsct: 1, badge: '—', student: '—', lesson: '—', finished: '', data: '', key: '', iv: '' }, file: `${f.name} (not a result or save file)` });
     }
     await addEnvelopes(items);
     if (fileInput.current) fileInput.current.value = '';
@@ -155,8 +188,10 @@ export default function VerifyPage() {
           <h1>Verify result files</h1>
           <p className="t-bio">
             Students finish a lesson and download a <code>.hsct</code> file. Drop those files here to see
-            who did what, when, how long it took, and the score. Files are encrypted; nothing opens without
-            your private key, and a file that was edited after it was made will not open at all.
+            who did what, when, how long it took, and the score. Save files (<code>.hsctsave</code>) open here
+            too, for a student who ran out of time: you see how far they got. Files are encrypted; nothing opens
+            without your private key, and a file that was edited after it was made will not open at all.
+            A result that was resumed from a save says so — click the row to see each resume.
           </p>
         </header>
 
@@ -209,8 +244,8 @@ export default function VerifyPage() {
               onDragOver={(e) => { e.preventDefault(); }}
               onDrop={(e) => { e.preventDefault(); onFiles(e.dataTransfer.files); }}
             >
-              <input ref={fileInput} type="file" multiple accept=".hsct,.json,.txt" disabled={!key} onChange={(e) => onFiles(e.target.files)} />
-              <strong>{key ? 'Drop .hsct files here, or click to choose' : 'Load your key first'}</strong>
+              <input ref={fileInput} type="file" multiple accept=".hsct,.hsctsave,.json,.txt" disabled={!key} onChange={(e) => onFiles(e.target.files)} />
+              <strong>{key ? 'Drop .hsct or .hsctsave files here, or click to choose' : 'Load your key first'}</strong>
               <span>Any number at once. Duplicates are skipped.</span>
             </label>
             <div className="vf-paste">
@@ -234,7 +269,7 @@ export default function VerifyPage() {
                           <tr className={`${r.ok ? '' : 'is-bad'}${open === r.id ? ' is-open' : ''}`} onClick={() => setOpen(open === r.id ? null : r.id)}>
                             <td>{r.student}{r.ok && dupNames.get(`${r.student}|${r.lesson}`) > 1 && <span className="pill muted" title="More than one file for this student and lesson">×{dupNames.get(`${r.student}|${r.lesson}`)}</span>}</td>
                             <td>{r.title || r.lesson}</td>
-                            <td>{r.finished ? fmtDate(r.finished) : '—'}</td>
+                            <td>{r.finished ? fmtDate(r.finished) : '—'}{r.save && <span className="pill muted" title="A save file: the lesson was not finished">save</span>}{r.resumes > 0 && <span className="pill muted" title="This run was resumed from a save">resumed ×{r.resumes}</span>}</td>
                             <td>{r.seconds != null ? fmtDuration(r.seconds) : '—'}{r.activeSeconds != null && r.activeSeconds < r.seconds - 60 ? <small> ({fmtDuration(r.activeSeconds)} active)</small> : null}</td>
                             <td>{r.earned != null ? <><b>{r.earned}</b> / {r.possible}{r.percent != null && <small> {r.percent}%</small>}</> : '—'}</td>
                             <td>{r.tier || '—'}</td>
@@ -246,8 +281,13 @@ export default function VerifyPage() {
                               <td colSpan={8}>
                                 <div className="vf-detail-grid">
                                   <div>
-                                    <p><strong>File:</strong> {r.file}</p>
-                                    {r.payload && <p><strong>Started:</strong> {fmtDate(r.payload.started)} · <strong>Lesson version:</strong> {r.payload.lesson.version} · <strong>Kit:</strong> {r.payload.kit}</p>}
+                                    <p><strong>File:</strong> {r.file}{recoverable(r) && <> · <button type="button" className="vf-copy" title="A draft file the lesson's start screen will load, with everything the student typed — send it to them" onClick={(e) => { e.stopPropagation(); const d = recoverable(r); downloadText(d.filename, d.text, 'application/json'); }}>Download as draft for the student</button></>}</p>
+                                    {r.payload && <p><strong>Started:</strong> {fmtDate(r.payload.started)} · <strong>Lesson version:</strong> {r.payload.lesson.version} · <strong>Kit:</strong> {r.payload.kit}{r.save && <> · <strong>Save #{r.payload.n}</strong> — not a finished result</>}</p>}
+                                    {r.payload && Array.isArray(r.payload.resumes) && r.payload.resumes.length > 0 && (
+                                      <table className="syl-table"><thead><tr><th>Resumed from save</th><th>Taken at</th><th>Resumed at</th><th>Into the run</th></tr></thead><tbody>
+                                        {r.payload.resumes.map((x, i) => <tr key={i}><td><code>{x.id}</code>{x.n ? ` (#${x.n})` : ''}</td><td>{fmtDate(x.savedAt)}</td><td>{fmtDate(x.resumedAt)}</td><td>{fmtDuration(x.savedSeconds)} · {x.savedEvents} events</td></tr>)}
+                                      </tbody></table>
+                                    )}
                                     {r.payload?.sections?.length > 0 && (
                                       <table className="syl-table"><thead><tr><th>Section</th><th>Result</th></tr></thead><tbody>
                                         {r.payload.sections.map((s, i) => <tr key={i}><td>{s.title}</td><td>{s.status != null ? s.status : `${s.earned}${s.possible != null ? ` / ${s.possible}` : ''}`}</td></tr>)}
@@ -257,7 +297,7 @@ export default function VerifyPage() {
                                   {r.payload && (
                                     <details>
                                       <summary>{r.payload.events.length} logged events · raw data</summary>
-                                      <pre>{JSON.stringify({ extra: r.payload.extra, events: r.payload.events, env: r.payload.env }, null, 1)}</pre>
+                                      <pre>{JSON.stringify(r.save ? { summary: r.payload.summary, state: r.payload.state, events: r.payload.events } : { extra: r.payload.extra, resumes: r.payload.resumes, events: r.payload.events, env: r.payload.env }, null, 1)}</pre>
                                     </details>
                                   )}
                                 </div>
