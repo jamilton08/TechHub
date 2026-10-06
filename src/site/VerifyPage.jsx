@@ -3,6 +3,7 @@ import SiteNav from './SiteNav.jsx';
 import SiteFooter from './SiteFooter.jsx';
 import { useFonts } from './useFonts.js';
 import { downloadText, fmtDuration, generateKeyPair, hasCrypto, importPrivateKey, isSave, openResult, parseEnvelopes, toCsv } from './hsctVerify.js';
+import { makeZip, downloadBlob } from '../arcade/lib/zip.js';
 import './site.css';
 
 const KEY_STORE = 'hsct:verify-private-key';
@@ -177,6 +178,19 @@ export default function VerifyPage() {
     return by;
   }, [rows]);
 
+  /* every opened result that can be turned back into a draft, as one zip — for a class that finished before the lesson kept student copies */
+  const draftsZip = () => {
+    const items = rows.filter((r) => r.ok && recoverable(r)).map((r) => ({ r, d: recoverable(r) }));
+    if (!items.length) return;
+    const seen = new Map();
+    const entries = items.map(({ r, d }) => {
+      const n = (seen.get(d.filename) || 0) + 1; seen.set(d.filename, n);
+      return { name: n > 1 ? d.filename.replace(/(\.[a-z]+)$/i, `-${n}$1`) : d.filename, data: d.text };
+    });
+    entries.push({ name: 'README.txt', data: 'One draft file per student, rebuilt from their result file.\nSend each student their own file (Google Classroom private comment or returned work).\nThey open the lesson on hsct.tech, click "Continue from a draft, your copy, or your result file" on the first screen, and choose it.\n' });
+    downloadBlob(`hsct-drafts-${new Date().toISOString().slice(0, 10)}.zip`, makeZip(entries));
+  };
+
   const sorted = useMemo(() => rows.slice().sort((a, b) => a.lesson.localeCompare(b.lesson) || a.student.localeCompare(b.student) || (a.finished || '').localeCompare(b.finished || '')), [rows]);
 
   return (
@@ -258,6 +272,7 @@ export default function VerifyPage() {
                 <div className="vf-toolbar">
                   <span>{rows.filter((r) => r.ok).length} opened{rows.some((r) => !r.ok) ? `, ${rows.filter((r) => !r.ok).length} failed` : ''}</span>
                   <button type="button" className="btn btn-ghost" onClick={() => downloadText(`hsct-results-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(sorted), 'text/csv')}>Download CSV</button>
+                  {rows.some((r) => r.ok && recoverable(r)) && <button type="button" className="btn btn-ghost" title="One draft file per student, from every result here that holds their work" onClick={draftsZip}>Drafts for students (zip)</button>}
                   <button type="button" className="btn btn-ghost" onClick={() => { setRows([]); setOpen(null); }}>Clear</button>
                 </div>
                 <div className="vf-scroll">

@@ -1007,6 +1007,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--royal);b
      HSCT.resumeLocal()   -> Promise<info>
      HSCT.resumeUI(el)    render the "pick up where you left off" card
      HSCT.saveUI(el)      render the "save and continue later" card
+     HSCT.snapshot()      -> what get() returns right now (handy in tests)
    ========================================================================== */
 (function () {
   'use strict';
@@ -1449,6 +1450,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--royal);b
     finish: finish, download: download, copyCode: copyCode, endScreen: endScreen, open: open,
     saveable: saveable, save: save, downloadSave: downloadSave, copySave: copySave, restore: restore,
     localSave: localSave, resumeLocal: resumeLocal, clearLocalSave: clearLocalSave, resumeUI: resumeUI, saveUI: saveUI,
+    snapshot: function () { return saver ? saver.get() : null; },   // what a save would contain (for tests)
     get result() { return result; },
     get session() { return ses ? { name: ses.name, started: ses.started, resumes: ses.resumes.length, saves: ses.saves } : null; },
     fmtDuration: fmtDuration,

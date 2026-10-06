@@ -386,7 +386,7 @@ img.spr{image-rendering:pixelated;image-rendering:crisp-edges;width:24px;height:
         <ul class="rules">
           <li>100 points across six stops. The points for each stop are shown at the top of the lesson.</li>
           <li>The clock starts when you click Start and stops when you finish.</li>
-          <li>Refreshing the page wipes your work (nothing is saved in the browser). That's the whole point of this lesson.</li>
+          <li>Need more than one class? Use <b>Save and continue later</b> at the bottom of the page — a save file or code brings you back to this exact spot, and this browser also keeps your latest progress. Every resume is recorded in your result file. (Yes — a lesson about save points has save points.)</li>
           <li>At the end you download a result file and submit it in Google Classroom. You can also download your game as a real Python file.</li>
         </ul>
         <div class="name-row">
@@ -395,6 +395,7 @@ img.spr{image-rendering:pixelated;image-rendering:crisp-edges;width:24px;height:
         </div>
         <div class="err" id="name-err" hidden>Enter your name first. It goes on your result file.</div>
       </div>
+      <div id="hsct-resume"></div>
     </div>
   </section>
 
@@ -567,6 +568,7 @@ img.spr{image-rendering:pixelated;image-rendering:crisp-edges;width:24px;height:
         <div class="stop-foot"><button class="btn ghost" data-go="5">← Back</button><button class="btn maroon" id="finish">Finish and get my result</button></div>
         <div id="finish-confirm"></div>
       </div>
+      <div id="hsct-save"></div>
     </div>
   </section>
 
@@ -597,10 +599,10 @@ img.spr{image-rendering:pixelated;image-rendering:crisp-edges;width:24px;height:
 <!-- HSCT KIT START — do not edit; copy the whole block from lesson-template/hsct-lesson.js -->
 <script>
 /* ============================================================================
-   HSCT LESSON KIT  v1.0
+   HSCT LESSON KIT  v1.1
    Every lesson on HSCT TechHub inlines this block unchanged (between the
    <!-- HSCT KIT START --> and <!-- HSCT KIT END --> markers). It gives a
-   lesson three things:
+   lesson four things:
 
      1. A clock.   HSCT.start(name) when the student begins. The kit records
                    wall-clock time and "active" time (tab visible).
@@ -610,43 +612,89 @@ img.spr{image-rendering:pixelated;image-rendering:crisp-edges;width:24px;height:
                    card: name, score, time taken, badge code, and a button
                    that downloads the encrypted result file the student
                    submits in Google Classroom.
+     4. Saves.     HSCT.saveable({ get, set }) tells the kit how to snapshot
+                   and restore the lesson's own state. The kit then offers
+                   save files (.hsctsave) and codes the student can bring
+                   back to the lesson, an optional autosave in this browser,
+                   and two ready-made cards: HSCT.resumeUI(el) for the intro
+                   screen and HSCT.saveUI(el) for the work screen.
 
-   The file is encrypted with the teacher's PUBLIC key below (RSA-OAEP wrapping
-   an AES-256-GCM key). It can only be opened with the matching private key,
-   on the site's /lessons/verify page. Students can't read or edit it.
+   The result file is encrypted with the teacher's PUBLIC key below (RSA-OAEP
+   wrapping an AES-256-GCM key). It can only be opened with the matching
+   private key, on the site's /lessons/verify page. Students can't read or
+   edit it.
+
+   A save file is different: the lesson itself has to open it again, so its
+   AES key is wrapped twice — once with a key derived from the student's name
+   and the lesson id (the lesson can re-derive it) and once with the teacher's
+   public key (so saves open on /lessons/verify too, for partial credit).
+   Encryption keeps a save from being casually read or edited; it cannot stop
+   a determined student with the console, which is the same limit the result
+   file has.
+
+   `keep` (opt-in, per lesson): finish({ keep: {...} }) seals a second copy of
+   whatever the lesson passes — typically its own draft object — into the
+   result file, encrypted with the student-derived key, as a SEPARATE blob
+   with its own key. The student can get that part back with HSCT.open(file)
+   (so a lesson can accept its own .hsct as a draft); they still cannot read
+   or alter the graded payload, which stays wrapped to the teacher only. What makes a run checkable is the event log: the result file
+   records every resume (which save, when it was taken, how far along it
+   was), and the verify page shows them.
 
    API (all on window.HSCT):
      HSCT.lesson({ id, title, version, course, possible })   once, at load
      HSCT.start(name)                                        when work begins
      HSCT.log(type, data)                                    any time
      HSCT.elapsed()   -> { seconds, activeSeconds }
-     HSCT.finish({ earned, possible, sections, tier, extra }) -> Promise<result>
-     HSCT.endScreen(el, { earned, possible, sections, tier, extra, note })
+     HSCT.finish({ earned, possible, sections, tier, extra, keep }) -> Promise<result>
+     HSCT.endScreen(el, { earned, possible, sections, tier, extra, keep, note })
                       -> Promise<result>   (calls finish, renders the card)
      HSCT.download()  / HSCT.copyCode()                      after finish
+     HSCT.open(textOrEnvelope) -> Promise<{ keep, student, finished, badge }>
+                      opens the student-readable `keep` part of a result file
+
+     HSCT.saveable({ get, set, summary, autosave })          once, at load
+        get()        -> plain JSON-able object: the lesson's state
+        set(state)   -> restore it and show the work screen
+        summary()    -> optional { earned, possible, label } shown on verify
+        autosave     -> true: keep the latest save in this browser too
+     HSCT.save()          -> Promise<{ id, filename, text }>   seal a save
+     HSCT.downloadSave()  / HSCT.copySave()                    after save()
+     HSCT.restore(textOrEnvelope) -> Promise<info>   open a save, call set()
+     HSCT.localSave()     -> header of the save kept in this browser, or null
+     HSCT.resumeLocal()   -> Promise<info>
+     HSCT.resumeUI(el)    render the "pick up where you left off" card
+     HSCT.saveUI(el)      render the "save and continue later" card
+     HSCT.snapshot()      -> what get() returns right now (handy in tests)
    ========================================================================== */
 (function () {
   'use strict';
-  var KIT = '1.0';
+  var KIT = '1.1';
 
   /* Mr. Cruz's public key. Replace the whole object if the key pair is ever
      regenerated on /lessons/verify — and keep the private key out of git. */
   var PUBLIC_KEY = {"kty":"RSA","n":"rZUBRxn7dUikufJq7z2XVn-on4Of0IyQr_YaPSTgIUaGsYKcrZ4FNROL4A_ZM5JShLf6OVp2ZeAI7XN_7iX0tvd79RqAWRM9an6rx-s6bMYSW1wmtRxZyL-BX56vTtikVRLNO7uyzCb8kevJE71Fi6nlPhdXa-iS4vtIEm2Wjh4cLPinAKhMnkO3BpGHUhtFw7Hyus1w04EdLxowk4UcN7d0w4MQRnBV8ehXQVoLVQ0_QtfrtPTQOpScHuwyaw9nwnTA7h7BEOv1ZkbEyq2N4TFixSSCsneUsc3PlbZOndDzMGMmdMr00ulntRZBfyioFzRcsRUGGwAqpB9SuH7XGQ","e":"AQAB","alg":"RSA-OAEP-256","ext":true};
 
   var VERIFY_URL = 'hsct.tech/lessons/verify';
+  var SAVE_SALT = 'hsct-techhub-save-v1';   // part of the student-side key derivation
 
   var cfg = null;      // lesson config
   var ses = null;      // current session
   var ticker = null;   // active-time interval
   var result = null;   // { badge, filename, text, envelope, payload }
+  var saver = null;    // { get, set, summary, autosave } from HSCT.saveable
+  var lastSave = null; // { id, filename, text, envelope }
+  var autoTimer = null;
 
   /* ---------- small helpers ---------- */
   var enc = new TextEncoder();
+  var dec = new TextDecoder();
   function b64(buf) {
     var bytes = new Uint8Array(buf), s = '';
     for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
     return btoa(s);
   }
+  function b64d(s) { var bin = atob(String(s).replace(/-/g, '+').replace(/_/g, '/')), out = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out; }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function pad(n) { return (n < 10 ? '0' : '') + n; }
   function fmtDuration(sec) {
@@ -660,11 +708,12 @@ img.spr{image-rendering:pixelated;image-rendering:crisp-edges;width:24px;height:
     try { return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }); }
     catch (e) { return iso; }
   }
-  function slug(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'student'; }
+  function slug(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'student'; }
   function stamp(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes()); }
+  function normName(name) { return String(name || '').trim().replace(/\s+/g, ' '); }
 
   /* Badge code: 8 characters from a SHA-256 of the result, shown on screen
-     so a screenshot can be matched to its file. */
+     so a screenshot can be matched to its file. Save ids use the same form. */
   var ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ23456789';
   function badgeFrom(hashBuf) {
     var bytes = new Uint8Array(hashBuf), out = '';
@@ -688,10 +737,10 @@ img.spr{image-rendering:pixelated;image-rendering:crisp-edges;width:24px;height:
 
   function start(name) {
     if (!cfg) throw new Error('Call HSCT.lesson({...}) before HSCT.start(name)');
-    name = String(name || '').trim().replace(/\s+/g, ' ');
+    name = normName(name);
     if (name.length < 2) throw new Error('HSCT.start needs the student\'s name');
-    ses = { name: name, started: new Date().toISOString(), t0: Date.now(), active: 0, events: [] };
-    result = null;
+    ses = { name: name, started: new Date().toISOString(), t0: Date.now(), active: 0, events: [], resumes: [], saves: 0 };
+    result = null; lastSave = null;
     clearInterval(ticker);
     ticker = setInterval(function () { if (document.visibilityState === 'visible') ses.active += 1; }, 1000);
     log('start');
@@ -703,6 +752,7 @@ img.spr{image-rendering:pixelated;image-rendering:crisp-edges;width:24px;height:
     var e = { t: Math.round((Date.now() - ses.t0) / 100) / 10, type: String(type) };
     if (data && typeof data === 'object') for (var k in data) if (k !== 't' && k !== 'type') e[k] = data[k];
     if (ses.events.length < 800) ses.events.push(e);
+    scheduleAutosave();
     return HSCT;
   }
 
@@ -717,6 +767,7 @@ img.spr{image-rendering:pixelated;image-rendering:crisp-edges;width:24px;height:
     needSubtle();
     opts = opts || {};
     clearInterval(ticker);
+    clearTimeout(autoTimer);
     var finished = new Date();
     var el = elapsed();
     var earned = Number(opts.earned || 0), possible = Number(opts.possible || cfg.possible || 0);
@@ -733,6 +784,7 @@ img.spr{image-rendering:pixelated;image-rendering:crisp-edges;width:24px;height:
       sections: (opts.sections || []).map(function (s) { return { id: s.id, title: s.title, earned: s.earned, possible: s.possible, status: s.status }; }),
       extra: opts.extra || null,
       events: ses.events,
+      resumes: ses.resumes,
       env: { tz: Intl.DateTimeFormat().resolvedOptions().timeZone, ua: navigator.userAgent, url: location.href.split('?')[0] },
     };
     var hash = await crypto.subtle.digest('SHA-256', enc.encode(JSON.stringify(payload)));
@@ -749,6 +801,13 @@ img.spr{image-rendering:pixelated;image-rendering:crisp-edges;width:24px;height:
     var envelope = {};
     for (var k in header) envelope[k] = header[k];
     envelope.key = b64(wrapped); envelope.iv = b64(iv); envelope.data = b64(data);
+    if (opts.keep !== undefined && opts.keep !== null) {
+      /* a separate blob, separate key: the student can read this part back, nothing else */
+      var sk = await studentKey(ses.name);
+      var keepIv = crypto.getRandomValues(new Uint8Array(12));
+      var keepData = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: keepIv, additionalData: enc.encode(JSON.stringify(header)) }, sk, enc.encode(JSON.stringify(opts.keep)));
+      envelope.keep = b64(keepData); envelope.keepIv = b64(keepIv);
+    }
 
     result = {
       badge: badge,
@@ -756,29 +815,173 @@ img.spr{image-rendering:pixelated;image-rendering:crisp-edges;width:24px;height:
       text: JSON.stringify(envelope),
       payload: payload,
     };
+    clearLocalSave();   // the run is over; no resuming into a finished run
     return result;
   }
 
-  function download() {
-    if (!result) throw new Error('Nothing to download yet — call HSCT.finish first');
-    var blob = new Blob([result.text], { type: 'application/json' });
+  function downloadBlob(text, filename) {
+    var blob = new Blob([text], { type: 'application/json' });
     var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob); a.download = result.filename;
+    a.href = URL.createObjectURL(blob); a.download = filename;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
-    return result.filename;
+    return filename;
   }
-
-  async function copyCode() {
-    if (!result) throw new Error('Nothing to copy yet — call HSCT.finish first');
-    try { await navigator.clipboard.writeText(result.text); return true; }
+  async function copyText(text) {
+    try { await navigator.clipboard.writeText(text); return true; }
     catch (e) {
-      var ta = document.createElement('textarea'); ta.value = result.text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      var ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
       document.body.appendChild(ta); ta.select();
       var ok = false; try { ok = document.execCommand('copy'); } catch (e2) {}
       ta.remove(); return ok;
     }
   }
+  function download() {
+    if (!result) throw new Error('Nothing to download yet — call HSCT.finish first');
+    return downloadBlob(result.text, result.filename);
+  }
+  async function copyCode() {
+    if (!result) throw new Error('Nothing to copy yet — call HSCT.finish first');
+    return copyText(result.text);
+  }
+
+  /* ---------- saves ---------- */
+  function saveable(o) {
+    if (!o || typeof o.get !== 'function' || typeof o.set !== 'function') throw new Error('HSCT.saveable needs { get, set }');
+    saver = { get: o.get, set: o.set, summary: typeof o.summary === 'function' ? o.summary : null, autosave: !!o.autosave };
+    return HSCT;
+  }
+  function localKey() { return 'hsct:save:' + (cfg ? cfg.id : ''); }
+  function clearLocalSave() { try { localStorage.removeItem(localKey()); } catch (e) {} }
+  function scheduleAutosave() {
+    if (!saver || !saver.autosave || !ses || result) return;
+    clearTimeout(autoTimer);
+    autoTimer = setTimeout(function () {
+      buildSave().then(function (s) { try { localStorage.setItem(localKey(), s.text); } catch (e) {} }).catch(function () {});
+    }, 1500);
+  }
+  /* The student-side wrapping key: derived from name + lesson id, so the lesson can re-derive it. */
+  async function studentKey(name) {
+    var base = await crypto.subtle.importKey('raw', enc.encode(normName(name).toLowerCase() + '|' + cfg.id + '|' + SAVE_SALT), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: enc.encode(SAVE_SALT + '|' + cfg.id), iterations: 50000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['wrapKey', 'unwrapKey', 'encrypt', 'decrypt']);
+  }
+  async function buildSave() {
+    if (!cfg || !ses) throw new Error('HSCT.start(name) was never called');
+    if (!saver) throw new Error('HSCT.saveable({ get, set }) was never called');
+    if (result) throw new Error('This run is finished — nothing left to save');
+    needSubtle();
+    var el = elapsed(), saved = new Date();
+    var payload = {
+      kit: KIT, kind: 'save',
+      lesson: { id: cfg.id, title: cfg.title, version: cfg.version, course: cfg.course },
+      student: { name: ses.name },
+      started: ses.started, saved: saved.toISOString(),
+      seconds: el.seconds, activeSeconds: el.activeSeconds,
+      n: ses.saves + 1,
+      summary: saver.summary ? (saver.summary() || null) : null,
+      state: JSON.parse(JSON.stringify(saver.get())),
+      events: ses.events,
+      resumes: ses.resumes,
+    };
+    var hash = await crypto.subtle.digest('SHA-256', enc.encode(JSON.stringify(payload)));
+    var id = badgeFrom(hash);
+    payload.id = id;
+    var header = { hsct: 1, kind: 'save', kit: KIT, lesson: cfg.id, title: cfg.title, student: ses.name, saved: payload.saved, id: id };
+    var aes = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt']);
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    var data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv, additionalData: enc.encode(JSON.stringify(header)) }, aes, enc.encode(JSON.stringify(payload)));
+    var sk = await studentKey(ses.name);
+    var kiv = crypto.getRandomValues(new Uint8Array(12));
+    var skey = await crypto.subtle.wrapKey('raw', aes, sk, { name: 'AES-GCM', iv: kiv });
+    var pub = await crypto.subtle.importKey('jwk', PUBLIC_KEY, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['wrapKey']);
+    var tkey = await crypto.subtle.wrapKey('raw', aes, pub, { name: 'RSA-OAEP' });
+    var envelope = {};
+    for (var k in header) envelope[k] = header[k];
+    envelope.key = b64(skey); envelope.kiv = b64(kiv); envelope.tkey = b64(tkey); envelope.iv = b64(iv); envelope.data = b64(data);
+    return { id: id, filename: 'HSCT-SAVE_' + cfg.id + '_' + slug(ses.name) + '_' + stamp(saved) + '.hsctsave', text: JSON.stringify(envelope), envelope: envelope, payload: payload };
+  }
+  async function save() {
+    var s = await buildSave();
+    ses.saves = s.payload.n;
+    lastSave = s;
+    log('save', { id: s.id });
+    if (saver.autosave) { try { localStorage.setItem(localKey(), s.text); } catch (e) {} }
+    return { id: s.id, filename: s.filename, text: s.text };
+  }
+  function downloadSave() { if (!lastSave) throw new Error('Nothing saved yet — call HSCT.save first'); return downloadBlob(lastSave.text, lastSave.filename); }
+  async function copySave() { if (!lastSave) throw new Error('Nothing saved yet — call HSCT.save first'); return copyText(lastSave.text); }
+
+  var CRYPTO_FIELDS = { key: 1, kiv: 1, tkey: 1, iv: 1, data: 1, keep: 1, keepIv: 1 };
+  function headerOf(env) { var h = {}; for (var k in env) if (!CRYPTO_FIELDS[k]) h[k] = env[k]; return h; }
+  /* Open the student-readable part of a finished result file (sealed with finish({ keep })). */
+  async function open(input) {
+    if (!cfg) throw new Error('Call HSCT.lesson({...}) first');
+    needSubtle();
+    var env = parseEnvelope(input);
+    if (!env || env.hsct !== 1 || !env.data) throw new Error('That is not a result file.');
+    if (env.kind === 'save') throw new Error('That is a save file, not a result.');
+    if (env.lesson !== cfg.id) throw new Error('That result is from a different lesson (' + esc(env.title || env.lesson) + ').');
+    if (!env.keep) throw new Error('That result file has no student copy inside it (it was made before this lesson kept one).');
+    try {
+      var sk = await studentKey(env.student);
+      var plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64d(env.keepIv), additionalData: enc.encode(JSON.stringify(headerOf(env))) }, sk, b64d(env.keep));
+      return { keep: JSON.parse(dec.decode(plain)), student: env.student, finished: env.finished, badge: env.badge };
+    } catch (e) {
+      throw new Error('Could not open that result file: it was changed after it was made.');
+    }
+  }
+  function parseEnvelope(input) {
+    if (input && typeof input === 'object') return input;
+    var t = String(input || '').trim();
+    var i = t.indexOf('{"hsct"'); if (i > 0) t = t.slice(i);
+    try { return JSON.parse(t); } catch (e) { throw new Error('That is not a save file or save code.'); }
+  }
+  /* Open a save made by this lesson and hand its state to the lesson. */
+  async function restore(input) {
+    if (!cfg) throw new Error('Call HSCT.lesson({...}) first');
+    if (!saver) throw new Error('HSCT.saveable({ get, set }) was never called');
+    needSubtle();
+    var env = parseEnvelope(input);
+    if (!env || env.hsct !== 1 || !env.data) throw new Error('That is not a save file or save code.');
+    if (env.kind !== 'save') throw new Error('That is a finished result file, not a save. Results can\'t be resumed.');
+    if (env.lesson !== cfg.id) throw new Error('That save is from a different lesson (' + esc(env.title || env.lesson) + ').');
+    var header = headerOf(env);
+    var payload;
+    try {
+      var sk = await studentKey(env.student);
+      var aes = await crypto.subtle.unwrapKey('raw', b64d(env.key), sk, { name: 'AES-GCM', iv: b64d(env.kiv) }, { name: 'AES-GCM' }, false, ['decrypt']);
+      var plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64d(env.iv), additionalData: enc.encode(JSON.stringify(header)) }, aes, b64d(env.data));
+      payload = JSON.parse(dec.decode(plain));
+    } catch (e) {
+      throw new Error('Could not open that save. It was changed after it was made, or it belongs to a different lesson.');
+    }
+    if (payload.id !== env.id) throw new Error('Could not open that save: its id does not match its contents.');
+    /* rebuild the session so the clock keeps counting from where it stopped */
+    var now = Date.now();
+    ses = {
+      name: payload.student.name, started: payload.started,
+      t0: now - Number(payload.seconds || 0) * 1000, active: Number(payload.activeSeconds || 0),
+      events: Array.isArray(payload.events) ? payload.events : [],
+      resumes: (Array.isArray(payload.resumes) ? payload.resumes : []).concat([{ id: payload.id, savedAt: payload.saved, savedSeconds: payload.seconds, savedEvents: (payload.events || []).length, n: payload.n, version: payload.lesson && payload.lesson.version, resumedAt: new Date(now).toISOString() }]),
+      saves: Number(payload.n || 0),
+    };
+    result = null; lastSave = null;
+    clearInterval(ticker);
+    ticker = setInterval(function () { if (document.visibilityState === 'visible') ses.active += 1; }, 1000);
+    log('resume', { id: payload.id, savedAt: payload.saved });
+    saver.set(payload.state);
+    return { id: payload.id, name: ses.name, savedAt: payload.saved, seconds: payload.seconds, summary: payload.summary || null, resumes: ses.resumes.length };
+  }
+  function localSave() {
+    if (!cfg) return null;
+    try {
+      var t = localStorage.getItem(localKey()); if (!t) return null;
+      var env = JSON.parse(t);
+      if (!env || env.kind !== 'save' || env.lesson !== cfg.id) return null;
+      return { id: env.id, student: env.student, savedAt: env.saved, text: t };
+    } catch (e) { return null; }
+  }
+  function resumeLocal() { var l = localSave(); if (!l) return Promise.reject(new Error('No save in this browser.')); return restore(l.text); }
 
   /* ---------- the standard end screen ---------- */
   var CSS = '.hsct-card{--hsct-ink:#101a3f;--hsct-mute:#5b6485;--hsct-line:#d3d9ee;--hsct-accent:var(--hsct-color,#1f3fae);--hsct-ok:#1f7a3d;--hsct-bad:#b3261e;'
@@ -789,17 +992,21 @@ img.spr{image-rendering:pixelated;image-rendering:crisp-edges;width:24px;height:
     + '.hsct-secs{width:100%;border-collapse:collapse;font-size:14px;margin:0 0 14px}.hsct-secs td{padding:5px 0;border-top:1px solid var(--hsct-line)}.hsct-secs td:last-child{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}'
     + '.hsct-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.hsct-btn{font:600 15px "IBM Plex Sans","Segoe UI",system-ui,sans-serif;padding:11px 18px;border-radius:8px;border:2px solid var(--hsct-accent);background:var(--hsct-accent);color:#fff;cursor:pointer}.hsct-btn:hover{filter:brightness(.92)}.hsct-btn.hsct-alt{background:transparent;color:var(--hsct-accent)}.hsct-btn:focus-visible{outline:3px solid #a9b7ea;outline-offset:2px}.hsct-btn:disabled{opacity:.55;cursor:wait}'
     + '.hsct-note{margin:12px 0 0;font-size:13.5px;color:var(--hsct-mute)}.hsct-status{margin:8px 0 0;font-size:14px;min-height:1.4em}.hsct-status.ok{color:var(--hsct-ok)}.hsct-status.bad{color:var(--hsct-bad)}'
-    + '@media print{.hsct-actions,.hsct-note,.hsct-status{display:none}}';
-
+    /* save / resume cards */
+    + '.hsct-card.hsct-save{border-left-color:var(--hsct-mute)}.hsct-card h3{margin:0 0 4px;font-size:17px}.hsct-card .hsct-sub{margin:0 0 10px;font-size:13.5px;color:var(--hsct-mute)}'
+    + '.hsct-resume-local{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--hsct-line);border-radius:8px;margin:0 0 10px;font-size:14px}'
+    + '.hsct-resume-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}.hsct-resume-row input[type=file]{font-size:13px;max-width:100%}.hsct-resume-row textarea{flex:1;min-width:200px;min-height:40px;font:13px ui-monospace,Menlo,Consolas,monospace;padding:6px 8px;border:1px solid var(--hsct-line);border-radius:6px;resize:vertical}'
+    + '.hsct-btn.hsct-sm{font-size:13.5px;padding:7px 12px}'
+    + '@media print{.hsct-actions,.hsct-note,.hsct-status,.hsct-save{display:none}}';
   function injectCss() {
     if (document.getElementById('hsct-kit-css')) return;
     var s = document.createElement('style'); s.id = 'hsct-kit-css'; s.textContent = CSS; document.head.appendChild(s);
   }
+  function elOf(el, what) { if (typeof el === 'string') el = document.querySelector(el); if (!el) throw new Error(what + ' needs an element'); return el; }
 
   /* Renders the card into `el` and seals the result. Resolves with the result. */
   async function endScreen(el, opts) {
-    if (typeof el === 'string') el = document.querySelector(el);
-    if (!el) throw new Error('HSCT.endScreen needs an element');
+    el = elOf(el, 'HSCT.endScreen');
     injectCss();
     opts = opts || {};
     var elp = elapsed();
@@ -809,12 +1016,14 @@ img.spr{image-rendering:pixelated;image-rendering:crisp-edges;width:24px;height:
       var right = s.status != null ? esc(s.status) : (s.possible != null ? esc(s.earned) + ' / ' + esc(s.possible) : esc(s.earned));
       return '<tr><td>' + esc(s.title) + '</td><td>' + right + '</td></tr>';
     }).join('');
+    var resumed = ses && ses.resumes.length ? '<dt>Resumed</dt><dd>' + ses.resumes.length + ' time' + (ses.resumes.length === 1 ? '' : 's') + ' from a save</dd>' : '';
     el.innerHTML = '<div class="hsct-card">'
       + '<div class="hsct-head"><span><b>HSCT TechHub</b> result</span><span>' + esc(cfg.title) + '</span></div>'
       + '<div class="hsct-name">' + esc(ses ? ses.name : '') + '</div>'
       + '<div class="hsct-score"><b>' + esc(earned) + '</b> / ' + esc(possible) + (pct != null ? ' <span>(' + pct + '%)</span>' : '') + (opts.tier ? '<span class="hsct-tier">' + esc(opts.tier) + '</span>' : '') + '</div>'
       + '<dl class="hsct-facts"><dt>Finished</dt><dd>' + esc(fmtDate(new Date().toISOString())) + '</dd>'
       + '<dt>Time taken</dt><dd>' + esc(fmtDuration(elp.seconds)) + (elp.activeSeconds < elp.seconds - 60 ? ' <span style="color:var(--hsct-mute)">(' + esc(fmtDuration(elp.activeSeconds)) + ' with the tab open)</span>' : '') + '</dd>'
+      + resumed
       + '<dt>Code</dt><dd><code class="hsct-badge">........</code></dd></dl>'
       + (secs ? '<table class="hsct-secs"><tbody>' + secs + '</tbody></table>' : '')
       + '<div class="hsct-actions"><button type="button" class="hsct-btn hsct-dl" disabled>Download your result file</button><button type="button" class="hsct-btn hsct-alt hsct-copy" disabled>Copy result code</button></div>'
@@ -837,12 +1046,71 @@ img.spr{image-rendering:pixelated;image-rendering:crisp-edges;width:24px;height:
     }
   }
 
+  /* ---------- the standard resume card (intro screen) ---------- */
+  /* opts.onResume(info) runs after a successful restore (the lesson's set() has already run). */
+  function resumeUI(el, opts) {
+    el = elOf(el, 'HSCT.resumeUI');
+    injectCss();
+    opts = opts || {};
+    var local = localSave();
+    el.innerHTML = '<div class="hsct-card hsct-save">'
+      + '<h3>Pick up where you left off</h3>'
+      + '<p class="hsct-sub">Saved earlier? Open your save file, paste your save code' + (local ? ', or continue the save kept in this browser' : '') + '. The clock continues from where it stopped.</p>'
+      + (local ? '<div class="hsct-resume-local"><span><b>' + esc(local.student) + '</b> · saved ' + esc(fmtDate(local.savedAt)) + ' · <code>' + esc(local.id) + '</code></span><span><button type="button" class="hsct-btn hsct-sm hsct-res-local">Continue</button> <button type="button" class="hsct-btn hsct-alt hsct-sm hsct-res-forget">Forget it</button></span></div>' : '')
+      + '<div class="hsct-resume-row"><input type="file" class="hsct-res-file" accept=".hsctsave,.json,.txt" aria-label="Save file"></div>'
+      + '<div class="hsct-resume-row"><textarea class="hsct-res-code" placeholder="…or paste a save code here" aria-label="Save code"></textarea><button type="button" class="hsct-btn hsct-alt hsct-sm hsct-res-paste">Open code</button></div>'
+      + '<p class="hsct-status" aria-live="polite"></p>'
+      + '</div>';
+    var status = el.querySelector('.hsct-status');
+    function go(text) {
+      status.className = 'hsct-status'; status.textContent = 'Opening…';
+      return restore(text).then(function (info) {
+        status.className = 'hsct-status ok'; status.textContent = 'Welcome back, ' + info.name + '. Continuing from ' + fmtDate(info.savedAt) + '.';
+        if (opts.onResume) opts.onResume(info);
+      }).catch(function (e) { status.className = 'hsct-status bad'; status.textContent = e.message || String(e); });
+    }
+    var f = el.querySelector('.hsct-res-file');
+    f.onchange = function () { var file = f.files && f.files[0]; if (!file) return; file.text().then(go); f.value = ''; };
+    el.querySelector('.hsct-res-paste').onclick = function () { var t = el.querySelector('.hsct-res-code').value.trim(); if (t) go(t); };
+    if (local) {
+      el.querySelector('.hsct-res-local').onclick = function () { go(local.text); };
+      el.querySelector('.hsct-res-forget').onclick = function () { clearLocalSave(); resumeUI(el, opts); };
+    }
+    return HSCT;
+  }
+
+  /* ---------- the standard save card (work screen) ---------- */
+  function saveUI(el) {
+    el = elOf(el, 'HSCT.saveUI');
+    injectCss();
+    var auto = saver && saver.autosave;
+    el.innerHTML = '<div class="hsct-card hsct-save">'
+      + '<h3>Save and continue later</h3>'
+      + '<p class="hsct-sub">' + (auto ? 'Your progress is also kept in this browser automatically. To continue on another device, ' : 'To continue later, ') + 'download a save file or copy a save code, then open it from the lesson\'s start screen. Saves are encrypted; every resume is recorded in your result file.</p>'
+      + '<div class="hsct-actions"><button type="button" class="hsct-btn hsct-sm hsct-sv-dl">Download save file</button><button type="button" class="hsct-btn hsct-alt hsct-sm hsct-sv-copy">Copy save code</button></div>'
+      + '<p class="hsct-status" aria-live="polite">' + (ses && ses.saves ? 'Last save: #' + ses.saves : '') + '</p>'
+      + '</div>';
+    var status = el.querySelector('.hsct-status');
+    el.querySelector('.hsct-sv-dl').onclick = function () {
+      save().then(function (s) { downloadSave(); status.className = 'hsct-status ok'; status.textContent = 'Saved: ' + s.filename + ' (' + s.id + '). Keep that file.'; })
+        .catch(function (e) { status.className = 'hsct-status bad'; status.textContent = e.message || String(e); });
+    };
+    el.querySelector('.hsct-sv-copy').onclick = function () {
+      save().then(function (s) { return copySave().then(function (ok) { status.className = 'hsct-status ' + (ok ? 'ok' : 'bad'); status.textContent = ok ? 'Save code copied (' + s.id + '). Paste it somewhere you can find it — a doc, an email to yourself.' : 'Copy failed. Use the download instead.'; }); })
+        .catch(function (e) { status.className = 'hsct-status bad'; status.textContent = e.message || String(e); });
+    };
+    return HSCT;
+  }
+
   var HSCT = {
     kit: KIT, verifyUrl: VERIFY_URL,
     lesson: lesson, start: start, log: log, elapsed: elapsed,
-    finish: finish, download: download, copyCode: copyCode, endScreen: endScreen,
+    finish: finish, download: download, copyCode: copyCode, endScreen: endScreen, open: open,
+    saveable: saveable, save: save, downloadSave: downloadSave, copySave: copySave, restore: restore,
+    localSave: localSave, resumeLocal: resumeLocal, clearLocalSave: clearLocalSave, resumeUI: resumeUI, saveUI: saveUI,
+    snapshot: function () { return saver ? saver.get() : null; },   // what a save would contain (for tests)
     get result() { return result; },
-    get session() { return ses ? { name: ses.name, started: ses.started } : null; },
+    get session() { return ses ? { name: ses.name, started: ses.started, resumes: ses.resumes.length, saves: ses.saves } : null; },
     fmtDuration: fmtDuration,
   };
   window.HSCT = HSCT;
@@ -4510,7 +4778,7 @@ class GameView {
 /* =====================================================================
    LESSON: six stops, scoring, and the HSCT result
    ===================================================================== */
-HSCT.lesson({ id: 'save-point-build-a-game', title: 'Save Point: build a game that remembers', version: '1.0', course: 'computer-science', possible: 100 });
+HSCT.lesson({ id: 'save-point-build-a-game', title: 'Save Point: build a game that remembers', version: '1.1', course: 'computer-science', possible: 100 });
 
 const $ = (id) => document.getElementById(id);
 const STOPS = [
@@ -4573,6 +4841,7 @@ $('start').onclick = () => {
   show('view-work');
   initWork();
   goStop(1);
+  HSCT.saveUI('#hsct-save');
 };
 $('name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('start').click(); });
 
@@ -5665,6 +5934,16 @@ function gradeMySave() {
     detail[o.k] = { on, ok, need };
   }
   L.mysave = { checked: [...checked], graded: true, pts: Math.max(0, 6 - 2 * mistakes), detail };
+  paintMySave();
+  HSCT.log('mysave', { checked: L.mysave.checked, pts: L.mysave.pts });
+  renderS6Status();
+}
+/* paints a graded "my save" card from L.mysave (also used when a save is resumed) */
+function paintMySave() {
+  const detail = L.mysave.detail;
+  if (!L.mysave.graded || !detail) return;
+  const hasSave = kindsInLevel(L.level).includes('savepoint');
+  const mistakes = Object.values(detail).filter((d) => !d.ok).length;
   const why = {
     hero: 'Changes every turn.', hearts: 'Changes when you get hurt or healed.', score: 'Changes when you pick things up.', bag: 'Changes when you pick up or use items.',
     things: 'Which coins are gone and where enemies are. Leave it out and you get the infinite coin glitch.',
@@ -5675,14 +5954,13 @@ function gradeMySave() {
   };
   $('ms-opts').querySelectorAll('label').forEach((lab) => {
     const k = lab.dataset.k, d = detail[k];
+    lab.querySelector('input').checked = d.on;
     lab.classList.add(d.ok ? 'right' : 'wrong');
     lab.querySelector('input').disabled = true;
     lab.querySelector('.why').textContent = (d.need === 'no' ? 'Don\'t save it. ' : d.need === 'yes' ? 'Save it. ' : '') + why[k];
   });
   $('ms-check').disabled = true;
   $('ms-fb').innerHTML = `<div class="fb ${mistakes ? 'warn' : 'good'}">${mistakes ? `${mistakes} mistake${mistakes === 1 ? '' : 's'}: ${L.mysave.pts} of 6.` : 'All right: 6 of 6.'} The rule of thumb: <b>save what changes; don't save what ships with the game or what you can rebuild.</b></div>`;
-  HSCT.log('mysave', { checked: L.mysave.checked, pts: L.mysave.pts });
-  renderS6Status();
 }
 function gradeGen(id) {
   if (L.gen[id]) return;
@@ -5690,20 +5968,30 @@ function gradeGen(id) {
   const box = $('gq-' + id);
   const checked = new Set([...box.querySelectorAll('input:checked')].map((x) => +x.value));
   let right = 0;
+  g.opts.forEach((o, i) => { if (checked.has(i) === o.yes) right++; });
+  const pts = right === 4 ? 3 : right === 3 ? 2 : right === 2 ? 1 : 0;
+  L.gen[id] = { picked: [...checked], right, pts };
+  paintGen(id);
+  HSCT.log('generalize', { game: id, picked: [...checked], right, pts });
+  renderS6Status();
+}
+/* paints a graded "other games" question from L.gen (also used when a save is resumed) */
+function paintGen(id) {
+  const r = L.gen[id];
+  if (!r) return;
+  const g = GEN.find((x) => x.id === id);
+  const box = $('gq-' + id);
+  const checked = new Set(r.picked);
   g.opts.forEach((o, i) => {
     const ok = checked.has(i) === o.yes;
-    if (ok) right++;
     const lab = box.querySelector(`label[data-i="${i}"]`);
+    lab.querySelector('input').checked = checked.has(i);
     lab.classList.add(ok ? 'right' : 'wrong');
     lab.querySelector('input').disabled = true;
     lab.querySelector('.why').textContent = (o.yes ? 'Save it. ' : 'Don\'t save it. ') + o.why;
   });
-  const pts = right === 4 ? 3 : right === 3 ? 2 : right === 2 ? 1 : 0;
-  L.gen[id] = { picked: [...checked], right, pts };
   box.querySelector('[data-gq]').disabled = true;
-  box.querySelector('.gres').textContent = `${right} of 4 right: ${pts} / 3`;
-  HSCT.log('generalize', { game: id, picked: [...checked], right, pts });
-  renderS6Status();
+  box.querySelector('.gres').textContent = `${r.right} of 4 right: ${r.pts} / 3`;
 }
 function genPts() { return GEN.reduce((a, g) => a + (L.gen[g.id] ? L.gen[g.id].pts : 0), 0); }
 function renderS6Status() {
@@ -5809,6 +6097,80 @@ $('again').onclick = () => {
 window.addEventListener('beforeunload', (e) => {
   if ($('view-work').classList.contains('active')) { e.preventDefault(); e.returnValue = ''; }
 });
+
+/* =========================== SAVE / RESUME (kit v1.1) =========================== */
+/* A lesson save = `L` (with its disk Map as pairs) + the two live games (Coin Cave and the
+   student's own: current state as JSON text, the Rewind history, the view's overlay, and the
+   Sets the view uses to spot hand-edited files) + unchecked ticks on the two Stop 6 checklists.
+   Timers, editors, drag ghosts and DOM stay out and are simply reset in set(). */
+function playGet(view, withDisk) {
+  const rt = view && view.rt;
+  if (!rt) return null;
+  let state = null;
+  if (rt.state) { try { state = rt.json(); } catch (e) { state = null; } }
+  const p = { state, history: rt.history.map((h) => ({ json: h.json, label: h.label })), hIndex: rt.hIndex, overlay: view.overlay, selFile: view.selFile, edited: [...view.edited], gameWrote: [...view.gameWrote] };
+  if (withDisk) p.disk = [...rt.disk];
+  return p;
+}
+function playSet(view, p) {
+  const rt = view && view.rt;
+  if (!rt || !p) return;
+  if (p.disk) { rt.disk.clear(); p.disk.forEach(([k, v]) => rt.disk.set(k, v)); }
+  rt.state = p.state == null ? null : MiniPy.jsonLoads(p.state);
+  rt.history = (p.history || []).map((h) => ({ json: h.json, label: h.label }));
+  rt.hIndex = typeof p.hIndex === 'number' ? p.hIndex : rt.history.length - 1;
+  view.overlay = p.overlay || null;
+  view.selFile = p.selFile || null;
+  view.edited = new Set(p.edited || []);
+  view.gameWrote = new Set(p.gameWrote || []);
+  view.prevLines = null; view.flash = null; view.fDirty = false;
+  clearTimeout(view.toastT); view.el.toast.textContent = ''; view.el.toast.className = 'toast';
+  view.render();
+}
+HSCT.saveable({
+  autosave: true,
+  get: () => {
+    const o = {};
+    for (const k in L) if (k !== 'disk') o[k] = L[k];
+    o.disk = [...L.disk];
+    const ms = $('ms-opts');
+    o.ticks = {
+      mysave: L.mysave.graded || !ms ? [] : [...ms.querySelectorAll('input:checked')].map((x) => x.value),
+      gen: Object.fromEntries(GEN.filter((g) => !L.gen[g.id] && $('gq-' + g.id)).map((g) => [g.id, [...$('gq-' + g.id).querySelectorAll('input:checked')].map((x) => +x.value)])),
+    };
+    /* the student's own game is only worth keeping while it matches the rules and map (otherwise Stop 4 rebuilds it anyway) */
+    o.play = { sample: playGet(sampleView, true), mine: L.gameDirty ? null : playGet(myView, false) };
+    return o;
+  },
+  set: (s) => {
+    const play = s.play || {}, ticks = s.ticks || {};
+    L = freshState();
+    for (const k in s) if (k !== 'disk' && k !== 'play' && k !== 'ticks') L[k] = s[k];
+    L.disk = new Map(s.disk || []);
+    /* nothing mid-flight survives: debounced Python checks, block drags, editor paints */
+    Object.keys(checkTimers).forEach((k) => clearTimeout(checkTimers[k]));
+    blockDrag = null; edHover = null; edPainting = false; edLastCell = null; edGhost = null;
+    myRuntime = null;
+    show('view-work');
+    if (workInit) { renderS1Questions(); renderLab('A'); renderLab('B'); $('palette').querySelectorAll('.pc').forEach((b) => b.setAttribute('aria-pressed', b.dataset.kind === L.tool)); }
+    else initWork();
+    /* the two live games */
+    playSet(sampleView, play.sample);
+    if (play.mine && !L.gameDirty) { buildMyGame(); if (myRuntime && myView.rt === myRuntime) playSet(myView, play.mine); }
+    /* Stop 6 inputs and checklists are plain DOM: refill them, repaint what was graded */
+    ['title', 'goal', 'lose', 'tip'].forEach((f) => { $('rb-' + f).value = L.rb[f] || ''; });
+    $('inv-name').value = L.inv.name || ''; $('inv-rule').value = L.inv.rule || '';
+    $('inv-keys').querySelectorAll('input').forEach((x) => { x.checked = L.inv.changes.includes(x.value); });
+    $('ms-opts').querySelectorAll('input').forEach((x) => { x.checked = (ticks.mysave || []).includes(x.value); });
+    paintMySave();
+    GEN.forEach((g) => { $('gq-' + g.id).querySelectorAll('input').forEach((x) => { x.checked = ((ticks.gen || {})[g.id] || []).includes(+x.value); }); paintGen(g.id); });
+    renderHackNote();
+    goStop(L.stop);
+    HSCT.saveUI('#hsct-save');
+  },
+  summary: () => { const sc = scoreAll(); return { earned: sc.total, possible: 100, label: `stop ${L.stop} of 6 · ${Object.values(sc.by).filter((v, i) => v >= STOPS[i].pts).length} stops complete` }; },
+});
+HSCT.resumeUI('#hsct-resume');
 
 </script>
 </body>

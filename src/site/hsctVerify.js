@@ -9,7 +9,7 @@
  */
 const enc = new TextEncoder();
 const dec = new TextDecoder();
-const CRYPTO_KEYS = new Set(['key', 'kiv', 'tkey', 'iv', 'data']);
+const CRYPTO_KEYS = new Set(['key', 'kiv', 'tkey', 'iv', 'data', 'keep', 'keepIv']);
 export const isSave = (env) => Boolean(env && env.kind === 'save');
 const ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ23456789';
 

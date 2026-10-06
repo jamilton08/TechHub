@@ -478,7 +478,14 @@ details.teacher .card{margin-top:.6rem}
    public key (so saves open on /lessons/verify too, for partial credit).
    Encryption keeps a save from being casually read or edited; it cannot stop
    a determined student with the console, which is the same limit the result
-   file has. What makes a run checkable is the event log: the result file
+   file has.
+
+   `keep` (opt-in, per lesson): finish({ keep: {...} }) seals a second copy of
+   whatever the lesson passes — typically its own draft object — into the
+   result file, encrypted with the student-derived key, as a SEPARATE blob
+   with its own key. The student can get that part back with HSCT.open(file)
+   (so a lesson can accept its own .hsct as a draft); they still cannot read
+   or alter the graded payload, which stays wrapped to the teacher only. What makes a run checkable is the event log: the result file
    records every resume (which save, when it was taken, how far along it
    was), and the verify page shows them.
 
@@ -487,10 +494,12 @@ details.teacher .card{margin-top:.6rem}
      HSCT.start(name)                                        when work begins
      HSCT.log(type, data)                                    any time
      HSCT.elapsed()   -> { seconds, activeSeconds }
-     HSCT.finish({ earned, possible, sections, tier, extra }) -> Promise<result>
-     HSCT.endScreen(el, { earned, possible, sections, tier, extra, note })
+     HSCT.finish({ earned, possible, sections, tier, extra, keep }) -> Promise<result>
+     HSCT.endScreen(el, { earned, possible, sections, tier, extra, keep, note })
                       -> Promise<result>   (calls finish, renders the card)
      HSCT.download()  / HSCT.copyCode()                      after finish
+     HSCT.open(textOrEnvelope) -> Promise<{ keep, student, finished, badge }>
+                      opens the student-readable `keep` part of a result file
 
      HSCT.saveable({ get, set, summary, autosave })          once, at load
         get()        -> plain JSON-able object: the lesson's state
@@ -504,6 +513,7 @@ details.teacher .card{margin-top:.6rem}
      HSCT.resumeLocal()   -> Promise<info>
      HSCT.resumeUI(el)    render the "pick up where you left off" card
      HSCT.saveUI(el)      render the "save and continue later" card
+     HSCT.snapshot()      -> what get() returns right now (handy in tests)
    ========================================================================== */
 (function () {
   'use strict';
@@ -639,6 +649,13 @@ details.teacher .card{margin-top:.6rem}
     var envelope = {};
     for (var k in header) envelope[k] = header[k];
     envelope.key = b64(wrapped); envelope.iv = b64(iv); envelope.data = b64(data);
+    if (opts.keep !== undefined && opts.keep !== null) {
+      /* a separate blob, separate key: the student can read this part back, nothing else */
+      var sk = await studentKey(ses.name);
+      var keepIv = crypto.getRandomValues(new Uint8Array(12));
+      var keepData = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: keepIv, additionalData: enc.encode(JSON.stringify(header)) }, sk, enc.encode(JSON.stringify(opts.keep)));
+      envelope.keep = b64(keepData); envelope.keepIv = b64(keepIv);
+    }
 
     result = {
       badge: badge,
@@ -694,7 +711,7 @@ details.teacher .card{margin-top:.6rem}
   /* The student-side wrapping key: derived from name + lesson id, so the lesson can re-derive it. */
   async function studentKey(name) {
     var base = await crypto.subtle.importKey('raw', enc.encode(normName(name).toLowerCase() + '|' + cfg.id + '|' + SAVE_SALT), 'PBKDF2', false, ['deriveKey']);
-    return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: enc.encode(SAVE_SALT + '|' + cfg.id), iterations: 50000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['wrapKey', 'unwrapKey']);
+    return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: enc.encode(SAVE_SALT + '|' + cfg.id), iterations: 50000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['wrapKey', 'unwrapKey', 'encrypt', 'decrypt']);
   }
   async function buildSave() {
     if (!cfg || !ses) throw new Error('HSCT.start(name) was never called');
@@ -742,6 +759,25 @@ details.teacher .card{margin-top:.6rem}
   function downloadSave() { if (!lastSave) throw new Error('Nothing saved yet — call HSCT.save first'); return downloadBlob(lastSave.text, lastSave.filename); }
   async function copySave() { if (!lastSave) throw new Error('Nothing saved yet — call HSCT.save first'); return copyText(lastSave.text); }
 
+  var CRYPTO_FIELDS = { key: 1, kiv: 1, tkey: 1, iv: 1, data: 1, keep: 1, keepIv: 1 };
+  function headerOf(env) { var h = {}; for (var k in env) if (!CRYPTO_FIELDS[k]) h[k] = env[k]; return h; }
+  /* Open the student-readable part of a finished result file (sealed with finish({ keep })). */
+  async function open(input) {
+    if (!cfg) throw new Error('Call HSCT.lesson({...}) first');
+    needSubtle();
+    var env = parseEnvelope(input);
+    if (!env || env.hsct !== 1 || !env.data) throw new Error('That is not a result file.');
+    if (env.kind === 'save') throw new Error('That is a save file, not a result.');
+    if (env.lesson !== cfg.id) throw new Error('That result is from a different lesson (' + esc(env.title || env.lesson) + ').');
+    if (!env.keep) throw new Error('That result file has no student copy inside it (it was made before this lesson kept one).');
+    try {
+      var sk = await studentKey(env.student);
+      var plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64d(env.keepIv), additionalData: enc.encode(JSON.stringify(headerOf(env))) }, sk, b64d(env.keep));
+      return { keep: JSON.parse(dec.decode(plain)), student: env.student, finished: env.finished, badge: env.badge };
+    } catch (e) {
+      throw new Error('Could not open that result file: it was changed after it was made.');
+    }
+  }
   function parseEnvelope(input) {
     if (input && typeof input === 'object') return input;
     var t = String(input || '').trim();
@@ -757,8 +793,7 @@ details.teacher .card{margin-top:.6rem}
     if (!env || env.hsct !== 1 || !env.data) throw new Error('That is not a save file or save code.');
     if (env.kind !== 'save') throw new Error('That is a finished result file, not a save. Results can\'t be resumed.');
     if (env.lesson !== cfg.id) throw new Error('That save is from a different lesson (' + esc(env.title || env.lesson) + ').');
-    var header = {};
-    for (var k in env) if (k !== 'key' && k !== 'kiv' && k !== 'tkey' && k !== 'iv' && k !== 'data') header[k] = env[k];
+    var header = headerOf(env);
     var payload;
     try {
       var sk = await studentKey(env.student);
@@ -918,9 +953,10 @@ details.teacher .card{margin-top:.6rem}
   var HSCT = {
     kit: KIT, verifyUrl: VERIFY_URL,
     lesson: lesson, start: start, log: log, elapsed: elapsed,
-    finish: finish, download: download, copyCode: copyCode, endScreen: endScreen,
+    finish: finish, download: download, copyCode: copyCode, endScreen: endScreen, open: open,
     saveable: saveable, save: save, downloadSave: downloadSave, copySave: copySave, restore: restore,
     localSave: localSave, resumeLocal: resumeLocal, clearLocalSave: clearLocalSave, resumeUI: resumeUI, saveUI: saveUI,
+    snapshot: function () { return saver ? saver.get() : null; },   // what a save would contain (for tests)
     get result() { return result; },
     get session() { return ses ? { name: ses.name, started: ses.started, resumes: ses.resumes.length, saves: ses.saves } : null; },
     fmtDuration: fmtDuration,
