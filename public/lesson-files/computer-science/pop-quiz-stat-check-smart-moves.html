@@ -1,0 +1,1427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pop quiz: stat check and smart moves — HSCT</title>
+<!--
+  HSCT POP QUIZ 2: Stat check and smart moves (computer-science)
+  Covers "Stat Check: every game is a database" and "Smart Moves: build a game AI".
+  Ten puzzles, three steps each. Every step: first try = full points; a wrong answer shows a hint and
+  allows one more try for about half; a second miss walks the student through the answer so the next
+  step still makes sense. Each puzzle has an optional tip that costs 1 point. Every answer was checked
+  by running the two lessons' own Python engines.
+  Three screens, in the template's order:
+    1. #view-intro   what the quiz is, the rules, the student's name   -> HSCT.start(name)
+    2. #view-work    the ten puzzles, one at a time                    -> HSCT.log(...) on every check
+    3. #view-end     score, logic profile, the standard result card    -> HSCT.endScreen(...)
+  Settings are in CONFIG at the top of the quiz script.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f7fc; --paper:#fff; --bench:#eef1f8; --ink:#101a3f; --muted:#5b6485; --line:#d3d9ee;
+  --blue:#1f3fae; --blue-soft:#e9edf8; --green:#1f7a3d; --green-soft:#e1f2e6; --red:#b3261e; --red-soft:#fbe3e1;
+  --amber:#8a5a00; --amber-soft:#fff4d6; --maroon:#7a1f3d; --maroon-soft:#f6e6ec;
+  --code-bg:#0f1533; --code-ink:#e6e9f5;
+  --lava:#e8590c; --spike:#6b7280; --slime:#2f9e44; --wall:#28305a;
+  --sans:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --hsct-color: var(--blue);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.5}
+h1,h2,h3,h4{margin:0;line-height:1.2}
+p{margin:0 0 .75rem}
+button{font:inherit;cursor:pointer}
+input,textarea{font:inherit;color:inherit}
+button:focus-visible,textarea:focus-visible,input:focus-visible{outline:3px solid #a9b7ea;outline-offset:2px}
+code{font-family:var(--mono);font-size:.9em;background:var(--blue-soft);padding:.05em .35em;border-radius:3px}
+pre{font-family:var(--mono);font-size:.86rem;line-height:1.55;background:var(--code-bg);color:var(--code-ink);padding:.7rem .9rem;border-radius:8px;overflow-x:auto;margin:.5rem 0 .9rem;white-space:pre}
+pre .c{color:#8b95c9}pre .s{color:#ffd166}pre .k{color:#8ec5ff}pre .n{color:#ffb4a2}
+pre .ln{display:block;margin:0 -.9rem;padding:0 .9rem;border-left:3px solid transparent}
+pre .ln.fired{background:rgba(64,192,87,.22);border-left-color:#40c057}
+pre .ln.passed{opacity:.55}
+[hidden]{display:none!important}
+.btn{border:2px solid var(--blue);background:var(--blue);color:#fff;border-radius:8px;padding:.6rem 1.1rem;font-weight:600}
+.btn:hover{filter:brightness(.92)}.btn.ghost{background:transparent;color:var(--blue)}.btn.small{padding:.4rem .8rem;font-size:.9rem}
+.btn.maroon{background:var(--maroon);border-color:var(--maroon)}
+.btn:disabled{opacity:.5;cursor:not-allowed;filter:none}
+.view{display:none}.view.active{display:block}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.muted{color:var(--muted)}
+
+/* topbar */
+.topbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:.9rem;padding:.55rem 1.2rem;background:var(--paper);border-bottom:1px solid var(--line)}
+.topbar .brand{font-weight:700;white-space:nowrap}.topbar .brand span{color:var(--muted);font-weight:400}
+.tiles{display:flex;gap:4px;flex-wrap:wrap}
+.tiles button{width:26px;height:26px;border-radius:6px;border:1.5px solid var(--line);background:#fff;font-family:var(--mono);font-size:.78rem;font-weight:600;color:var(--muted);padding:0;display:grid;place-items:center}
+.tiles button.gap{margin-left:8px}
+.tiles button.started{border-color:var(--blue);color:var(--blue)}
+.tiles button.done{background:var(--green);border-color:var(--green);color:#fff}
+.tiles button.done.partial{background:var(--amber);border-color:var(--amber)}
+.tiles button.cur{outline:3px solid #a9b7ea;outline-offset:1px}
+.topbar .grow{flex:1}
+.stat{font-family:var(--mono);font-size:.85rem;color:var(--muted);white-space:nowrap}.stat b{color:var(--ink)}
+.timer{font-family:var(--mono);font-weight:600;font-size:1rem;padding:.2rem .6rem;border-radius:6px;background:var(--blue-soft);color:var(--blue);min-width:4.2em;text-align:center}
+.timer.warn{background:var(--amber-soft);color:var(--amber)}
+.timer.low{background:var(--red-soft);color:var(--red)}
+
+/* intro */
+.wrap{max-width:860px;margin:0 auto;padding:2.4rem 1.2rem 6rem}
+.kicker{font-family:var(--mono);font-size:.8rem;color:var(--muted);letter-spacing:.03em;margin-bottom:.35rem}
+.wrap > h1{font-size:2.1rem;letter-spacing:-.01em;margin-bottom:.4rem}
+.lede{font-size:1.1rem;color:var(--muted);margin-bottom:1.4rem}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:1.1rem 1.3rem;margin-bottom:1rem}
+.card h3{font-size:1.05rem;margin-bottom:.5rem}
+.rules{margin:0;padding-left:1.2rem}.rules li{margin:.3rem 0}
+.plist{list-style:none;margin:.2rem 0 0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:.25rem 1.4rem}
+.plist li{display:grid;grid-template-columns:1.7rem minmax(0,1fr);gap:.4rem;align-items:baseline;font-size:.95rem}
+.plist .n{font-family:var(--mono);font-weight:600;color:var(--blue)}
+.plist li.gl{grid-column:1/-1;display:block}
+.plist .grp{font-family:var(--mono);font-size:.78rem;color:var(--muted);margin-top:.4rem;display:block}
+.ladder{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem;margin:.3rem 0 .2rem}
+.ladder div{border:1px solid var(--line);border-radius:10px;padding:.55rem .6rem;font-size:.88rem;background:var(--bg)}
+.ladder b{display:block;font-family:var(--mono);font-size:1.05rem}
+.ladder .g b{color:var(--green)}.ladder .a b{color:var(--amber)}.ladder .r b{color:var(--red)}.ladder .t b{color:var(--blue)}
+.name-row{display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap}
+.name-row input{flex:1;min-width:220px;padding:.7rem .8rem;border:1.5px solid var(--line);border-radius:8px}
+.err{color:var(--red);margin-top:.5rem}
+
+/* puzzle */
+.pz-head{display:flex;align-items:flex-start;gap:1rem;flex-wrap:wrap;margin-bottom:.6rem}
+.pz-head .grow{flex:1;min-width:240px}
+.pz-head h2{font-size:1.65rem;letter-spacing:-.01em;margin:.1rem 0 0}
+.pz-pts{font-family:var(--mono);font-size:.85rem;color:var(--muted);text-align:right}
+.pz-pts b{display:block;font-size:1.4rem;color:var(--ink)}
+.story{font-size:1.02rem}
+.story p:last-child{margin-bottom:.4rem}
+.visual{background:var(--bench);border:1px solid var(--line);border-radius:14px;padding:1rem;margin:.7rem 0 1rem;overflow-x:auto}
+.tipbox{margin:0 0 1rem}
+.tipbtn{border:1.5px dashed var(--blue);background:#fff;color:var(--blue);border-radius:8px;padding:.4rem .8rem;font-weight:600;font-size:.9rem}
+.tipbtn:hover{background:var(--blue-soft)}
+.tiptext{background:var(--blue-soft);border-radius:10px;padding:.65rem .85rem;font-size:.95rem}
+.tiptext b{color:var(--blue)}
+.steps{display:grid;gap:.8rem}
+.step{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:.95rem 1.1rem;scroll-margin-top:80px}
+.step.locked{background:transparent;border-style:dashed;color:var(--muted);padding:.6rem 1.1rem}
+.step.ok{border-color:#a8d5b5}.step.half{border-color:#efcf8a}.step.miss{border-color:#f0b6b0}
+.shead{display:flex;align-items:center;gap:.55rem;margin-bottom:.45rem;flex-wrap:wrap}
+.snum{font-family:var(--mono);font-weight:600;font-size:.82rem;background:var(--blue);color:#fff;border-radius:5px;padding:.05rem .45rem}
+.step.ok .snum{background:var(--green)}.step.half .snum{background:var(--amber)}.step.miss .snum{background:var(--red)}
+.step.locked .snum{background:var(--line);color:var(--muted)}
+.shead .grow{flex:1}
+.spts{font-family:var(--mono);font-size:.8rem;color:var(--muted)}
+.sq{font-weight:600;margin:0 0 .5rem}
+.opts{display:grid;gap:.4rem}
+.opts.row{grid-template-columns:repeat(auto-fit,minmax(110px,1fr))}
+.opt{display:grid;grid-template-columns:1.3rem minmax(0,1fr);gap:.55rem;align-items:start;padding:.5rem .7rem;border:1.5px solid var(--line);border-radius:8px;cursor:pointer;background:var(--paper)}
+.opt:hover{border-color:#a9b7ea}
+.opt input{margin:.2rem 0 0;width:1.05rem;height:1.05rem;accent-color:var(--blue)}
+.opt:has(input:checked){border-color:var(--blue);background:var(--blue-soft)}
+.opt:has(input:focus-visible){outline:3px solid #a9b7ea;outline-offset:2px}
+.opt input:focus-visible{outline:none}
+.opt.struck{opacity:.55;text-decoration:line-through;text-decoration-color:var(--red);cursor:not-allowed;background:var(--red-soft)}
+.opt.right{border-color:var(--green);background:var(--green-soft)}
+.opt.wrong{border-color:var(--red);background:var(--red-soft)}
+.opt .oc{display:block;font-family:var(--mono);font-size:.82rem;white-space:pre-wrap;word-break:break-word;background:var(--blue-soft);border-radius:5px;padding:.25rem .45rem}
+.nums{display:flex;gap:.7rem;flex-wrap:wrap;align-items:flex-end}
+.nums label{display:grid;gap:.15rem;font-size:.85rem;color:var(--muted)}
+.nums input{font-family:var(--mono);font-size:1.05rem;padding:.5rem .65rem;border:1.5px solid var(--line);border-radius:8px;width:9rem;background:#fff}
+.nums input:focus{border-color:var(--blue);outline:none;box-shadow:0 0 0 3px rgba(31,63,174,.15)}
+.nums input:disabled{background:var(--bench)}
+.sact{display:flex;gap:.6rem;align-items:center;margin-top:.7rem;flex-wrap:wrap}
+.smsg{font-size:.9rem;color:var(--red)}
+.fb{margin-top:.7rem;border-radius:10px;padding:.65rem .85rem;font-size:.95rem}
+.fb.hint{background:var(--amber-soft);color:#5e3e00}
+.fb.hint b{color:var(--amber)}
+.fb.why{background:var(--green-soft)}
+.fb.why.missed{background:var(--red-soft)}
+.fb .tag{display:inline-block;font-family:var(--mono);font-size:.75rem;font-weight:600;border-radius:4px;padding:0 .4rem;margin-right:.4rem;color:#fff;background:var(--green)}
+.fb.missed .tag{background:var(--red)}
+.fb.hint .tag{background:var(--amber)}
+.yours{font-size:.88rem;color:var(--muted);margin-top:.35rem}
+.next-cta{margin-top:1rem;display:flex;justify-content:flex-end}
+.remember{background:#eef7f1;border:1px solid #cfe8d7;border-left:5px solid var(--green);border-radius:10px;padding:.75rem .95rem;margin:0 0 1rem;font-size:.97rem}
+.remember h4{font-family:var(--mono);font-size:.78rem;letter-spacing:.04em;color:var(--green);margin:0 0 .3rem}
+.remember > p{margin:0 0 .55rem}
+.exbtn{border:1.5px solid var(--green);background:#fff;color:var(--green);border-radius:7px;padding:.3rem .75rem;font-weight:600;font-size:.88rem}
+.exbtn:hover{background:#e1f2e6}
+.example{border-top:1px dashed #b7dcc3;padding-top:.55rem}
+.example .exlab{margin:0 0 .2rem;font-size:.85rem;color:var(--green)}
+.example pre{margin:.3rem 0 .45rem}
+.example p:last-child{margin:0}
+.start{font-size:.93rem;background:var(--blue-soft);border-radius:8px;padding:.4rem .7rem;margin:0 0 .65rem;color:#24346f}
+.start b{color:var(--blue)}
+
+/* bottom nav */
+.pnav{position:fixed;left:0;right:0;bottom:0;z-index:5;background:rgba(255,255,255,.96);border-top:1px solid var(--line);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.pnav-in{max-width:860px;margin:0 auto;padding:.55rem 1.2rem;display:flex;gap:.6rem;align-items:center}
+.pnav .where{flex:1;text-align:center;font-family:var(--mono);font-size:.82rem;color:var(--muted)}
+.confirm{max-width:860px;margin:0 auto;padding:0 1.2rem .6rem}
+.confirm .box{padding:.8rem .9rem;border-radius:10px;background:var(--amber-soft)}
+.confirm p{margin-bottom:.5rem}
+.confirm .row{display:flex;gap:.5rem;flex-wrap:wrap}
+.blank-list{display:flex;flex-wrap:wrap;gap:.35rem;margin:.2rem 0 .6rem}
+.blank-list button{font-family:var(--mono);font-size:.82rem;border:1px solid var(--amber);background:#fff;color:var(--amber);border-radius:5px;padding:.05rem .5rem}
+
+/* ---------- visuals ---------- */
+.vcap{font-size:.85rem;color:var(--muted);margin:.4rem 0 0}
+.vgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.8rem;align-items:start}
+@media (max-width:700px){.vgrid{grid-template-columns:1fr}}
+/* fight */
+.fight{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:.6rem;align-items:center}
+.fighter{background:#fff;border:1px solid var(--line);border-radius:12px;padding:.7rem .8rem}
+.fighter .top{display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem}
+.ava{font-size:1.9rem;line-height:1}
+.fighter .nm{font-weight:700}.fighter .sub{font-size:.8rem;color:var(--muted);font-family:var(--mono)}
+.hpbar{height:10px;background:var(--red-soft);border-radius:99px;overflow:hidden;margin:.2rem 0 .1rem}
+.hpbar i{display:block;height:100%;background:var(--green);border-radius:99px;transition:width .4s}
+.hpnum{font-family:var(--mono);font-size:.8rem}
+.chips{display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.35rem}
+.chip{font-family:var(--mono);font-size:.78rem;border:1px solid var(--line);border-radius:6px;padding:.05rem .4rem;background:var(--bg)}
+.chip b{color:var(--blue)}
+.vs{font-family:var(--mono);font-weight:700;color:var(--maroon)}
+.blog{width:100%;border-collapse:collapse;font-size:.85rem;margin-top:.7rem;background:#fff;border-radius:8px;overflow:hidden}
+.blog th,.blog td{padding:.35rem .5rem;border-bottom:1px solid var(--line);text-align:left}
+.blog th{font-size:.75rem;color:var(--muted)}
+.blog td.n{font-family:var(--mono);white-space:nowrap}
+.lvlup{margin-top:.6rem;background:linear-gradient(90deg,#fff4d6,#e9edf8);border-radius:10px;padding:.55rem .75rem;font-weight:600}
+/* tables */
+.dtable{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;font-size:.88rem}
+.dtable th,.dtable td{padding:.35rem .5rem;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+.dtable th{font-family:var(--mono);font-size:.74rem;color:var(--muted);background:var(--blue-soft)}
+.dtable td.n{font-family:var(--mono);text-align:right}
+.dtable tr.hit td{background:var(--green-soft)}
+.dtable tr.dim td{opacity:.45}
+.dtable .rk{display:inline-block;font-family:var(--mono);font-size:.72rem;background:var(--blue);color:#fff;border-radius:4px;padding:0 .3rem;margin-left:.3rem}
+.tname{font-family:var(--mono);font-size:.8rem;font-weight:600;color:var(--blue);margin:0 0 .3rem}
+.joinrow{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;margin-top:.7rem;font-family:var(--mono);font-size:.85rem}
+.jchip{background:#fff;border:1px solid var(--line);border-radius:8px;padding:.2rem .5rem}
+.jchip b{color:var(--green)}
+.jchip.buff b{color:var(--maroon)}
+.jsum{font-weight:700;color:var(--ink)}
+/* memory diagram */
+.mem{display:grid;grid-template-columns:auto auto minmax(0,1fr);gap:.4rem .8rem;align-items:center}
+.mem .tags{display:grid;gap:.35rem}
+.mem .tg{font-family:var(--mono);font-size:.8rem;background:#fff;border:1px solid var(--line);border-radius:6px;padding:.2rem .5rem;white-space:nowrap}
+.mem .arr{font-size:1.4rem;color:var(--muted)}
+.mem .boxes{display:grid;gap:.4rem}
+.mem .obj{font-family:var(--mono);font-size:.8rem;background:#fff;border:2px solid var(--blue);border-radius:8px;padding:.45rem .6rem}
+.mem .obj.shared{border-color:var(--red);background:var(--red-soft)}
+.mem .obj.tmpl{border-color:var(--green)}
+.mem .obj .lbl{display:block;font-size:.7rem;color:var(--muted);margin-bottom:.15rem}
+.mem .q{font-family:var(--mono);color:var(--muted)}
+@media (max-width:560px){.mem{grid-template-columns:1fr}.mem .arr{transform:rotate(90deg);justify-self:start}}
+/* shop */
+.shop{display:flex;gap:1rem;flex-wrap:wrap;align-items:center}
+.coins{background:#fff;border:1px solid var(--line);border-radius:12px;padding:.6rem .8rem;text-align:center;min-width:110px}
+.coins b{display:block;font-family:var(--mono);font-size:1.6rem;color:#a06a00}
+.coins span{font-size:.8rem;color:var(--muted)}
+.bag{background:#fff;border:1px solid var(--line);border-radius:12px;padding:.6rem .8rem}
+.bag .slots{display:flex;gap:.3rem;align-items:center}
+.slot{width:38px;height:38px;border:2px dashed var(--line);border-radius:8px;display:grid;place-items:center;font-size:1.25rem}
+.slot.full{border-style:solid;border-color:#b5c2ec;background:var(--blue-soft)}
+.slot.over{border-style:solid;border-color:var(--red);background:var(--red-soft)}
+.bag .lim{font-family:var(--mono);font-size:.75rem;color:var(--muted);margin-top:.25rem}
+.sep{width:2px;height:44px;background:var(--red);margin:0 .2rem;border-radius:2px}
+/* boards */
+.board{display:inline-grid;gap:3px;background:var(--line);padding:3px;border-radius:10px}
+.tile{width:52px;height:52px;background:#fff;border-radius:6px;position:relative;display:grid;place-items:center;font-size:1.45rem}
+.tile.lava{background:repeating-linear-gradient(135deg,#ff922b 0 8px,#e8590c 8px 16px)}
+.tile.spikes{background:#eef0f4}
+.tile.spikes::after{content:"▲▲";font-size:.9rem;color:var(--spike);letter-spacing:-2px}
+.tile.wall{background:var(--wall)}
+.tile.goal::before{content:"🏁"}
+.tile .who{position:relative;z-index:1}
+.tile .lab{position:absolute;top:2px;left:4px;font-family:var(--mono);font-size:.72rem;font-weight:700;color:var(--blue);background:rgba(255,255,255,.85);border-radius:3px;padding:0 2px;line-height:1.2}
+.tile .dn{position:absolute;bottom:2px;right:3px;font-family:var(--mono);font-size:.7rem;font-weight:700;background:var(--ink);color:#fff;border-radius:3px;padding:0 3px}
+.tile.pick{outline:3px solid var(--green);outline-offset:-3px}
+.tile.trail{box-shadow:inset 0 0 0 3px #74c0fc}
+.slime{display:inline-block;width:30px;height:22px;background:var(--slime);border-radius:50% 50% 38% 38%;position:relative}
+.slime::before,.slime::after{content:"";position:absolute;top:7px;width:5px;height:5px;background:#fff;border-radius:50%}
+.slime::before{left:8px}.slime::after{right:8px}
+.board.sm .tile{width:42px;height:42px;font-size:1.2rem}
+.legend{display:flex;flex-wrap:wrap;gap:.35rem .8rem;font-size:.82rem;color:var(--muted);margin-top:.5rem}
+.legend span{display:inline-flex;align-items:center;gap:.3rem}
+.legend i{display:inline-block;width:14px;height:14px;border-radius:3px}
+.bwrap{display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-start}
+/* situations */
+.sits{display:grid;grid-template-columns:1fr 1fr;gap:.7rem}
+@media (max-width:640px){.sits{grid-template-columns:1fr}}
+.sit{background:#fff;border:1px solid var(--line);border-radius:12px;padding:.7rem .8rem}
+.sit h4{font-size:.95rem;margin-bottom:.35rem}
+.sit dl{display:grid;grid-template-columns:auto 1fr;gap:.15rem .6rem;margin:0;font-size:.85rem}
+.sit dt{font-family:var(--mono);color:var(--muted)}
+.sit dd{margin:0;font-family:var(--mono)}
+.sit .verdict{margin-top:.45rem;font-size:.85rem;background:var(--green-soft);border-radius:6px;padding:.25rem .5rem}
+/* cross */
+.cross{display:grid;grid-template-columns:repeat(3,minmax(0,150px));grid-template-areas:". up ." "left stay right" ". down .";gap:.45rem;justify-content:center}
+.mv{background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:.45rem .55rem;font-family:var(--mono);font-size:.76rem;line-height:1.45}
+.mv h5{margin:0 0 .15rem;font-size:.85rem;font-family:var(--sans)}
+.mv.blocked{background:var(--wall);color:#c7cdea;border-color:var(--wall)}
+.mv.blocked h5{color:#fff}
+.mv.best{border-color:var(--green);box-shadow:0 0 0 3px rgba(47,158,68,.18)}
+.mv .sc{display:inline-block;margin-top:.2rem;font-weight:700;background:var(--ink);color:#fff;border-radius:4px;padding:0 .35rem}
+.mv.best .sc{background:var(--green)}
+.mv.stay{background:var(--blue-soft)}
+/* fsm */
+.fsm svg{width:100%;max-width:560px;height:auto;display:block;margin:0 auto}
+.strip{width:100%;border-collapse:collapse;font-size:.85rem;background:#fff;border-radius:10px;overflow:hidden;margin-top:.7rem}
+.strip th,.strip td{padding:.3rem .35rem;border:1px solid var(--line);text-align:center;font-family:var(--mono)}
+.strip th{font-size:.72rem;color:var(--muted);background:var(--blue-soft);font-family:var(--sans)}
+.strip td.lab{text-align:left;font-family:var(--sans);font-size:.78rem;color:var(--muted);white-space:nowrap}
+.st{display:inline-block;border-radius:5px;padding:0 .3rem;font-size:.75rem;font-weight:600;color:#fff}
+.st.patrol{background:#5c7cfa}.st.chase{background:#e03131}.st.search{background:#f08c00}.st.flee{background:#7048e8}
+.st.q{background:var(--line);color:var(--muted)}
+
+/* end */
+.recap{width:100%;border-collapse:collapse;font-size:.95rem;margin:.2rem 0 .2rem}
+.recap th,.recap td{text-align:left;padding:.45rem .5rem;border-bottom:1px solid var(--line);vertical-align:top}
+.recap th{font-size:.78rem;color:var(--muted);font-weight:600}
+.recap td.p{font-family:var(--mono);text-align:right;white-space:nowrap}
+.recap .marks{font-family:var(--mono);letter-spacing:.15em}
+.mk-ok{color:var(--green)}.mk-half{color:var(--amber)}.mk-miss{color:var(--red)}.mk-open{color:var(--muted)}
+.profile{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem}
+.profile div{border:1px solid var(--line);border-radius:10px;padding:.6rem .7rem;background:var(--bg)}
+.profile b{display:block;font-family:var(--mono);font-size:1.4rem}
+.profile span{font-size:.82rem;color:var(--muted)}
+.profile .g b{color:var(--green)}.profile .a b{color:var(--amber)}.profile .r b{color:var(--red)}.profile .t b{color:var(--blue)}
+.banner{padding:.7rem .9rem;border-radius:8px;background:var(--amber-soft);color:var(--amber);font-weight:600;margin-bottom:1rem}
+.teacher{margin-top:2rem;font-size:.9rem;color:var(--muted)}
+.teacher summary{cursor:pointer}
+.teacher ul{padding-left:1.2rem}
+
+@media (max-width:700px){
+  .topbar{gap:.5rem;padding:.5rem .8rem}
+  .topbar .brand span{display:none}
+  .tiles{display:none}
+  .wrap{padding:1.5rem 1rem 6rem}
+  .wrap > h1{font-size:1.7rem}
+  .plist{grid-template-columns:1fr}
+  .ladder,.profile{grid-template-columns:1fr 1fr}
+  .step{padding:.85rem .9rem}
+  .visual{padding:.7rem}
+  .tile{width:44px;height:44px;font-size:1.2rem}
+  .board.sm .tile{width:38px;height:38px}
+  .fight{grid-template-columns:1fr}
+  .vs{text-align:center}
+  .cross{grid-template-columns:repeat(3,minmax(0,1fr));gap:.3rem}
+  .mv{font-size:.7rem;padding:.35rem .4rem}
+  .pnav-in{padding:.5rem .8rem}
+}
+@media (max-width:520px){
+  .pnav .where{display:none}
+  .pnav-in{gap:.4rem}
+  .pnav .btn.small{white-space:nowrap;padding:.45rem .7rem}
+  #next{margin-right:auto}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+@media print{.topbar,.teacher,.pnav{display:none!important}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">Pop quiz 2 <span>— HSCT Computer Science</span></div>
+  <nav class="tiles" id="tiles" aria-label="Puzzles"></nav>
+  <div class="grow"></div>
+  <div class="stat" id="stat-pts"></div>
+  <div class="timer" id="timer" hidden role="timer" aria-label="Time left">25:00</div>
+</header>
+<div class="sr" id="live" aria-live="assertive"></div>
+
+<!-- ===== 1. INTRO ===== -->
+<section class="view active" id="view-intro">
+  <div class="wrap">
+    <p class="kicker">Computer Science · Pop quiz 2 · 25 minutes</p>
+    <h1>Pop quiz: stat check and smart moves.</h1>
+    <p class="lede">Ten puzzles from <b>Stat Check</b> (every game is a database) and <b>Smart Moves</b> (build a game AI). Each puzzle walks you through it in three steps, so even if one step trips you up, you still see the logic and keep going.</p>
+
+    <div class="card">
+      <h3>10 puzzles · 3 steps each · 100 points</h3>
+      <ul class="plist" id="intro-list"></ul>
+    </div>
+
+    <div class="card">
+      <h3>How every step works</h3>
+      <div class="ladder">
+        <div class="g"><b>Full points</b>Right on the first try.</div>
+        <div class="a"><b>Half</b>Wrong once? You get a hint about what you missed, and one more try.</div>
+        <div class="r"><b>0, but you learn it</b>Wrong twice? It walks you through the answer, so the next step still makes sense.</div>
+        <div class="t"><b>Tip −1</b>Each puzzle has an optional tip. It costs 1 point on that puzzle.</div>
+      </div>
+      <p style="margin:.7rem 0 0">📘 <b>Free help on every puzzle:</b> a <b>Remember</b> box from the lesson, a worked example on different numbers, and a <b>Start here</b> nudge on every step. None of it costs points.</p>
+    </div>
+
+    <div class="card">
+      <h3>Rules</h3>
+      <ul class="rules">
+        <li>You have <b>25 minutes</b>. The clock starts when you press Start, and the quiz submits itself at <b>0:00</b> with whatever you've done.</li>
+        <li>Steps in a puzzle unlock in order. You can skip to any puzzle with the numbers at the top and come back.</li>
+        <li>There's no running code: work it out in your head or on scrap paper, the way the computer would, one line at a time.</li>
+        <li>Leaving this tab and pasting into answers are both recorded in your result file. Refreshing the page erases everything.</li>
+        <li>At the end you download a result file and submit it in Google Classroom.</li>
+      </ul>
+      <div class="name-row">
+        <input id="name" type="text" placeholder="Your full name (goes on your result)" autocomplete="off" maxlength="60" aria-label="Your full name">
+        <button class="btn" id="start">Start the quiz</button>
+      </div>
+      <div class="err" id="name-err" hidden>Enter your name first. It goes on your result file.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 2. QUIZ ===== -->
+<section class="view" id="view-work">
+  <div class="wrap" id="stage"></div>
+  <div class="pnav">
+    <div class="confirm" id="confirm"></div>
+    <div class="pnav-in">
+      <button class="btn ghost small" id="prev">← Previous</button>
+      <div class="where" id="where"></div>
+      <button class="btn ghost small" id="next">Next →</button>
+      <button class="btn maroon small" id="submit">Submit</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 3. END ===== -->
+<section class="view" id="view-end">
+  <div class="wrap">
+    <p class="kicker">Pop quiz 2 · submitted</p>
+    <h1 id="end-h1">Quiz submitted.</h1>
+    <p class="lede" id="end-lede"></p>
+    <div id="end-banner"></div>
+    <div class="card">
+      <h3>Your logic profile</h3>
+      <div class="profile" id="profile"></div>
+    </div>
+    <div class="card">
+      <h3>Puzzle by puzzle</h3>
+      <table class="recap" id="recap"></table>
+      <p class="vcap">✓ first try · ½ after a hint · ✗ walked through · – not reached</p>
+    </div>
+    <!-- The kit renders the standard result card (score, time, code, download) into this element. -->
+    <div id="hsct-result"></div>
+    <details class="teacher">
+      <summary>Teachers</summary>
+      <ul>
+        <li>The result file holds every answer the student tried (both tries per step), which steps were right first try, after a hint, or walked through, which tips and worked examples they opened, how many times they left the tab, any pastes, and whether the timer ran out. Open files at <b>hsct.tech/lessons/verify</b>; the logic profile shows under the student's row.</li>
+        <li>Answer choices are shuffled per student. Every answer key was checked by running the Stat Check and Smart Moves engines.</li>
+        <li>Change the time limit or the tip cost in <code>CONFIG</code> at the top of the quiz script.</li>
+      </ul>
+    </details>
+  </div>
+</section>
+
+<!-- HSCT KIT START — do not edit; copy the whole block from lesson-template/hsct-lesson.js -->
+<script>
+/* ============================================================================
+   HSCT LESSON KIT  v1.0
+   Every lesson on HSCT TechHub inlines this block unchanged (between the
+   <!-- HSCT KIT START --> and <!-- HSCT KIT END --> markers). It gives a
+   lesson three things:
+
+     1. A clock.   HSCT.start(name) when the student begins. The kit records
+                   wall-clock time and "active" time (tab visible).
+     2. A log.     HSCT.log(type, data) for anything worth remembering —
+                   answers, hints, retries. Ends up inside the result file.
+     3. A result.  HSCT.endScreen(el, {...scores}) renders the standard result
+                   card: name, score, time taken, badge code, and a button
+                   that downloads the encrypted result file the student
+                   submits in Google Classroom.
+
+   The file is encrypted with the teacher's PUBLIC key below (RSA-OAEP wrapping
+   an AES-256-GCM key). It can only be opened with the matching private key,
+   on the site's /lessons/verify page. Students can't read or edit it.
+
+   API (all on window.HSCT):
+     HSCT.lesson({ id, title, version, course, possible })   once, at load
+     HSCT.start(name)                                        when work begins
+     HSCT.log(type, data)                                    any time
+     HSCT.elapsed()   -> { seconds, activeSeconds }
+     HSCT.finish({ earned, possible, sections, tier, extra }) -> Promise<result>
+     HSCT.endScreen(el, { earned, possible, sections, tier, extra, note })
+                      -> Promise<result>   (calls finish, renders the card)
+     HSCT.download()  / HSCT.copyCode()                      after finish
+   ========================================================================== */
+(function () {
+  'use strict';
+  var KIT = '1.0';
+
+  /* Mr. Cruz's public key. Replace the whole object if the key pair is ever
+     regenerated on /lessons/verify — and keep the private key out of git. */
+  var PUBLIC_KEY = {"kty":"RSA","n":"rZUBRxn7dUikufJq7z2XVn-on4Of0IyQr_YaPSTgIUaGsYKcrZ4FNROL4A_ZM5JShLf6OVp2ZeAI7XN_7iX0tvd79RqAWRM9an6rx-s6bMYSW1wmtRxZyL-BX56vTtikVRLNO7uyzCb8kevJE71Fi6nlPhdXa-iS4vtIEm2Wjh4cLPinAKhMnkO3BpGHUhtFw7Hyus1w04EdLxowk4UcN7d0w4MQRnBV8ehXQVoLVQ0_QtfrtPTQOpScHuwyaw9nwnTA7h7BEOv1ZkbEyq2N4TFixSSCsneUsc3PlbZOndDzMGMmdMr00ulntRZBfyioFzRcsRUGGwAqpB9SuH7XGQ","e":"AQAB","alg":"RSA-OAEP-256","ext":true};
+
+  var VERIFY_URL = 'hsct.tech/lessons/verify';
+
+  var cfg = null;      // lesson config
+  var ses = null;      // current session
+  var ticker = null;   // active-time interval
+  var result = null;   // { badge, filename, text, envelope, payload }
+
+  /* ---------- small helpers ---------- */
+  var enc = new TextEncoder();
+  function b64(buf) {
+    var bytes = new Uint8Array(buf), s = '';
+    for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return btoa(s);
+  }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function fmtDuration(sec) {
+    sec = Math.max(0, Math.round(sec || 0));
+    var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+    if (h) return h + ' h ' + pad(m) + ' min';
+    if (m) return m + ' min ' + pad(s) + ' s';
+    return s + ' s';
+  }
+  function fmtDate(iso) {
+    try { return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+    catch (e) { return iso; }
+  }
+  function slug(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'student'; }
+  function stamp(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes()); }
+
+  /* Badge code: 8 characters from a SHA-256 of the result, shown on screen
+     so a screenshot can be matched to its file. */
+  var ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ23456789';
+  function badgeFrom(hashBuf) {
+    var bytes = new Uint8Array(hashBuf), out = '';
+    for (var i = 0; i < 8; i++) out += ALPHABET[bytes[i] % ALPHABET.length];
+    return out.slice(0, 4) + '-' + out.slice(4);
+  }
+
+  function needSubtle() {
+    if (!(window.crypto && crypto.subtle)) {
+      throw new Error('Result files need a secure page (https). Open this lesson from the TechHub site and finish again.');
+    }
+  }
+
+  /* ---------- public API ---------- */
+  function lesson(c) {
+    if (!c || !c.id || !c.title) throw new Error('HSCT.lesson needs { id, title }');
+    cfg = { version: '1.0', course: '', possible: 100 };
+    for (var k in c) cfg[k] = c[k];
+    return HSCT;
+  }
+
+  function start(name) {
+    if (!cfg) throw new Error('Call HSCT.lesson({...}) before HSCT.start(name)');
+    name = String(name || '').trim().replace(/\s+/g, ' ');
+    if (name.length < 2) throw new Error('HSCT.start needs the student\'s name');
+    ses = { name: name, started: new Date().toISOString(), t0: Date.now(), active: 0, events: [] };
+    result = null;
+    clearInterval(ticker);
+    ticker = setInterval(function () { if (document.visibilityState === 'visible') ses.active += 1; }, 1000);
+    log('start');
+    return HSCT;
+  }
+
+  function log(type, data) {
+    if (!ses) return HSCT;
+    var e = { t: Math.round((Date.now() - ses.t0) / 100) / 10, type: String(type) };
+    if (data && typeof data === 'object') for (var k in data) if (k !== 't' && k !== 'type') e[k] = data[k];
+    if (ses.events.length < 800) ses.events.push(e);
+    return HSCT;
+  }
+
+  function elapsed() {
+    if (!ses) return { seconds: 0, activeSeconds: 0 };
+    return { seconds: Math.round((Date.now() - ses.t0) / 1000), activeSeconds: ses.active };
+  }
+
+  /* Build, seal, and keep the result. Resolves to { badge, filename, text, payload }. */
+  async function finish(opts) {
+    if (!cfg || !ses) throw new Error('HSCT.start(name) was never called');
+    needSubtle();
+    opts = opts || {};
+    clearInterval(ticker);
+    var finished = new Date();
+    var el = elapsed();
+    var earned = Number(opts.earned || 0), possible = Number(opts.possible || cfg.possible || 0);
+    var payload = {
+      kit: KIT,
+      lesson: { id: cfg.id, title: cfg.title, version: cfg.version, course: cfg.course },
+      student: { name: ses.name },
+      started: ses.started,
+      finished: finished.toISOString(),
+      seconds: el.seconds,
+      activeSeconds: el.activeSeconds,
+      score: { earned: earned, possible: possible, percent: possible ? Math.round(1000 * earned / possible) / 10 : null },
+      tier: opts.tier || null,
+      sections: (opts.sections || []).map(function (s) { return { id: s.id, title: s.title, earned: s.earned, possible: s.possible, status: s.status }; }),
+      extra: opts.extra || null,
+      events: ses.events,
+      env: { tz: Intl.DateTimeFormat().resolvedOptions().timeZone, ua: navigator.userAgent, url: location.href.split('?')[0] },
+    };
+    var hash = await crypto.subtle.digest('SHA-256', enc.encode(JSON.stringify(payload)));
+    var badge = badgeFrom(hash);
+    payload.badge = badge;
+
+    /* header travels in the clear but is authenticated (AES-GCM additional data) */
+    var header = { hsct: 1, kit: KIT, lesson: cfg.id, title: cfg.title, student: ses.name, finished: payload.finished, badge: badge };
+    var pub = await crypto.subtle.importKey('jwk', PUBLIC_KEY, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['wrapKey']);
+    var aes = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt']);
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    var data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv, additionalData: enc.encode(JSON.stringify(header)) }, aes, enc.encode(JSON.stringify(payload)));
+    var wrapped = await crypto.subtle.wrapKey('raw', aes, pub, { name: 'RSA-OAEP' });
+    var envelope = {};
+    for (var k in header) envelope[k] = header[k];
+    envelope.key = b64(wrapped); envelope.iv = b64(iv); envelope.data = b64(data);
+
+    result = {
+      badge: badge,
+      filename: 'HSCT_' + cfg.id + '_' + slug(ses.name) + '_' + stamp(finished) + '.hsct',
+      text: JSON.stringify(envelope),
+      payload: payload,
+    };
+    return result;
+  }
+
+  function download() {
+    if (!result) throw new Error('Nothing to download yet — call HSCT.finish first');
+    var blob = new Blob([result.text], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = result.filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+    return result.filename;
+  }
+
+  async function copyCode() {
+    if (!result) throw new Error('Nothing to copy yet — call HSCT.finish first');
+    try { await navigator.clipboard.writeText(result.text); return true; }
+    catch (e) {
+      var ta = document.createElement('textarea'); ta.value = result.text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      var ok = false; try { ok = document.execCommand('copy'); } catch (e2) {}
+      ta.remove(); return ok;
+    }
+  }
+
+  /* ---------- the standard end screen ---------- */
+  var CSS = '.hsct-card{--hsct-ink:#101a3f;--hsct-mute:#5b6485;--hsct-line:#d3d9ee;--hsct-accent:var(--hsct-color,#1f3fae);--hsct-ok:#1f7a3d;--hsct-bad:#b3261e;'
+    + 'font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;color:var(--hsct-ink);background:#fff;border:1px solid var(--hsct-line);border-left:6px solid var(--hsct-accent);border-radius:12px;padding:20px 22px;margin:20px 0;line-height:1.45}'
+    + '.hsct-card *{box-sizing:border-box}.hsct-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--hsct-mute)}.hsct-head b{color:var(--hsct-accent)}'
+    + '.hsct-name{font-size:22px;font-weight:700;margin:6px 0 2px}.hsct-score{font-size:15px;margin:0 0 12px}.hsct-score b{font-size:28px;font-weight:700}.hsct-score .hsct-tier{display:inline-block;margin-left:8px;padding:2px 10px;border-radius:999px;background:var(--hsct-accent);color:#fff;font-size:13px;font-weight:600;vertical-align:middle}'
+    + '.hsct-facts{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0 0 14px;font-size:14px}.hsct-facts dt{color:var(--hsct-mute)}.hsct-facts dd{margin:0}.hsct-facts code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;letter-spacing:.08em;font-weight:600}'
+    + '.hsct-secs{width:100%;border-collapse:collapse;font-size:14px;margin:0 0 14px}.hsct-secs td{padding:5px 0;border-top:1px solid var(--hsct-line)}.hsct-secs td:last-child{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}'
+    + '.hsct-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.hsct-btn{font:600 15px "IBM Plex Sans","Segoe UI",system-ui,sans-serif;padding:11px 18px;border-radius:8px;border:2px solid var(--hsct-accent);background:var(--hsct-accent);color:#fff;cursor:pointer}.hsct-btn:hover{filter:brightness(.92)}.hsct-btn.hsct-alt{background:transparent;color:var(--hsct-accent)}.hsct-btn:focus-visible{outline:3px solid #a9b7ea;outline-offset:2px}.hsct-btn:disabled{opacity:.55;cursor:wait}'
+    + '.hsct-note{margin:12px 0 0;font-size:13.5px;color:var(--hsct-mute)}.hsct-status{margin:8px 0 0;font-size:14px;min-height:1.4em}.hsct-status.ok{color:var(--hsct-ok)}.hsct-status.bad{color:var(--hsct-bad)}'
+    + '@media print{.hsct-actions,.hsct-note,.hsct-status{display:none}}';
+
+  function injectCss() {
+    if (document.getElementById('hsct-kit-css')) return;
+    var s = document.createElement('style'); s.id = 'hsct-kit-css'; s.textContent = CSS; document.head.appendChild(s);
+  }
+
+  /* Renders the card into `el` and seals the result. Resolves with the result. */
+  async function endScreen(el, opts) {
+    if (typeof el === 'string') el = document.querySelector(el);
+    if (!el) throw new Error('HSCT.endScreen needs an element');
+    injectCss();
+    opts = opts || {};
+    var elp = elapsed();
+    var possible = Number(opts.possible || cfg.possible || 0), earned = Number(opts.earned || 0);
+    var pct = possible ? Math.round(100 * earned / possible) : null;
+    var secs = (opts.sections || []).map(function (s) {
+      var right = s.status != null ? esc(s.status) : (s.possible != null ? esc(s.earned) + ' / ' + esc(s.possible) : esc(s.earned));
+      return '<tr><td>' + esc(s.title) + '</td><td>' + right + '</td></tr>';
+    }).join('');
+    el.innerHTML = '<div class="hsct-card">'
+      + '<div class="hsct-head"><span><b>HSCT TechHub</b> result</span><span>' + esc(cfg.title) + '</span></div>'
+      + '<div class="hsct-name">' + esc(ses ? ses.name : '') + '</div>'
+      + '<div class="hsct-score"><b>' + esc(earned) + '</b> / ' + esc(possible) + (pct != null ? ' <span>(' + pct + '%)</span>' : '') + (opts.tier ? '<span class="hsct-tier">' + esc(opts.tier) + '</span>' : '') + '</div>'
+      + '<dl class="hsct-facts"><dt>Finished</dt><dd>' + esc(fmtDate(new Date().toISOString())) + '</dd>'
+      + '<dt>Time taken</dt><dd>' + esc(fmtDuration(elp.seconds)) + (elp.activeSeconds < elp.seconds - 60 ? ' <span style="color:var(--hsct-mute)">(' + esc(fmtDuration(elp.activeSeconds)) + ' with the tab open)</span>' : '') + '</dd>'
+      + '<dt>Code</dt><dd><code class="hsct-badge">........</code></dd></dl>'
+      + (secs ? '<table class="hsct-secs"><tbody>' + secs + '</tbody></table>' : '')
+      + '<div class="hsct-actions"><button type="button" class="hsct-btn hsct-dl" disabled>Download your result file</button><button type="button" class="hsct-btn hsct-alt hsct-copy" disabled>Copy result code</button></div>'
+      + '<p class="hsct-note">' + esc(opts.note || 'Submit the file in Google Classroom. If downloads are blocked, copy the code and paste it instead. The file is encrypted: only your teacher can open it.') + '</p>'
+      + '<p class="hsct-status" aria-live="polite">Preparing your result file…</p>'
+      + '</div>';
+    var status = el.querySelector('.hsct-status'), dl = el.querySelector('.hsct-dl'), cp = el.querySelector('.hsct-copy');
+    try {
+      var r = await finish(opts);
+      el.querySelector('.hsct-badge').textContent = r.badge;
+      status.textContent = 'Ready: ' + r.filename;
+      dl.disabled = false; cp.disabled = false;
+      dl.onclick = function () { try { download(); status.className = 'hsct-status ok'; status.textContent = 'Downloaded ' + r.filename + ' — now submit it.'; } catch (e) { status.className = 'hsct-status bad'; status.textContent = e.message; } };
+      cp.onclick = async function () { var ok = await copyCode(); status.className = 'hsct-status ' + (ok ? 'ok' : 'bad'); status.textContent = ok ? 'Code copied — paste it into your submission.' : 'Copy failed. Use the download instead.'; };
+      return r;
+    } catch (e) {
+      status.className = 'hsct-status bad';
+      status.textContent = e.message || String(e);
+      throw e;
+    }
+  }
+
+  var HSCT = {
+    kit: KIT, verifyUrl: VERIFY_URL,
+    lesson: lesson, start: start, log: log, elapsed: elapsed,
+    finish: finish, download: download, copyCode: copyCode, endScreen: endScreen,
+    get result() { return result; },
+    get session() { return ses ? { name: ses.name, started: ses.started } : null; },
+    fmtDuration: fmtDuration,
+  };
+  window.HSCT = HSCT;
+})();
+</script>
+<!-- HSCT KIT END -->
+
+<script>
+/* ============================================================================
+   POP QUIZ 2: Stat check and smart moves
+   Everything a teacher might want to change is in CONFIG.
+   ========================================================================== */
+const CONFIG = {
+  MINUTES: 25,       // time limit; the quiz submits itself at 0:00
+  TIP_COST: 1,       // points a tip costs on its puzzle
+};
+
+HSCT.lesson({ id: 'pop-quiz-stat-check-smart-moves', title: 'Pop quiz: stat check and smart moves', version: '1.0', course: 'computer-science', possible: 100 });
+
+/* ---------- helpers ---------- */
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const fmt = (s) => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+const plain = (s) => String(s == null ? '' : s).replace(/`/g, '').replace(/\*\*/g, '');
+/* python, one span per line so lines can be highlighted */
+function py(src, marks) {
+  marks = marks || {};
+  return '<pre>' + src.split('\n').map((line, i) => {
+    const h = esc(line).replace(/(#.*$)|(&quot;[^\n]*?&quot;)|\b(if|elif|else|while|for|in|not|and|or|True|False|None|def|return|import|with|as|del)\b|\b(\d+)\b/g,
+      (m, c, str, kw, num) => c ? '<span class="c">' + c + '</span>' : str ? '<span class="s">' + str + '</span>' : kw ? '<span class="k">' + kw + '</span>' : '<span class="n">' + num + '</span>');
+    return '<span class="ln' + (marks[i + 1] ? ' ' + marks[i + 1] : '') + '">' + (h || ' ') + '</span>';
+  }).join('') + '</pre>';
+}
+function sql(src) {
+  return '<pre>' + esc(src).replace(/\b(SELECT|FROM|WHERE|AND|OR|ORDER BY|DESC|ASC|LIMIT|JOIN|ON)\b/g, '<span class="k">$1</span>').replace(/\b(\d+)\b/g, '<span class="n">$1</span>') + '</pre>';
+}
+const num = (v) => { const m = String(v == null ? '' : v).replace(/[−–—]/g, '-').match(/-?\d+(?:\.\d+)?/); return m ? Number(m[0]) : null; };
+
+/* ---------- game data (the same rows the lessons use) ---------- */
+const MON = [
+  { id: 'slime', name: 'Slime', em: '🟢', hp: 8, atk: 3, def: 0, spd: 2, xp: 3, gold: 2 },
+  { id: 'bat', name: 'Bat', em: '🦇', hp: 6, atk: 4, def: 0, spd: 6, xp: 4, gold: 1 },
+  { id: 'goblin', name: 'Goblin', em: '👺', hp: 14, atk: 5, def: 1, spd: 3, xp: 6, gold: 4 },
+  { id: 'skeleton', name: 'Skeleton', em: '💀', hp: 18, atk: 6, def: 3, spd: 2, xp: 9, gold: 6 },
+  { id: 'golem', name: 'Stone Golem', em: '🗿', hp: 30, atk: 8, def: 4, spd: 1, xp: 30, gold: 25 },
+];
+const STG = [
+  { id: 1, name: 'Mossy Gate', foes: ['slime', 'slime', 'bat'], lvl: 1 },
+  { id: 2, name: 'Goblin Camp', foes: ['goblin', 'bat', 'goblin'], lvl: 2 },
+  { id: 3, name: 'Bone Hall', foes: ['skeleton', 'skeleton'], lvl: 2 },
+  { id: 4, name: "Golem's Door", foes: ['goblin', 'golem'], lvl: 3 },
+];
+const monById = Object.fromEntries(MON.map((m) => [m.id, m]));
+
+/* ---------- visual building blocks ---------- */
+function hpBar(hp, max) { return `<div class="hpbar"><i style="width:${Math.max(0, Math.min(100, hp / max * 100))}%"></i></div><span class="hpnum">HP ${hp}/${max}</span>`; }
+function monsterTable(opt) {
+  opt = opt || {};
+  return `<p class="tname">MONSTERS</p><table class="dtable"><thead><tr><th></th><th>id</th><th>name</th><th>hp</th><th>atk</th><th>def</th><th>spd</th><th>xp</th><th>gold</th></tr></thead><tbody>`
+    + MON.map((m) => `<tr class="${opt.hit ? (opt.hit.includes(m.id) ? 'hit' : 'dim') : ''}"><td>${m.em}</td><td><code>${m.id}</code></td><td>${m.name}${opt.rank && opt.rank[m.id] ? `<span class="rk">#${opt.rank[m.id]}</span>` : ''}</td><td class="n">${m.hp}</td><td class="n">${m.atk}</td><td class="n">${m.def}</td><td class="n">${m.spd}</td><td class="n">${m.xp}</td><td class="n">${m.gold}</td></tr>`).join('')
+    + '</tbody></table>';
+}
+/* boards: rows of characters. . floor  # wall  ~ lava  ^ spikes  G goal  @ robot  E slime;  labels: {"x,y": "A"}  nums: {"x,y": 70} */
+function board(rows, opt) {
+  opt = opt || {};
+  const w = rows[0].length;
+  let h = `<div class="board${opt.small ? ' sm' : ''}" style="grid-template-columns:repeat(${w},auto)" role="img" aria-label="${esc(opt.alt || 'Map')}">`;
+  rows.forEach((r, y) => { [...r].forEach((ch, x) => {
+    const k = x + ',' + y;
+    const cls = { '#': 'wall', '~': 'lava', '^': 'spikes', 'G': 'goal' }[ch] || '';
+    let who = '';
+    if (ch === '@') who = '🤖';
+    if (ch === 'E') who = '<span class="slime" aria-hidden="true"></span>';
+    if (opt.robotAt === k) who = '🤖';
+    if (opt.hideRobot && ch === '@') who = '';
+    h += `<div class="tile ${cls}${opt.pick === k ? ' pick' : ''}${opt.trail && opt.trail.includes(k) ? ' trail' : ''}">${who ? '<span class="who">' + who + '</span>' : ''}${opt.labels && opt.labels[k] ? '<span class="lab">' + opt.labels[k] + '</span>' : ''}${opt.nums && opt.nums[k] != null ? '<span class="dn">' + opt.nums[k] + '</span>' : ''}</div>`;
+  }); });
+  return h + '</div>';
+}
+const legend = () => '<div class="legend"><span><i style="background:repeating-linear-gradient(135deg,#ff922b 0 4px,#e8590c 4px 8px)"></i>lava 100</span><span><i style="background:#eef0f4;border:1px solid #c5cad6"></i>spikes 40</span><span><span class="slime" style="transform:scale(.6)"></span>slime 60</span><span><i style="background:#fff;border:1px solid #c5cad6"></i>floor 0</span><span><i style="background:var(--wall)"></i>wall</span></div>';
+
+/* ============================================================================
+   THE PUZZLES
+   Step types: number (one number) · numbers (several labeled numbers) · mc (one choice) · multi (tick every one)
+   Every step: pts, prompt, the answer, a hint (shown after a first wrong try) and why (the walk-through).
+   ========================================================================== */
+const PUZZLES = [
+  /* ---------------------------------------------------------------- 1 */
+  {
+    id: 'p1', lesson: 'Stat Check', topic: 'Rules', title: 'One fight, three rules',
+    story: '<p>Your hero walks into <b>Goblin Camp</b>. The first foe is a Goblin, and a Bat and another Goblin wait behind it. The hero is <b>level 1 with 7 XP</b>. Each turn, the faster one swings first, and a foe at 0 HP doesn’t swing back.</p>',
+    code: 'def damage(attacker, defender):\n    return max(1, attacker["atk"] - defender["def"])\n\ndef xp_to_next(level):\n    return level * 10\n\ndef level_up(player):\n    player["level"] += 1\n    player["max_hp"] += 6\n    player["atk"] += 2\n    player["def"] += 1\n    player["spd"] += 1\n    player["hp"] = player["max_hp"]\n\n# in win_fight, after the foe hits 0 HP:\nplayer["xp"] += foe["xp"]\nwhile player["xp"] >= xp_to_next(player["level"]):\n    player["xp"] -= xp_to_next(player["level"])\n    level_up(player)',
+    visual(r) {
+      const lv = r[2] ? 2 : 1;
+      const hero = r[2] ? { hp: 26, max: 26, atk: 7, def: 2, spd: 5, xp: '3/20' } : { hp: r[1] ? 8 : 20, max: 20, atk: 5, def: 1, spd: 4, xp: '7/10' };
+      let h = `<div class="fight">
+        <div class="fighter"><div class="top"><span class="ava">🛡️</span><div><div class="nm">Hero</div><div class="sub">Lv ${lv} · XP ${hero.xp}</div></div></div>${hpBar(hero.hp, hero.max)}<div class="chips"><span class="chip">ATK <b>${hero.atk}</b></span><span class="chip">DEF <b>${hero.def}</b></span><span class="chip">SPD <b>${hero.spd}</b></span></div></div>
+        <div class="vs">VS</div>
+        <div class="fighter"><div class="top"><span class="ava">👺</span><div><div class="nm">Goblin</div><div class="sub">gives 6 XP</div></div></div>${hpBar(r[0] ? 0 : 14, 14)}<div class="chips"><span class="chip">ATK <b>5</b></span><span class="chip">DEF <b>1</b></span><span class="chip">SPD <b>3</b></span></div></div>
+      </div>`;
+      if (r[0]) {
+        const rows = [[1, 10, 16], [2, 6, 12], [3, 2, 8], [4, 0, null]];
+        h += '<table class="blog"><thead><tr><th>Turn</th><th>Hero swings (SPD 4 ≥ 3, first)</th><th>Goblin swings back</th></tr></thead><tbody>'
+          + rows.map(([t, g, hh]) => `<tr><td class="n">${t}</td><td>hits for 4 → Goblin <b>${g}</b></td><td>${hh == null ? '<i>at 0 HP, no swing</i>' : r[1] ? 'hits for 4 → Hero <b>' + hh + '</b>' : '?'}</td></tr>`).join('') + '</tbody></table>';
+      }
+      if (r[2]) h += '<div class="lvlup">+6 XP → 13 XP ≥ 10 → Level up! Level 2 · max HP 26 · HP refilled to 26 · 3 XP left over</div>';
+      return h;
+    },
+    remember: "<b>damage</b> is the attacker’s ATK minus the defender’s DEF, but never less than 1. The higher SPD swings first (a tie goes to the hero). A foe at 0 HP doesn’t swing back. After a win, the <code>while</code> loop keeps leveling up as long as XP ≥ level × 10.",
+    example: {"code": "damage(hero, skeleton)    # max(1, 5 - 3) = 2\ndamage(slime, hero)       # max(1, 3 - 1) = 2\ndamage(weak, golem)       # ATK 2 vs DEF 4: max(1, -2) = 1", "text": "Three hits that aren’t in this puzzle. The <code>max(1, …)</code> means even a weak hit does 1."},
+    tip: 'Do it the way the engine does: one turn at a time. Keep two columns on scrap paper, <b>Hero HP</b> and <b>Goblin HP</b>, and update them after every swing.',
+    steps: [
+      { type: 'number', pts: 3, label: 'Turns:', start: "First work out how much one hero hit does, with <code>damage</code>. Then count hits until 14 HP is gone.", prompt: 'How many turns does it take the hero to beat the Goblin?', answer: 4, show: '4',
+        hint: 'One hero hit does `max(1, 5 − 1)` = 4. After three hits the Goblin still has 2 HP. Is it beaten yet?',
+        why: 'Each hero hit does `max(1, 5 − 1)` = 4. Goblin HP goes 14 → 10 → 6 → 2 → 0: four turns.' },
+      { type: 'number', pts: 3, label: 'Hero HP:', start: "Who swings first each turn? Count only the Goblin swings that actually happen.", prompt: 'When the Goblin hits 0 HP, how much HP does the hero have left? (Before any XP is added.)', answer: 8, show: '8',
+        hint: 'The hero is faster (SPD 4 vs 3), so the Goblin only swings back on turns it survives: turns 1, 2 and 3, not turn 4. Each Goblin hit does `max(1, 5 − 1)`.',
+        why: 'The Goblin hits for `max(1, 5 − 1)` = 4. It swings back on turns 1, 2 and 3, but not on turn 4, because it’s already at 0. Three hits: 20 − 12 = 8.' },
+      { type: 'numbers', pts: 4, fields: ['Level', 'HP'], start: "Add the XP first. Then run the <code>while</code> loop by hand: compare XP to <code>xp_to_next(level)</code> each time around.", prompt: 'Now `win_fight` adds the Goblin’s 6 XP. What are the hero’s **level** and **HP** after that? (The Bat is still waiting, so the stage isn’t over.)', answer: [2, 26], show: 'level 2, HP 26',
+        hint: '7 + 6 = 13 XP. Is 13 ≥ `xp_to_next(1)`? If it is, read `level_up` line by line, especially its last line.',
+        why: '13 ≥ 10, so the loop levels up once (13 − 10 = 3 XP left, and 3 < 20 stops the loop). `level_up` raises max_hp to 26, and its last line sets `hp = max_hp`: the hero is back to 26 HP in the middle of the stage.' },
+    ],
+  },
+  /* ---------------------------------------------------------------- 2 */
+  {
+    id: 'p2', lesson: 'Stat Check', topic: 'Queries', title: 'Query detective',
+    story: '<p>This is the game’s <code>MONSTERS</code> table: one row per kind of monster. A query only <b>reads</b> it. It picks which rows come back and never changes one.</p>',
+    visual(r) {
+      return monsterTable({ hit: r[0] ? ['goblin', 'skeleton'] : null, rank: r[1] ? { bat: 1, goblin: 2 } : null })
+        + (r[0] ? '<p class="vcap">Green rows: ATK ≥ 5 <b>and</b> HP &lt; 20.' + (r[1] ? ' #1 and #2: the two fastest.' : '') + '</p>' : '');
+    },
+    remember: "<code>SELECT</code> picks the columns, <code>FROM</code> picks the table, <code>WHERE</code> keeps only the rows where the condition is true, and <code>AND</code> needs both conditions true for the same row. <code>ORDER BY … DESC</code> sorts biggest first; <code>LIMIT n</code> keeps the first n rows. In Python, <code>WHERE</code> becomes <code>if</code> and <code>AND</code> becomes <code>and</code>.",
+    example: {"code": "SELECT name FROM monsters\nWHERE gold > 5;", "text": "Gold column: Slime 2, Bat 1, Goblin 4, Skeleton 6, Golem 25. Only the Skeleton and the Stone Golem have more than 5. The Goblin’s 4 doesn’t count, and neither would a 5: <code>&gt;</code> means strictly more."},
+    tip: 'Use the table like a sieve: apply one condition at a time and cross out rows. <b>AND</b> means a row has to pass every condition.',
+    steps: [
+      { type: 'multi', pts: 3, sql: 'SELECT name FROM monsters\nWHERE atk >= 5\n  AND hp < 20;', start: "Check one condition at a time. Start with ATK ≥ 5 and cross out every row that fails it.", prompt: 'Which monsters does this query return? Tick every one.',
+        options: [{ t: 'Slime', yes: false }, { t: 'Bat', yes: false }, { t: 'Goblin', yes: true }, { t: 'Skeleton', yes: true }, { t: 'Stone Golem', yes: false }], keepOrder: true,
+        hint: 'ATK ≥ 5 leaves only three rows: the Goblin, the Skeleton and the Stone Golem. Now check those three for HP under 20.',
+        why: 'ATK ≥ 5 keeps the Goblin (5), the Skeleton (6) and the Golem (8). HP < 20 then drops the Golem (30). The Goblin and the Skeleton pass both.' },
+      { type: 'mc', pts: 3, sql: 'SELECT name FROM monsters\nORDER BY spd DESC\nLIMIT 2;', start: "Sort the spd column from biggest to smallest, then keep the first two.", prompt: 'What does this one return, in order?',
+        options: ['Bat, Goblin', 'Goblin, Bat', 'Slime, Skeleton', 'Stone Golem, Slime'], answer: 0,
+        hint: '`DESC` means biggest first, so #1 is the monster with SPD 6. Which monster has the next-highest SPD?',
+        why: 'SPD from high to low: Bat 6, Goblin 3, then Slime and Skeleton at 2, Golem 1. `LIMIT 2` keeps Bat, Goblin.' },
+      { type: 'mc', pts: 4, start: "Line each Python version up against the SQL from step 1, piece by piece.", prompt: 'Which Python line asks the same question as the query in step 1?',
+        options: [
+          { code: 'rows = [row for row in MONSTERS.values()\n        if row["atk"] >= 5 and row["hp"] < 20]' },
+          { code: 'rows = [row for row in MONSTERS.values()\n        if row["atk"] >= 5 or row["hp"] < 20]' },
+          { code: 'rows = [row for row in MONSTERS.values()\n        if row["atk"] > 5 and row["hp"] < 20]' },
+          { code: 'rows = [row for row in MONSTERS.values()\n        if row["hp"] < 20]' },
+        ], answer: 0,
+        hint: 'Compare each one to the SQL word by word: `>=` vs `>`, AND vs OR, and whether both conditions are there at all.',
+        why: '`WHERE` becomes the `if`, `AND` becomes `and`, and `>=` stays `>=`. With `or`, every monster comes back. With `>`, the Goblin (ATK exactly 5) drops out. Without the ATK check, the Slime and the Bat sneak in.' },
+    ],
+  },
+  /* ---------------------------------------------------------------- 3 */
+  {
+    id: 'p3', lesson: 'Stat Check', topic: 'Joins', title: 'Follow the ids',
+    story: '<p><code>STAGES</code> doesn’t copy monster stats. Each stage lists monster <b>ids</b>, and <code>total_xp</code> looks each one up in <code>MONSTERS</code>. In SQL, that look-up is a <b>JOIN</b>.</p>',
+    code: 'def total_xp(stage_id):\n    stage = STAGES[stage_id]\n    total = 0\n    for monster_id in stage["foes"]:\n        total += MONSTERS[monster_id]["xp"]\n    return total',
+    visual(r) {
+      const gx = r[2] ? 10 : 6;
+      let h = '<div class="vgrid" style="grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)"><div><p class="tname">STAGES</p><table class="dtable"><thead><tr><th>id</th><th>name</th><th>foes</th></tr></thead><tbody>'
+        + STG.map((s) => `<tr class="${r[0] && s.id === 2 ? 'hit' : ''}"><td class="n">${s.id}</td><td>${esc(s.name)}</td><td><code>${s.foes.map((f) => '"' + f + '"').join(', ')}</code></td></tr>`).join('') + '</tbody></table></div>'
+        + '<div><p class="tname">MONSTERS (just the xp column)</p><table class="dtable"><thead><tr><th></th><th>id</th><th>xp</th></tr></thead><tbody>'
+        + MON.map((m) => `<tr><td>${m.em}</td><td><code>${m.id}</code></td><td class="n">${m.id === 'goblin' && r[2] ? '<s>6</s> <b>10</b>' : m.xp}</td></tr>`).join('') + '</tbody></table></div></div>';
+      if (r[0]) h += `<div class="joinrow">total_xp(2): ${['goblin', 'bat', 'goblin'].map((id) => `<span class="jchip${r[2] && id === 'goblin' ? ' buff' : ''}">"${id}" → <b>${id === 'goblin' ? gx : monById[id].xp}</b></span>`).join(' + ')} = <span class="jsum">${r[2] ? 24 : 16}</span></div>`;
+      return h;
+    },
+    remember: "A <code>foes</code> list holds monster <b>ids</b>, not stats. <code>MONSTERS[id]</code> is that monster’s whole row, and <code>MONSTERS[id][\"xp\"]</code> is one cell in it. The loop looks up every id, so a monster listed twice counts twice.",
+    example: {"code": "total_xp(1)\n# Mossy Gate: \"slime\", \"slime\", \"bat\"\n# 3 + 3 + 4 = 10", "text": "Same function, a different stage: write the ids down, look each one up, add."},
+    tip: 'Follow every id in the foes list: find its row in MONSTERS and read one column. Write each number down as you go, even repeats.',
+    steps: [
+      { type: 'number', pts: 3, label: 'total_xp(2) =', start: "Write down Goblin Camp’s three ids, then find each one’s xp in the right-hand table.", prompt: 'What does `total_xp(2)` return?', answer: 16, show: '16',
+        hint: 'goblin, bat, goblin is three look-ups, and the goblin counts both times. Goblin xp is 6, bat xp is 4.',
+        why: 'Goblin Camp’s foes are goblin, bat, goblin: 6 + 4 + 6 = 16. The loop looks up every id, repeats included.' },
+      { type: 'mc', pts: 3, start: "Picture a designer who wants to change one monster next month.", prompt: 'Why does STAGES store the id `"goblin"` instead of a copy of the goblin’s whole row?',
+        options: ['So each monster’s stats live in one place: change the goblin once in MONSTERS and every stage that uses it changes too', 'Because a Python list isn’t allowed to hold dicts', 'So each stage can give its goblins different stats', 'To make the game load faster by skipping the MONSTERS table'], answer: 0,
+        hint: 'Imagine the goblin’s stats were copied into every stage, and a designer wants to make goblins stronger. How many places would need editing, and what if one got missed?',
+        why: 'Store each fact once and point to it by id. That’s the rule behind every database: no copies that can disagree. The JOIN (here, the look-up in the loop) brings the rows together when you need them.' },
+      { type: 'number', pts: 4, label: 'total_xp(2) =', start: "Only one cell of MONSTERS changed. Redo your step 1 sum with the new number.", prompt: 'A designer changes **only** `MONSTERS["goblin"]["xp"]`, from 6 to 10. Nothing in STAGES changes. What does `total_xp(2)` return now?', answer: 24, show: '24',
+        hint: 'STAGES still says goblin, bat, goblin. Which of those three look-ups gives a different number now?',
+        why: '10 + 4 + 10 = 24. One edit in MONSTERS, and every stage with a goblin gives the new XP. That’s the payoff for storing ids instead of copies.' },
+    ],
+  },
+  /* ---------------------------------------------------------------- 4 */
+  {
+    id: 'p4', lesson: 'Stat Check', topic: 'Bug hunt', title: 'The goblins that share one body',
+    story: '<p>A teammate “simplified” <code>start_stage</code>. The Twin Goblins stage has <code>"foes": ["goblin", "goblin"]</code>, and this loop builds the fight:</p>',
+    code: 'next_id = 1\nfor kind in stage["foes"]:\n    foe = MONSTERS[kind]          # the teammate\'s line\n    foe["id"] = next_id\n    state["foes"][next_id] = foe\n    next_id += 1',
+    visual(r) {
+      const tags = ['state["foes"][1]', 'state["foes"][2]', 'MONSTERS["goblin"]'];
+      if (!r[0]) return `<div class="mem"><div class="tags">${tags.map((t) => '<span class="tg">' + esc(t) + '</span>').join('')}</div><span class="arr">→</span><div class="boxes"><span class="q">How many goblin dicts exist? (the diagram fills in as you go)</span></div></div>`;
+      if (!r[2]) return `<div class="mem"><div class="tags">${tags.map((t) => '<span class="tg">' + esc(t) + '</span>').join('')}</div><span class="arr">→</span><div class="boxes"><div class="obj shared"><span class="lbl">ONE dict, three names</span>{"name": "Goblin", "hp": <b>${r[1] ? '10' : '14'}</b>, …, "id": <b>2</b>}</div></div></div><p class="vcap">There was never a copy. Every name points at the template row inside MONSTERS.</p>`;
+      return `<div class="mem"><div class="tags"><span class="tg">state["foes"][1]</span><span class="tg">state["foes"][2]</span><span class="tg">MONSTERS["goblin"]</span></div><span class="arr">→</span><div class="boxes"><div class="obj"><span class="lbl">new row (a copy)</span>{"name": "Goblin", "hp": 10, …, "id": 1}</div><div class="obj"><span class="lbl">new row (a copy)</span>{"name": "Goblin", "hp": 14, …, "id": 2}</div><div class="obj tmpl"><span class="lbl">the template, untouched</span>{"name": "Goblin", "hp": 14, …}</div></div></div><p class="vcap">With <code>dict(...)</code>: three names, three dicts.</p>`;
+    },
+    remember: "<code>b = a</code> with a dict never copies anything: it gives the same dict a second name. Change it through either name and both see it. <code>dict(a)</code> makes a brand-new dict with the same contents.",
+    example: {"code": "a = {\"hp\": 5}\nb = a\nb[\"hp\"] = 1\nprint(a[\"hp\"])    # 1: one dict, two names\n\nc = dict(a)\nc[\"hp\"] = 9\nprint(a[\"hp\"])    # still 1: c is its own copy", "text": "Draw one box for every dict that exists, and an arrow from each name to its box."},
+    tip: 'Draw it: a box for every dict that exists, and an arrow from every name to its box. `=` with a dict on the right draws an arrow; it never draws a new box.',
+    steps: [
+      { type: 'number', pts: 3, label: 'id =', start: "Ask yourself: how many goblin dicts does this loop actually create?", prompt: 'After the loop, what is `state["foes"][1]["id"]`?', answer: 2, show: '2',
+        hint: '`foe = MONSTERS[kind]` doesn’t copy anything. Both trips through the loop get the very same dict. What’s the last value written to its "id"?',
+        why: 'There’s only one goblin dict. The loop writes id 1 into it, then id 2 into the same dict. Both names, and the template in MONSTERS, now show id 2.' },
+      { type: 'number', pts: 3, label: 'hp =', start: "Which dict did the hit change, and which names point at that dict?", prompt: 'The hero hits the front goblin once, for 4 damage. What is `MONSTERS["goblin"]["hp"]` now?', answer: 10, show: '10',
+        hint: 'Which dict did the hit change? Is the template in MONSTERS a different dict, or the same one?',
+        why: 'The hit took 14 → 10 on the one shared dict, which IS the row in MONSTERS. Game data that should be read-only just got UPDATEd, so every goblin after this starts hurt.' },
+      { type: 'mc', pts: 4, start: "Every foe needs its own brand-new dict.", prompt: 'Which change to the teammate’s line fixes it?',
+        options: ['`foe = dict(MONSTERS[kind])`', '`foe = MONSTERS[kind]`, written out twice, once per goblin', '`state["foes"][next_id] = MONSTERS`', '`foe = MONSTERS[kind]["hp"]`'], answer: 0,
+        hint: 'Each foe needs its own new row that starts as a copy of the template. Which option makes a new dict?',
+        why: '`dict(...)` builds a brand-new dict with the same keys and values. In database terms: INSERT a new row copied from the template, instead of pointing at the template and UPDATEing it.' },
+    ],
+  },
+  /* ---------------------------------------------------------------- 5 */
+  {
+    id: 'p5', lesson: 'Stat Check', topic: 'Bug hunt', title: 'The free potion',
+    story: '<p>Another teammate rewrote <code>buy</code>. A potion costs <b>5 gold</b> and the bag holds <b>5</b> of each item (<code>BAG_LIMIT = 5</code>). A player with <b>13 gold</b> and <b>4 potions</b> clicks <b>Buy potion three times</b>.</p>',
+    code: 'def buy(state, item_id):\n    item = ITEMS[item_id]\n    player = state["player"]\n    bag = state["bag"]\n    bag[item_id] = bag.get(item_id, 0) + 1\n    if player["gold"] < item["price"]:\n        state["message"] = "Not enough gold."\n        return\n    if bag[item_id] > BAG_LIMIT:\n        state["message"] = "Your bag is full."\n        return\n    player["gold"] -= item["price"]\n    state["message"] = "Bought a " + item["name"] + "."',
+    visual(r) {
+      const potions = r[0] ? 7 : 4, gold = r[1] ? 8 : 13;
+      let slots = '';
+      for (let i = 0; i < 5; i++) slots += `<span class="slot${i < potions ? ' full' : ''}">${i < potions ? '🧪' : ''}</span>`;
+      if (potions > 5) { slots += '<span class="sep" aria-hidden="true"></span>'; for (let i = 5; i < potions; i++) slots += '<span class="slot over">🧪</span>'; }
+      let h = `<div class="shop"><div class="coins"><b>🪙 ${gold}</b><span>gold</span></div><div class="bag"><div class="slots">${slots}</div><div class="lim">bag: ${potions} potions · BAG_LIMIT = 5${potions > 5 ? ' · <b style="color:var(--red)">' + (potions - 5) + ' over the limit</b>' : ''}</div></div><div class="coins" style="min-width:auto"><b style="color:var(--blue)">×3</b><span>Buy potion</span></div></div>`;
+      if (r[0] || r[1]) h += '<table class="blog"><thead><tr><th>Click</th><th>Bag first</th><th>Gold check</th><th>Bag check</th><th>Pays?</th></tr></thead><tbody>'
+        + '<tr><td class="n">1</td><td>4 → 5</td><td>13 ≥ 5 ok</td><td>5 &gt; 5? no</td><td>' + (r[1] ? 'yes: 13 → 8' : '?') + '</td></tr>'
+        + '<tr><td class="n">2</td><td>5 → 6</td><td>' + (r[1] ? '8 ≥ 5 ok' : '?') + '</td><td>6 &gt; 5 → return</td><td>' + (r[1] ? 'no' : '?') + '</td></tr>'
+        + '<tr><td class="n">3</td><td>6 → 7</td><td>' + (r[1] ? '8 ≥ 5 ok' : '?') + '</td><td>7 &gt; 5 → return</td><td>' + (r[1] ? 'no' : '?') + '</td></tr></tbody></table>';
+      return h;
+    },
+    remember: "A function runs top to bottom. <code>return</code> stops it right there, but anything that already ran stays done: a <code>return</code> never undoes the lines above it.",
+    example: {"code": "def visit(state):\n    state[\"visits\"] += 1\n    if state[\"closed\"]:\n        return\n    state[\"tickets\"] += 1", "text": "When the park is closed, <code>visits</code> still goes up by 1 before the <code>return</code>, but <code>tickets</code> doesn’t. Order decides what sticks."},
+    tip: 'Play the computer: one row per click, columns <b>potions</b> and <b>gold</b>. Run the function top to bottom each time, and stop at every <code>return</code>.',
+    steps: [
+      { type: 'number', pts: 3, label: 'Potions:', start: "Trace click 1 line by line, then clicks 2 and 3. Watch the first line that changes something.", prompt: 'After the three clicks, how many potions are in the bag?', answer: 7, show: '7',
+        hint: 'Every click runs `bag[item_id] = … + 1` before any check. Clicks 2 and 3 do hit a `return`, but their +1 already happened.',
+        why: 'Every click adds a potion first. Click 1: 5 potions, both checks pass, it pays. Clicks 2 and 3: the bag goes to 6 and then 7, then the bag check returns, but the potion is already in. 7 potions.' },
+      { type: 'number', pts: 3, label: 'Gold:', start: "Gold only changes on one line. Which clicks make it that far down?", prompt: 'How much gold does the player have after the three clicks?', answer: 8, show: '8',
+        hint: 'Click 1 reaches `player["gold"] -= item["price"]`. Do clicks 2 and 3 get past the bag check?',
+        why: 'Only click 1 reaches `player["gold"] -= item["price"]`: 13 → 8. Clicks 2 and 3 return early, after the potion was already added. Two free potions.' },
+      { type: 'mc', pts: 4, start: "A failed purchase has to leave the potions <b>and</b> the gold exactly as they were.", prompt: 'Which order makes a purchase that fails change nothing at all?',
+        options: ['Check the gold → check the bag isn’t full → take the gold → add the potion', 'Add the potion → take the gold → check the gold → check the bag', 'Check the gold → take the gold → check the bag → add the potion', 'Take the gold → check the gold → add the potion → check the bag'], answer: 0,
+        hint: 'A `return` stops the function, but it doesn’t undo lines that already ran. Where does every check have to be, compared to every change?',
+        why: 'Every check first, then every write. The third order would still charge a player whose bag is full. Real databases add a safety net called a **transaction**: if anything fails partway through, ROLLBACK undoes the writes already made. All or nothing.' },
+    ],
+  },
+  /* ---------------------------------------------------------------- 6 */
+  {
+    id: 'p6', lesson: 'Smart Moves', topic: 'Sense', title: 'Paint the danger',
+    story: '<p>A robot can’t be scared of lava. It only compares numbers. <code>danger_at</code> scores a square: what the square is, plus the slime: <b>+60</b> if the slime is <i>on</i> the square, <b>+30</b> if it’s <b>one step</b> away. Steps count the way the robot walks: up, down, left, right. Never diagonal.</p>',
+    code: 'DANGER = {"lava": 100, "enemy": 60, "spikes": 40, "floor": 0, ...}\n\ndef danger_at(world, x, y):\n    danger = DANGER.get(kind_at(world, x, y), 0)\n    for e in world["enemies"]:\n        d = steps_between(x, y, e["x"], e["y"])\n        if d == 0:\n            danger += DANGER["enemy"]\n        elif d == 1:\n            danger += DANGER["enemy"] // 2\n    return danger',
+    visual(r) {
+      const rows = ['..^..', '.~.E.', '..@^.', '.^...', '....G'];
+      const nums = {};
+      if (r[0]) nums['3,2'] = 70;
+      if (r[1]) Object.assign(nums, { '2,1': 30, '4,2': 0, '2,3': 0, '1,1': 100 });
+      if (r[2]) nums['1,2'] = 0;
+      return `<div class="bwrap">${board(rows, { labels: { '3,2': 'A', '2,1': 'B', '4,2': 'C', '2,3': 'D', '1,1': 'E' }, nums, pick: r[2] ? '2,3' : null, alt: 'A 5 by 5 map: the robot in the middle, a slime above-right, lava, spikes, and the flag in the bottom-right corner' })}<div>${legend()}<p class="vcap">The robot 🤖 is at the center. The flag 🏁 is 2 right and 2 down.</p>${r[2] ? '<p class="vcap"><b>Down</b>: danger 0 and closer to the flag than left.</p>' : ''}</div></div>`;
+    },
+    remember: "Distance counts steps up, down, left and right only: <code>|x1 − x2| + |y1 − y2|</code>. A diagonal neighbor is 2 steps away. A square’s danger = its own number (lava 100, spikes 40, floor 0) + 60 if the slime is on it, or + 30 if the slime is exactly 1 step away.",
+    example: {"code": "# a lava square right next to a slime\n100 + 30 = 130\n\n# a floor square with the slime standing on it\n0 + 60 = 60", "text": "Two squares that aren’t on this map. Always: the square first, then the slime bonus."},
+    tip: 'Count distance with your finger on the grid, only up, down, left, right. Then add: the square’s own number + the slime bonus (60 on it, 30 next to it, 0 otherwise).',
+    steps: [
+      { type: 'number', pts: 3, label: 'Danger of A:', start: "What is square A by itself? Then: how many steps is A from the slime?", prompt: 'What’s the danger of square **A**?', answer: 70, show: '70',
+        hint: 'A is spikes, so it starts at 40. The slime is directly above A: that’s 1 step. What does 1 step add?',
+        why: 'A is spikes (40), and the slime is one step straight up from it (+30). 40 + 30 = 70.' },
+      { type: 'multi', pts: 3, start: "Do each square on its own: its own number + the slime bonus. Count steps, not diagonals.", prompt: 'Which squares have a danger of exactly **0**? Tick every one.',
+        options: [{ t: 'Square B', yes: false }, { t: 'Square C', yes: true }, { t: 'Square D', yes: true }, { t: 'Square E', yes: false }], keepOrder: true,
+        hint: 'A diagonal neighbor is 2 steps away, not 1. And lava only counts on the lava square itself; being next to it adds nothing.',
+        why: 'B is floor but one step from the slime: 30. C is diagonal to the slime, which is 2 steps: 0. D is plain floor 3 steps away: 0. E is lava: 100.' },
+      { type: 'mc', pts: 4, code: 'def think(s):                       # the robot "Careful"\n    move = toward_goal(s)           # here: "right"\n    if s["danger"][move] >= 50:     # too dangerous?\n        move = safest(s)            # least danger; ties: closer to the flag\n    return move',
+        start: "Look up the danger of the square to the right first. Is it 50 or more?", prompt: 'The robot runs **Careful**. Which way does it step?', options: ['up', 'down', 'left', 'right'], answer: 1, keepOrder: true, row: true,
+        hint: 'Right leads to A. Is A’s danger 50 or more? If it is, `safest` picks the lowest danger among up, down, left and right, and if two tie, the one closer to the flag.',
+        why: 'Right is A (70 ≥ 50), so Careful asks `safest`. Up is B (30), down is D (0), left is plain floor (0). Down and left tie at 0, and down is closer to the flag. Down.' },
+    ],
+  },
+  /* ---------------------------------------------------------------- 7 */
+  {
+    id: 'p7', lesson: 'Smart Moves', topic: 'Rules', title: 'First true rule wins',
+    story: '<p>Here’s a teammate’s robot brain. Below it are two frozen moments: what the robot senses, and what each helper would return right now.</p>',
+    codeMarks(r) {
+      const m = {};
+      if (r[0] && !r[1]) { m[2] = 'passed'; m[3] = 'passed'; m[4] = 'fired'; m[5] = 'fired'; }
+      if (r[1]) { m[2] = 'fired'; m[3] = 'fired'; }
+      return m;
+    },
+    code: 'def think(s):\n    if s["hp"] <= 1:                          # rule 1\n        return away_from_enemy(s)\n    elif s["danger"][toward_goal(s)] >= 50:   # rule 2\n        return safest(s)\n    elif s["enemy_dist"] <= 2:                # rule 3\n        return away_from_enemy(s)\n    else:                                     # rule 4\n        return toward_goal(s)',
+    visual(r) {
+      const card = (t, rows, verdict) => `<div class="sit"><h4>${t}</h4><dl>${rows.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('')}</dl>${verdict ? '<div class="verdict">' + verdict + '</div>' : ''}</div>`;
+      return '<div class="sits">'
+        + card('Situation A', [['hp', '3 ❤❤❤'], ['enemy_dist', '1 (a slime right next to it)'], ['toward_goal(s)', '"right" · danger 70'], ['safest(s)', '"down"'], ['away_from_enemy(s)', '"left"']], r[0] ? 'Rule 2 fires first → <b>"down"</b>' : '')
+        + card('Situation B', [['hp', '1 ❤'], ['enemy_dist', '7 (nothing near)'], ['toward_goal(s)', '"down" · danger 0'], ['safest(s)', '"down"'], ['away_from_enemy(s)', '"up"']], r[1] ? 'Rule 1 fires → <b>"up"</b>, away from the flag' : '')
+        + '</div>';
+    },
+    remember: "An <code>if / elif / else</code> chain runs at most <b>one</b> branch. Python checks from the top, the first condition that’s True runs, and <code>return</code> ends the function, so nothing below it is even checked. <code>and</code> needs both sides True; <code>or</code> needs at least one.",
+    example: {"code": "def mood(hp):\n    if hp <= 1:\n        return \"scared\"\n    elif hp <= 2:\n        return \"careful\"\n    else:\n        return \"brave\"\n\nmood(1)    # \"scared\"", "text": "With hp 1, <code>hp &lt;= 2</code> is also True, but it never gets checked: the first True rule already returned."},
+    tip: 'For each situation, go down the rules in order and write T or F next to each one. Circle the first T: that’s the only line that runs.',
+    steps: [
+      { type: 'mc', pts: 3, start: "Go down the rules in order with situation A’s numbers and mark each one True or False.", prompt: 'In **situation A**, which rule returns the move?', options: ['Rule 1', 'Rule 2', 'Rule 3', 'Rule 4 (else)'], answer: 1, keepOrder: true, row: true,
+        hint: 'Two of the rules are true in situation A. Python checks from the top and stops at the first one that’s true.',
+        why: 'Rule 1: is hp 3 ≤ 1? No. Rule 2: is danger 70 ≥ 50? Yes, so it returns `safest(s)` and nothing below it is even checked. Rule 3 was true too, but it never got a turn.' },
+      { type: 'mc', pts: 3, start: "Same thing with situation B: which rule is the first True one?", prompt: 'In **situation B**, which way does the robot move?', options: ['up', 'down', 'left', 'right', 'stay'], answer: 0, keepOrder: true, row: true,
+        hint: 'Start at the top again. Is rule 1 true? Does rule 1 care whether an enemy is anywhere near?',
+        why: 'hp 1 ≤ 1, so rule 1 fires and returns `away_from_enemy(s)`: up. The flag is down and nothing is chasing it, but the hurt rule never checks that. It runs from an enemy that isn’t there.' },
+      { type: 'mc', pts: 4, start: "You want the rule to need both things at the same time.", prompt: 'Which new first line makes rule 1 run only when the robot is hurt **and** an enemy is close?',
+        options: ['`if s["hp"] <= 1 and s["enemy_dist"] <= 2:`', '`if s["hp"] <= 1 or s["enemy_dist"] <= 2:`', '`if s["hp"] >= 1 and s["enemy_dist"] <= 2:`', '`if s["enemy_dist"] <= 1:`'], answer: 0,
+        hint: '“Hurt and close” means both have to be true at the same time. Which keyword needs both?',
+        why: '`and` needs both. In situation B (hp 1, enemy 7 away) it’s now False, so the robot falls through to rule 4 and heads down to the flag. `or` would fire whenever either one is true, which is even worse.' },
+    ],
+  },
+  /* ---------------------------------------------------------------- 8 */
+  {
+    id: 'p8', lesson: 'Smart Moves', topic: 'Scores', title: 'Score every move',
+    story: '<p>No rules this time: the robot scores every possible move and picks the highest. The cards show <code>s["after"][move]</code>, what each move would lead to. The middle card is staying put.</p>',
+    code: 'def score(s, move):\n    a = s["after"][move]\n    if a["blocked"]:\n        return -1000\n    points = 0\n    points -= a["goal_dist"] * 10\n    points -= a["danger"]\n    points -= a["visits"] * 5\n    return points\n\ndef think(s):\n    best = "stay"\n    for move in ["up", "down", "left", "right"]:\n        if score(s, move) > score(s, best):\n            best = move\n    return best',
+    visual(r) {
+      const sc = { stay: -55, up: -50, down: r[2] ? -40 : -70, left: -1000, right: -65 };
+      const show = { stay: r[1], up: r[1], down: r[1] || r[2], left: r[1], right: r[0] };
+      const best = r[2] ? 'down' : r[1] ? 'up' : null;
+      const c = (m, title, lines, cls) => `<div class="mv ${cls || ''}${best === m ? ' best' : ''}" style="grid-area:${m}"><h5>${title}</h5>${lines}${show[m] ? '<br><span class="sc">' + sc[m] + '</span>' : ''}</div>`;
+      return '<div class="cross">'
+        + c('up', 'up', 'goal_dist 5<br>danger 0<br>visits 0')
+        + c('left', 'left', 'blocked: a wall', 'blocked')
+        + c('stay', 'stay 🤖', 'goal_dist 4<br>danger 0<br>visits 3', 'stay')
+        + c('right', 'right', 'goal_dist 3<br>danger 30 <span class="muted">(by a slime)</span><br>visits 1')
+        + c('down', 'down', `goal_dist 3<br>danger ${r[2] ? '<s>40</s> 10' : '40'} <span class="muted">(spikes)</span><br>visits 0`)
+        + '</div>' + (r[2] ? '<p class="vcap" style="text-align:center">Spikes now cost 10: same code, different robot.</p>' : '');
+    },
+    remember: "<code>score</code> starts at 0 and subtracts costs, so a higher score is better. With negative numbers, the one closest to 0 is the biggest: −40 beats −50. <code>think</code> starts with <code>best = \"stay\"</code> and only switches when a move scores strictly more (<code>&gt;</code>).",
+    example: {"code": "# a move with goal_dist 2, danger 0, visits 2\n0 - 2*10 - 0 - 2*5 = -30", "text": "Do the three subtractions one at a time, and keep the minus signs."},
+    tip: 'Make a little table: move, then score. With negative numbers, the one closest to 0 is the biggest: −40 beats −50.',
+    steps: [
+      { type: 'number', pts: 3, label: 'score =', start: "Use the three numbers on the right card in <code>score</code>.", prompt: 'What is `score(s, "right")`?', answer: -65, show: '-65',
+        hint: 'It’s 0 − (3 × 10) − 30 − (1 × 5). Every part is subtracted, so the answer is negative.',
+        why: '0 − 3×10 − 30 − 1×5 = −65.' },
+      { type: 'mc', pts: 3, start: "Score all five cards, then find the one closest to 0.", prompt: 'Which move does `think(s)` return?', options: ['up', 'down', 'left', 'right', 'stay'], answer: 0, keepOrder: true, row: true,
+        hint: 'stay is −55, down −70, left −1000, right −65. Work out up, then pick the one closest to 0.',
+        why: 'stay −55, up −50, down −70, left −1000, right −65. Up wins with −50, even though it walks away from the flag: the spikes and the slime cost more than one extra step.' },
+      { type: 'mc', pts: 4, start: "Only the down card changes. Re-score that one card.", prompt: 'A designer changes `DANGER["spikes"]` from 40 to 10. Nothing else changes. Now which move?', options: ['up', 'down', 'right', 'stay'], answer: 1, keepOrder: true, row: true,
+        hint: 'Only one card has spikes. Re-score that one and compare it with up’s −50.',
+        why: 'Down becomes 0 − 30 − 10 − 0 = −40, which beats up’s −50. Same code, one number changed, a different robot. Designers call that tuning.' },
+    ],
+  },
+  /* ---------------------------------------------------------------- 9 */
+  {
+    id: 'p9', lesson: 'Smart Moves', topic: 'Scores', title: 'Stuck at the wall',
+    story: '<p>The flag is right behind a wall. This robot scores moves only by how far each one leaves it from the flag. <code>goal_dist</code> counts steps as if walls weren’t there, and walking into a wall counts as staying put.</p>',
+    code: 'def score(s, move):\n    a = s["after"][move]\n    if a["blocked"]:\n        return -1000\n    return -a["goal_dist"] * 10\n\ndef think(s):\n    best = "stay"\n    for move in ["up", "down", "left", "right"]:\n        if score(s, move) > score(s, best):\n            best = move\n    return best',
+    visual(r) {
+      const rows = ['#######', '#.....#', '#..@#G#', '#.....#', '#######'];
+      let h = `<div class="bwrap">${board(rows, { small: true, nums: r[0] ? { '3,1': -30, '3,3': -30, '2,2': -40, '3,2': -20 } : {}, trail: r[2] ? ['3,1', '4,1', '5,1'] : null, alt: 'The robot is just left of a wall; the flag is just right of it' })}<div><p class="vcap">The robot is 2 steps from the flag (straight through the wall).${r[0] ? ' Numbers: what each square scores without the visits cost. Staying put (−20) beats them all.' : ''}</p></div></div>`;
+      if (r[2]) h += '<table class="blog"><thead><tr><th>Turn</th><th>visits on its square</th><th>score(stay)</th><th>score(up)</th><th>picks</th></tr></thead><tbody>'
+        + '<tr><td class="n">1</td><td class="n">1</td><td class="n">−25</td><td class="n">−30</td><td>stay</td></tr>'
+        + '<tr><td class="n">2</td><td class="n">2</td><td class="n">−30</td><td class="n">−30</td><td>stay (a tie isn’t &gt;)</td></tr>'
+        + '<tr><td class="n">3</td><td class="n">3</td><td class="n">−35</td><td class="n">−30</td><td><b>up</b>, then around the wall to the flag</td></tr></tbody></table>';
+      return h;
+    },
+    remember: "<code>goal_dist</code> ignores walls: it’s just how far left/right plus how far up/down. Walking into a wall counts as staying put. A tie isn’t <code>&gt;</code>, so <code>think</code> keeps what it already has, and it checks moves in the order up, down, left, right.",
+    example: {"code": "score(stay) = -30,  score(up) = -30   ->  best stays \"stay\"\nscore(stay) = -30,  score(up) = -29   ->  best becomes \"up\"", "text": "Only a strictly higher score makes <code>think</code> switch."},
+    tip: 'Keep a scoreboard, one row per turn. And remember: `think` only switches when a move scores strictly more (`>`), so a tie keeps what it already has.',
+    steps: [
+      { type: 'mc', pts: 3, start: "Score staying put and each of the four moves from where the robot stands now.", prompt: 'With this score, what does the robot do on its first turn?', options: ['It stays put', 'It steps up', 'It steps down', 'It steps left'], answer: 0, keepOrder: true,
+        hint: 'Score staying put and each move. From where it stands the flag is 2 steps away. How far would it be after stepping up? Down? Left?',
+        why: 'stay: −20. Up and down leave the flag 3 steps away: −30. Left: −40. Right is the wall: −1000. Staying put scores best, every turn, forever.' },
+      { type: 'mc', pts: 3, start: "Does the code freeze, crash, or make a choice? Is anything random?", prompt: 'What’s really going on with this robot?',
+        options: ['A local maximum: every move it can see scores worse, even though going around would win in the end', 'An infinite loop: `think` never returns, so the game freezes', 'A crash: `goal_dist` can’t be measured through a wall', 'Bad luck: on another run it would pick a different move'], answer: 0,
+        hint: 'Does the game freeze? Does `think` return a move? Is anything random in this code?',
+        why: 'It’s a **local maximum**: the best spot it can see from here is where it already is. Going around means scoring worse for a couple of turns first. Nothing is random and nothing crashes; it just keeps choosing stay.' },
+      { type: 'mc', pts: 4, start: "Make one row per turn: visits on its square, score(stay), score(up). Stop at the first turn where up wins outright.", prompt: 'Now add `points -= a["visits"] * 5` to `score`. The start square already has 1 visit, and every turn it stays adds 1 more. On which turn does it finally move, and which way?',
+        options: ['Turn 2, up', 'Turn 3, up', 'Turn 3, down', 'Turn 2, down', 'Turn 4, up'], answer: 1, keepOrder: true,
+        hint: 'Turn 1: stay is −20 − 1×5. Up and down have never been visited: −30. Keep going turn by turn. On a tie, `>` is False, so `think` keeps what it already has, and it checks up before down.',
+        why: 'Turn 1: stay −25 beats up’s −30, so it stays. Turn 2: stay −30 ties up’s −30, and a tie isn’t `>`, so it stays. Turn 3: stay −35, and up’s −30 wins (down is −30 too, but up was checked first). Nobody wrote “go around the wall”; it came out of the numbers.' },
+    ],
+  },
+  /* ---------------------------------------------------------------- 10 */
+  {
+    id: 'p10', lesson: 'Smart Moves', topic: 'States', title: 'The castle guard',
+    story: '<p>The guard is always in one of four states. Here’s the design. <b>The first rule is checked before all the others.</b> Every turn its <code>timer</code> goes up by 1 before it decides, and goes back to 0 when it switches state.</p><ul style="margin:.2rem 0 .6rem;padding-left:1.2rem"><li><b>HP 1 or less → flee.</b> This beats everything.</li><li>patrol + sees the hero → chase</li><li>chase + loses sight → search</li><li>search + sees the hero → chase</li><li>search + timer 5 or more → patrol</li><li>flee + HP back to 3 → patrol</li><li>anything else: stay in the same state</li></ul>',
+    visual(r) {
+      const lit = (k) => (r[0] && ['pc', 'cs'].includes(k)) || (r[1] && k === 'sp') || (r[2] && k === 'pf') ? '#2f9e44' : '#8a93b8';
+      const node = (x, y, label, cls) => `<g><rect x="${x - 52}" y="${y - 20}" width="104" height="40" rx="20" fill="${{ patrol: '#5c7cfa', chase: '#e03131', search: '#f08c00', flee: '#7048e8' }[cls]}"/><text x="${x}" y="${y + 5}" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="15" font-weight="600" fill="#fff">${label}</text></g>`;
+      const arrow = (k, d, lx, ly, label) => `<path d="${d}" fill="none" stroke="${lit(k)}" stroke-width="${lit(k) === '#2f9e44' ? 3.5 : 2}" marker-end="url(#ah${lit(k) === '#2f9e44' ? 'g' : ''})"/><text x="${lx}" y="${ly}" text-anchor="middle" font-family="IBM Plex Sans,sans-serif" font-size="12" fill="#5b6485">${label}</text>`;
+      const svg = `<svg viewBox="0 0 560 300" role="img" aria-label="State diagram: patrol, chase, search and flee, with arrows for each rule">
+        <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#8a93b8"/></marker><marker id="ahg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#2f9e44"/></marker></defs>
+        ${arrow('pc', 'M150,52 L398,52', 274, 42, 'sees the hero')}
+        ${arrow('cs', 'M450,74 L450,206', 498, 144, 'loses sight')}
+        ${arrow('sc', 'M420,206 L420,74', 376, 144, 'sees the hero')}
+        ${arrow('sp', 'M398,232 L130,72', 230, 178, 'timer ≥ 5')}
+        ${arrow('pf', 'M86,72 L86,206', 40, 130, 'HP ≤ 1')}
+        ${arrow('fp', 'M116,206 L116,74', 156, 130, 'HP 3')}
+        ${node(98, 52, 'patrol', 'patrol')}${node(450, 52, 'chase', 'chase')}${node(450, 228, 'search', 'search')}${node(98, 228, 'flee', 'flee')}
+        <text x="280" y="290" text-anchor="middle" font-family="IBM Plex Sans,sans-serif" font-size="12" fill="#5b6485">HP ≤ 1 → flee works from every state, not just patrol</text>
+      </svg>`;
+      const T = [[1, true, 3, 4], [2, false, 3, 1], [3, false, 3, 1], [4, false, 3, 2], [5, false, 3, 3], [6, false, 3, 4], [7, false, 3, 5], [8, true, 1, 1]];
+      const after = ['chase', 'search', 'search', 'search', 'search', 'search', 'patrol', 'flee'];
+      const known = (i) => (r[0] && i <= 1) || (r[1] && i <= 6) || (r[2] && i === 7);
+      const strip = '<table class="strip"><thead><tr><th>Turn</th>' + T.map((t) => '<th>' + t[0] + '</th>').join('') + '</tr></thead><tbody>'
+        + '<tr><td class="lab">sees the hero</td>' + T.map((t) => '<td>' + (t[1] ? '👁 yes' : '—') + '</td>').join('') + '</tr>'
+        + '<tr><td class="lab">HP</td>' + T.map((t) => '<td>' + t[2] + '</td>').join('') + '</tr>'
+        + '<tr><td class="lab">timer</td>' + T.map((t) => '<td>' + t[3] + '</td>').join('') + '</tr>'
+        + '<tr><td class="lab">state after</td>' + T.map((t, i) => '<td>' + (known(i) ? '<span class="st ' + after[i] + '">' + after[i] + '</span>' : '<span class="st q">?</span>') + '</td>').join('') + '</tr>'
+        + '</tbody></table>';
+      return '<div class="fsm">' + svg + '</div><p class="vcap">It starts on <b>patrol</b>. What it senses each turn:</p><div style="overflow-x:auto">' + strip + '</div>';
+    },
+    remember: "A state machine is always in exactly one state. Each turn it checks the rules in order and switches on the first one that matches; if none match, it stays where it is. The <code>timer</code> counts the turns spent in the state it’s in now.",
+    example: {"code": "state: chase, sees_hero: True, HP: 3\n# flee? no (HP 3).  chase + loses sight? no.\n# nothing matches  ->  it stays on chase", "text": "A turn where nothing in the design matches is a turn where nothing changes."},
+    tip: 'Fill in the bottom row one turn at a time, left to right. For each turn, check the flee rule first, then only the rules for the state it’s in right now.',
+    steps: [
+      { type: 'mc', pts: 3, start: "Do turn 1 first (patrol + sees the hero), then turn 2 starting from that new state.", prompt: 'What state is the guard in after **turn 2**?', options: ['patrol', 'chase', 'search', 'flee'], answer: 2, keepOrder: true, row: true,
+        hint: 'Turn 1 switches it to chase. On turn 2 it’s chasing and can’t see the hero. Find the design rule for “chase + loses sight.”',
+        why: 'Turn 1: patrol + sees the hero → chase. Turn 2: chase + loses sight → search, not straight back to patrol. Hunting around first is what makes a guard feel smart.' },
+      { type: 'mc', pts: 3, start: "Read along the timer row during the search turns.", prompt: 'On which turn does it give up the search and go back to patrol?', options: ['Turn 6', 'Turn 7', 'Turn 8', 'It never does'], answer: 1, keepOrder: true, row: true,
+        hint: 'The rule is timer 5 **or more**. Find the first search turn where the timer row says 5.',
+        why: 'On search turns 3 to 7 the timer reads 1, 2, 3, 4, 5. On turn 7 it’s 5, and 5 ≥ 5, so it switches back to patrol.' },
+      { type: 'mc', pts: 4, start: "Check the flee rule before anything else.", prompt: 'Turn 8: it’s on patrol, it sees the hero, but it has only 1 HP. What state is it in after turn 8?', options: ['patrol', 'chase', 'search', 'flee'], answer: 3, keepOrder: true, row: true,
+        hint: 'Two rules match: patrol + sees the hero, and HP 1 or less. Which one does the design check first?',
+        why: 'HP ≤ 1 → flee is checked first, so it beats patrol + sees the hero → chase. Rule order is priority, exactly like the robot’s if / elif chain.' },
+    ],
+  },
+];
+PUZZLES.forEach((p, i) => { p.n = i + 1; p.steps.forEach((s, j) => { s.id = p.id + 's' + (j + 1); s.tag = (i + 1) + '.' + (j + 1); }); });
+const ALL_STEPS = PUZZLES.flatMap((p) => p.steps);
+const optText = (o) => (typeof o === 'string' ? o : o.t != null ? o.t : o.code);
+
+/* ---------- state ---------- */
+const S = { name: '', cur: 0, deadline: 0, st: {}, tips: {}, examples: {}, order: {}, draft: {}, leaves: 0, pastes: [], running: false, submitted: false, timedOut: false, secondsLeft: null, timer: null, announced: {}, visited: {} };
+ALL_STEPS.forEach((s) => { S.st[s.id] = { status: 'open', tries: [], pts: 0 }; });
+
+/* seeded shuffle so each student gets their own option order */
+function seeded(str) {
+  let h = 1779033703 ^ str.length;
+  for (let i = 0; i < str.length; i++) { h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); }
+  return function () { h = Math.imul(h ^ (h >>> 16), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
+}
+function shuffled(n, rnd) { const a = [...Array(n).keys()]; for (let i = n - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+/* ---------- scoring ---------- */
+const resolved = (s) => ['ok1', 'ok2', 'miss'].includes(S.st[s.id].status);
+function stepPts(s) { const x = S.st[s.id].status; return x === 'ok1' ? s.pts : x === 'ok2' ? Math.ceil(s.pts / 2) : 0; }
+function puzzlePts(p) { return Math.max(0, p.steps.reduce((n, s) => n + stepPts(s), 0) - (S.tips[p.id] ? CONFIG.TIP_COST : 0)); }
+const totalPts = () => PUZZLES.reduce((n, p) => n + puzzlePts(p), 0);
+const puzzleDone = (p) => p.steps.every(resolved);
+
+/* ---------- intro ---------- */
+$('intro-list').innerHTML = PUZZLES.map((p, i) => (i === 0 ? '<li class="gl"><span class="grp">Stat Check · the game is a database</span></li>' : i === 5 ? '<li class="gl"><span class="grp">Smart Moves · the game AI</span></li>' : '')
+  + `<li><span class="n">${p.n}</span><span>${esc(p.title)} <span class="muted">· ${esc(p.topic)}</span></span></li>`).join('');
+$('start').onclick = () => {
+  const n = $('name').value.trim();
+  if (n.length < 2) { $('name-err').hidden = false; $('name').focus(); return; }
+  $('name-err').hidden = true;
+  S.name = n;
+  const rnd = seeded(n + '|' + Date.now());
+  ALL_STEPS.forEach((s) => { if (s.options) S.order[s.id] = s.keepOrder ? [...s.options.keys()] : shuffled(s.options.length, rnd); });
+  HSCT.start(n);
+  HSCT.log('order', { order: S.order });
+  show('view-work');
+  S.running = true;
+  S.deadline = Date.now() + CONFIG.MINUTES * 60 * 1000;
+  $('timer').hidden = false;
+  renderTiles();
+  goPuzzle(0);
+  tick(); S.timer = setInterval(tick, 500);
+  window.addEventListener('beforeunload', guard);
+};
+$('name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('start').click(); });
+function show(id) { document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === id)); window.scrollTo(0, 0); }
+function guard(e) { if (S.running && !S.submitted) { e.preventDefault(); e.returnValue = ''; } }
+
+/* ---------- navigation ---------- */
+function renderTiles() {
+  $('tiles').innerHTML = PUZZLES.map((p, i) => {
+    const started = p.steps.some((s) => resolved(s) || S.st[s.id].tries.length), done = puzzleDone(p);
+    const perfect = done && p.steps.every((s) => S.st[s.id].status === 'ok1') && !S.tips[p.id];
+    return `<button type="button" data-go="${i}" class="${i === 5 ? 'gap ' : ''}${done ? 'done' + (perfect ? '' : ' partial') : started ? 'started' : ''}${i === S.cur ? ' cur' : ''}" aria-label="Puzzle ${p.n}${done ? ', done' : ''}">${p.n}</button>`;
+  }).join('');
+  $('stat-pts').innerHTML = S.running || S.submitted ? `<b>${totalPts()}</b> pts` : '';
+}
+$('tiles').addEventListener('click', (e) => { const b = e.target.closest('[data-go]'); if (b) goPuzzle(+b.dataset.go); });
+function goPuzzle(i) {
+  i = Math.max(0, Math.min(PUZZLES.length - 1, i));
+  if (S.cur !== i || !S.visited[i]) HSCT.log('open', { puzzle: PUZZLES[i].n });
+  S.cur = i; S.visited[i] = true;
+  renderPuzzle();
+  $('prev').disabled = i === 0;
+  $('next').disabled = i === PUZZLES.length - 1;
+  $('where').textContent = `Puzzle ${i + 1} of ${PUZZLES.length}`;
+  renderTiles();
+  window.scrollTo(0, 0);
+}
+$('prev').onclick = () => goPuzzle(S.cur - 1);
+$('next').onclick = () => goPuzzle(S.cur + 1);
+
+/* ---------- render one puzzle ---------- */
+function renderPuzzle(focusId) {
+  const p = PUZZLES[S.cur];
+  const r = p.steps.map(resolved);
+  const marks = p.codeMarks ? p.codeMarks(r) : null;
+  let h = `<div class="pz-head"><div class="grow"><p class="kicker">Puzzle ${p.n} of ${PUZZLES.length} · ${esc(p.lesson)} · ${esc(p.topic)}</p><h2>${esc(p.title)}</h2></div><div class="pz-pts"><b>${puzzlePts(p)}</b>of 10 pts</div></div>`;
+  h += `<div class="story">${p.story}</div>`;
+  if (p.code) h += py(p.code, marks);
+  h += `<div class="visual">${p.visual(r)}</div>`;
+  const ex = p.example;
+  h += `<div class="remember"><h4>📘 REMEMBER FROM THE LESSON · FREE</h4><p>${p.remember}</p>`
+    + (S.examples[p.id]
+      ? `<div class="example"><p class="exlab"><b>Worked example</b> · different numbers from this puzzle</p>${/^SELECT/.test(ex.code) ? sql(ex.code) : py(ex.code)}<p>${ex.text}</p></div>`
+      : `<button type="button" class="exbtn" data-example="${p.id}">Show a worked example (free)</button>`)
+    + '</div>';
+  h += '<div class="tipbox">' + (S.tips[p.id] ? `<div class="tiptext"><b>Tip:</b> ${p.tip}</div>` : `<button type="button" class="tipbtn" data-tip="${p.id}">💡 Show a tip (costs ${CONFIG.TIP_COST} point)</button>`) + '</div>';
+  h += '<div class="steps">' + p.steps.map((s, j) => renderStep(p, s, j)).join('') + '</div>';
+  if (puzzleDone(p)) h += `<div class="next-cta">${S.cur < PUZZLES.length - 1 ? `<button type="button" class="btn" data-go-next>Next puzzle →</button>` : `<button type="button" class="btn maroon" data-submit>Done: submit the quiz</button>`}</div>`;
+  $('stage').innerHTML = h;
+  /* put drafts back */
+  p.steps.forEach((s) => {
+    const d = S.draft[s.id]; if (d == null || resolved(s)) return;
+    if (s.type === 'number') { const el = $('in-' + s.id); if (el) el.value = d; }
+    if (s.type === 'numbers') d.forEach((v, k) => { const el = $('in-' + s.id + '-' + k); if (el) el.value = v; });
+    if (s.type === 'mc') { const el = document.querySelector(`input[name="${s.id}"][value="${d}"]`); if (el && !el.disabled) el.checked = true; }
+    if (s.type === 'multi') d.forEach((v) => { const el = document.querySelector(`input[name="${s.id}"][value="${v}"]`); if (el) el.checked = true; });
+  });
+  if (focusId) {
+    const el = document.querySelector(`#step-${focusId} input:not([disabled])`) || document.getElementById('step-' + focusId);
+    if (el) { el.focus({ preventScroll: true }); document.getElementById('step-' + focusId).scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+  }
+}
+function stepOpen(p, j) { return j === 0 || resolved(p.steps[j - 1]); }
+function renderStep(p, s, j) {
+  const x = S.st[s.id];
+  const head = (cls) => `<div class="shead"><span class="snum">${s.tag}</span><span class="spts">Step ${j + 1} of 3</span><span class="grow"></span><span class="spts">${resolvedLabel(s)}</span></div>`;
+  if (!stepOpen(p, j)) return `<div class="step locked" id="step-${s.id}">${head()}<span>Finish step ${j} first.</span></div>`;
+  const done = resolved(s);
+  const cls = x.status === 'ok1' ? 'ok' : x.status === 'ok2' ? 'half' : x.status === 'miss' ? 'miss' : '';
+  let h = `<div class="step ${cls}" id="step-${s.id}">${head()}`;
+  if (s.sql) h += sql(s.sql);
+  if (s.code) h += py(s.code);
+  h += `<p class="sq">${fmt(s.prompt)}</p>`;
+  if (!done && s.start) h += `<p class="start">👉 <b>Start here:</b> ${s.start}</p>`;
+  h += inputHTML(s, done);
+  if (!done) {
+    h += `<div class="sact"><button type="button" class="btn small" data-check="${s.id}">${x.tries.length ? 'Check again' : 'Check'}</button><span class="smsg" id="msg-${s.id}" aria-live="polite"></span></div>`;
+    if (x.tries.length) h += `<div class="fb hint"><span class="tag">HINT</span>${fmt(s.hint)} <i>One more try, for ${Math.ceil(s.pts / 2)} of ${s.pts} points.</i></div>`;
+  } else {
+    if (x.status === 'miss') h += `<div class="fb why missed"><span class="tag">WALK-THROUGH</span>The answer is <b>${fmt(answerText(s))}</b>. ${fmt(s.why)}</div>`;
+    else h += `<div class="fb why"><span class="tag">${x.status === 'ok1' ? 'RIGHT' : 'RIGHT ON TRY 2'}</span>${fmt(s.why)}</div>`;
+    if (s.type === 'number' || s.type === 'numbers') h += `<div class="yours">You answered: ${x.tries.map((t) => '<code>' + esc(Array.isArray(t) ? t.join(', ') : t) + '</code>').join(' then ')}</div>`;
+  }
+  return h + '</div>';
+}
+function resolvedLabel(s) {
+  const x = S.st[s.id];
+  if (x.status === 'ok1') return `✓ ${s.pts}/${s.pts}`;
+  if (x.status === 'ok2') return `½ ${Math.ceil(s.pts / 2)}/${s.pts}`;
+  if (x.status === 'miss') return `✗ 0/${s.pts}`;
+  return x.tries.length ? `try 2 · worth ${Math.ceil(s.pts / 2)}` : `${s.pts} pts`;
+}
+function answerText(s) {
+  if (s.type === 'number') return s.show;
+  if (s.type === 'numbers') return s.show;
+  if (s.type === 'mc') { const o = s.options[s.answer]; return typeof o === 'object' && o.code ? '`' + o.code.replace(/\n\s+/g, ' ') + '`' : optText(o); }
+  if (s.type === 'multi') return s.options.filter((o) => o.yes).map((o) => o.t).join(' and ');
+  return '';
+}
+function inputHTML(s, done) {
+  const x = S.st[s.id];
+  if (s.type === 'number') return `<div class="nums"><label>${esc(s.label || 'Answer:')}<input id="in-${s.id}" data-step="${s.id}" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" maxlength="12" ${done ? 'disabled value="' + esc(x.tries[x.tries.length - 1]) + '"' : ''} aria-label="${esc(plain(s.prompt))}"></label></div>`;
+  if (s.type === 'numbers') return '<div class="nums">' + s.fields.map((f, k) => `<label>${esc(f)}<input id="in-${s.id}-${k}" data-step="${s.id}" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" maxlength="8" ${done ? 'disabled value="' + esc((x.tries[x.tries.length - 1] || [])[k]) + '"' : ''}></label>`).join('') + '</div>';
+  const kind = s.type === 'mc' ? 'radio' : 'checkbox';
+  const tried = s.type === 'mc' ? x.tries.map((t) => +t) : [];
+  const last = x.tries[x.tries.length - 1];
+  return `<fieldset style="border:0;margin:0;padding:0;min-width:0"><legend class="sr">${esc(plain(s.prompt))}</legend><div class="opts${s.row ? ' row' : ''}">` + S.order[s.id].map((i) => {
+    const o = s.options[i];
+    const body = typeof o === 'object' && o.code ? `<span class="oc">${esc(o.code)}</span>` : `<span>${fmt(optText(o))}</span>`;
+    let cls = '', dis = done;
+    if (done) {
+      const right = s.type === 'mc' ? i === s.answer : o.yes;
+      const picked = s.type === 'mc' ? +last === i : (last || []).includes(i);
+      if (right) cls = 'right'; else if (picked) cls = 'wrong';
+    } else if (s.type === 'mc' && tried.includes(i)) { cls = 'struck'; dis = true; }
+    const checked = done && (s.type === 'mc' ? +last === i : (last || []).includes(i));
+    return `<label class="opt ${cls}"><input type="${kind}" name="${s.id}" value="${i}" ${dis ? 'disabled' : ''} ${checked ? 'checked' : ''}>${body}</label>`;
+  }).join('') + '</div></fieldset>';
+}
+
+/* ---------- checking ---------- */
+function readAnswer(s) {
+  if (s.type === 'number') { const v = $('in-' + s.id).value.trim(); return v === '' ? null : v; }
+  if (s.type === 'numbers') { const v = s.fields.map((f, k) => $('in-' + s.id + '-' + k).value.trim()); return v.some((x) => x === '') ? null : v; }
+  if (s.type === 'mc') { const el = document.querySelector(`input[name="${s.id}"]:checked`); return el && !el.disabled ? +el.value : null; }
+  const picks = [...document.querySelectorAll(`input[name="${s.id}"]:checked`)].map((el) => +el.value).sort((a, b) => a - b);
+  return picks.length ? picks : null;
+}
+function isRight(s, a) {
+  if (s.type === 'number') return num(a) === s.answer;
+  if (s.type === 'numbers') return a.every((v, k) => num(v) === s.answer[k]);
+  if (s.type === 'mc') return a === s.answer;
+  const want = s.options.map((o, i) => (o.yes ? i : -1)).filter((i) => i >= 0);
+  return a.length === want.length && a.every((v, k) => v === want[k]);
+}
+function check(id) {
+  if (S.submitted) return;
+  const s = ALL_STEPS.find((x) => x.id === id), x = S.st[id];
+  if (resolved(s)) return;
+  const a = readAnswer(s);
+  if (a == null) { $('msg-' + id).textContent = s.type === 'mc' ? 'Pick an answer first.' : s.type === 'multi' ? 'Tick at least one.' : s.type === 'numbers' ? 'Fill in every box first.' : 'Type a number first.'; return; }
+  if ((s.type === 'number' && num(a) == null) || (s.type === 'numbers' && a.some((v) => num(v) == null))) { $('msg-' + id).textContent = 'Numbers only, please.'; return; }
+  x.tries.push(a);
+  const ok = isRight(s, a);
+  if (ok) x.status = x.tries.length === 1 ? 'ok1' : 'ok2';
+  else if (x.tries.length >= 2) x.status = 'miss';
+  x.pts = stepPts(s);
+  if (resolved(s) || s.type === 'mc') delete S.draft[id];
+  else S.draft[id] = a;            /* keep a wrong number or tick-set in place for the second try */
+  HSCT.log('check', { step: s.tag, try: x.tries.length, ok, answer: readable(s, a) });
+  $('live').textContent = ok ? 'Right.' : x.tries.length >= 2 ? 'Not quite. The walk-through shows the answer.' : 'Not quite. A hint is showing.';
+  const p = PUZZLES[S.cur], j = p.steps.indexOf(s);
+  renderPuzzle(resolved(s) && j < 2 ? p.steps[j + 1].id : id);
+  renderTiles();
+}
+function readable(s, a) {
+  if (a == null) return '';
+  if (s.type === 'mc') return plain(optText(s.options[a])).replace(/\n\s+/g, ' ');
+  if (s.type === 'multi') return a.map((i) => plain(optText(s.options[i]))).join(', ');
+  if (s.type === 'numbers') return s.fields.map((f, k) => f + ' ' + a[k]).join(', ');
+  return String(a);
+}
+$('stage').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.check) { check(b.dataset.check); return; }
+  if (b.dataset.example) { S.examples[b.dataset.example] = true; HSCT.log('example', { puzzle: PUZZLES[S.cur].n }); renderPuzzle(); return; }
+  if (b.dataset.tip) { S.tips[b.dataset.tip] = true; HSCT.log('tip', { puzzle: PUZZLES[S.cur].n }); renderPuzzle(); renderTiles(); return; }
+  if (b.hasAttribute('data-go-next')) { goPuzzle(S.cur + 1); return; }
+  if (b.hasAttribute('data-submit')) { $('submit').click(); }
+});
+$('stage').addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' || !e.target.dataset || !e.target.dataset.step) return;
+  e.preventDefault(); check(e.target.dataset.step);
+});
+$('stage').addEventListener('input', (e) => {
+  const t = e.target; const id = t.dataset.step || (t.name && S.st[t.name] ? t.name : null); if (!id) return;
+  const s = ALL_STEPS.find((x) => x.id === id); if (!s) return;
+  if (s.type === 'number') S.draft[id] = t.value;
+  else if (s.type === 'numbers') S.draft[id] = s.fields.map((f, k) => $('in-' + id + '-' + k).value);
+  const m = $('msg-' + id); if (m) m.textContent = '';
+});
+$('stage').addEventListener('change', (e) => {
+  const t = e.target; if (!t.name || !S.st[t.name]) return;
+  const s = ALL_STEPS.find((x) => x.id === t.name);
+  if (s.type === 'mc') S.draft[s.id] = +t.value;
+  if (s.type === 'multi') S.draft[s.id] = [...document.querySelectorAll(`input[name="${s.id}"]:checked`)].map((el) => +el.value);
+  const m = $('msg-' + s.id); if (m) m.textContent = '';
+});
+$('stage').addEventListener('paste', (e) => {
+  const t = e.target; if (!t.dataset || !t.dataset.step) return;
+  const chars = ((e.clipboardData && e.clipboardData.getData('text')) || '').length;
+  S.pastes.push({ step: t.dataset.step, chars });
+  HSCT.log('paste', { step: t.dataset.step, chars });
+});
+document.addEventListener('visibilitychange', () => {
+  if (!S.running || S.submitted) return;
+  if (document.visibilityState === 'hidden') { S.leaves++; HSCT.log('left-tab', { n: S.leaves }); }
+  else HSCT.log('back-to-tab', {});
+});
+
+/* ---------- timer ---------- */
+function tick() {
+  if (!S.running || S.submitted) return;
+  const left = Math.max(0, S.deadline - Date.now());
+  const sec = Math.ceil(left / 1000);
+  const t = $('timer');
+  t.textContent = Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
+  t.classList.toggle('warn', sec <= 300 && sec > 60);
+  t.classList.toggle('low', sec <= 60);
+  for (const mark of [300, 60]) if (sec <= mark && !S.announced[mark]) { S.announced[mark] = true; if (sec > mark - 5) $('live').textContent = (mark / 60) + (mark === 60 ? ' minute' : ' minutes') + ' left.'; }
+  if (left <= 0) { S.timedOut = true; HSCT.log('time-up', {}); finish(); }
+}
+
+/* ---------- submit ---------- */
+function clearConfirm() { $('confirm').innerHTML = ''; }
+$('submit').onclick = () => {
+  const open = PUZZLES.filter((p) => !puzzleDone(p));
+  let h = '<div class="box">';
+  if (open.length) {
+    h += `<p><b>${open.length} puzzle${open.length > 1 ? 's aren’t' : ' isn’t'} finished.</b> Unfinished steps get 0 points. Jump to one:</p><div class="blank-list">`
+      + open.map((p) => `<button type="button" data-jump="${p.n - 1}">${p.n}</button>`).join('') + '</div>'
+      + '<div class="row"><button class="btn maroon small" id="sure">Submit anyway</button><button class="btn ghost small" id="back">Keep working</button></div>';
+  } else {
+    h += '<p>Every puzzle is done. Submit now?</p><div class="row"><button class="btn maroon small" id="sure">Yes, submit</button><button class="btn ghost small" id="back">Keep working</button></div>';
+  }
+  $('confirm').innerHTML = h + '</div>';
+  $('confirm').querySelectorAll('[data-jump]').forEach((b) => b.addEventListener('click', () => { clearConfirm(); goPuzzle(+b.dataset.jump); }));
+  $('sure').onclick = () => finish();
+  $('back').onclick = clearConfirm;
+  $('sure').focus();
+};
+
+/* ---------- end ---------- */
+function mark(s) { return { ok1: '✓', ok2: '½', miss: '✗' }[S.st[s.id].status] || '–'; }
+function markCls(s) { return { ok1: 'mk-ok', ok2: 'mk-half', miss: 'mk-miss' }[S.st[s.id].status] || 'mk-open'; }
+function finish() {
+  if (S.submitted) return;
+  S.submitted = true; S.running = false;
+  clearInterval(S.timer); clearConfirm();
+  window.removeEventListener('beforeunload', guard);
+  S.secondsLeft = Math.max(0, Math.round((S.deadline - Date.now()) / 1000));
+  const total = totalPts();
+  const count = (st) => ALL_STEPS.filter((s) => S.st[s.id].status === st).length;
+  const first = count('ok1'), second = count('ok2'), missed = count('miss'), open = count('open');
+  const tipsUsed = Object.keys(S.tips).length;
+  const byLesson = (name) => PUZZLES.filter((p) => p.lesson === name).reduce((n, p) => n + puzzlePts(p), 0);
+  HSCT.log('submit', { earned: total, timedOut: S.timedOut, secondsLeft: S.secondsLeft, leftTab: S.leaves, firstTry: first });
+
+  show('view-end');
+  $('timer').hidden = true; renderTiles();
+  $('end-h1').textContent = S.timedOut ? 'Time’s up. Quiz submitted.' : 'Quiz submitted.';
+  $('end-lede').textContent = `You scored ${total} out of 100, and got ${first} of ${ALL_STEPS.length} steps right on the first try. Download your result file below and submit it in Google Classroom.`;
+  $('end-banner').innerHTML = S.timedOut ? '<div class="banner">The timer hit 0:00, so your work was submitted automatically.</div>' : '';
+  $('profile').innerHTML = `<div class="g"><b>${first}</b><span>steps right on the first try</span></div><div class="a"><b>${second}</b><span>right after a hint</span></div><div class="r"><b>${missed}</b><span>walked through</span></div><div class="t"><b>${tipsUsed}</b><span>tips used</span></div>`
+    + `<p class="vcap" style="grid-column:1/-1">Worked examples opened: ${Object.keys(S.examples).length} of ${PUZZLES.length} (free).</p>`;
+  $('recap').innerHTML = '<tr><th>Puzzle</th><th>Steps</th><th style="text-align:right">Points</th></tr>'
+    + PUZZLES.map((p) => `<tr><td>${p.n}. ${esc(p.title)}${S.tips[p.id] ? ' <span class="muted">· tip</span>' : ''}</td><td class="marks">${p.steps.map((s) => `<span class="${markCls(s)}">${mark(s)}</span>`).join(' ')}</td><td class="p">${puzzlePts(p)} / 10</td></tr>`).join('')
+    + `<tr><td>Stat Check (1–5)</td><td></td><td class="p">${byLesson('Stat Check')} / 50</td></tr><tr><td>Smart Moves (6–10)</td><td></td><td class="p">${byLesson('Smart Moves')} / 50</td></tr>`
+    + `<tr><td><b>Total</b></td><td></td><td class="p"><b>${total} / 100</b></td></tr>`;
+
+  const used = CONFIG.MINUTES * 60 - S.secondsLeft;
+  const report = [
+    { title: 'Logic profile', rows: [
+      ['Score', total + ' / 100'],
+      ['Steps right on the first try', first + ' of ' + ALL_STEPS.length],
+      ['Right on the second try, after a hint', String(second)],
+      ['Walked through (missed twice)', String(missed)],
+      ['Not reached', String(open)],
+      ['Tips used', tipsUsed ? tipsUsed + ' (puzzles ' + PUZZLES.filter((p) => S.tips[p.id]).map((p) => p.n).join(', ') + ')' : 'none'],
+      ['Worked examples opened (free)', Object.keys(S.examples).length ? Object.keys(S.examples).length + ' (puzzles ' + PUZZLES.filter((p) => S.examples[p.id]).map((p) => p.n).join(', ') + ')' : 'none'],
+      ['Stat Check puzzles (1–5)', byLesson('Stat Check') + ' / 50'],
+      ['Smart Moves puzzles (6–10)', byLesson('Smart Moves') + ' / 50'],
+      ['Time', S.timedOut ? 'ran out (' + CONFIG.MINUTES + ' min)' : HSCT.fmtDuration(used) + ' of ' + CONFIG.MINUTES + ' min'],
+      ['Left the tab', S.leaves ? S.leaves + (S.leaves === 1 ? ' time' : ' times') : 'never'],
+      ['Pasted into an answer', S.pastes.length ? S.pastes.length + ' time(s)' : 'never'],
+    ] },
+    { title: 'Puzzle by puzzle', rows: PUZZLES.map((p) => [p.n + '. ' + p.title, puzzlePts(p) + ' / 10 · ' + p.steps.map(mark).join(' ') + (S.tips[p.id] ? ' · tip' : '')]) },
+    { title: 'Every step', rows: ALL_STEPS.map((s) => {
+      const x = S.st[s.id];
+      const tries = x.tries.map((t) => readable(s, t)).join('  →  ');
+      const how = { ok1: 'right, first try', ok2: 'right on try 2', miss: 'missed twice (answer: ' + plain(answerText(s)).replace(/\n\s+/g, ' ') + ')', open: 'not reached' }[x.status];
+      return [s.tag + ' ' + plain(s.prompt).slice(0, 70) + (plain(s.prompt).length > 70 ? '…' : ''), (tries ? tries + ' · ' : '') + how];
+    }) },
+  ];
+  HSCT.endScreen('#hsct-result', {
+    earned: total, possible: 100,
+    tier: total >= 90 ? 'Sharp logic' : total >= 75 ? 'Solid' : total >= 55 ? 'Getting there' : 'Review both lessons',
+    sections: PUZZLES.map((p) => ({ id: p.id, title: p.n + '. ' + p.title, earned: puzzlePts(p), possible: 10 }))
+      .concat([{ id: 'first', title: 'Steps right on the first try', status: first + ' of ' + ALL_STEPS.length }, { id: 'tips', title: 'Tips used', status: String(tipsUsed) }]),
+    extra: {
+      report,
+      steps: ALL_STEPS.map((s) => ({ step: s.tag, status: S.st[s.id].status, tries: S.st[s.id].tries.map((t) => readable(s, t)), points: stepPts(s), possible: s.pts })),
+      tips: Object.keys(S.tips), examples: Object.keys(S.examples), optionOrder: S.order,
+      leftTab: S.leaves, pastes: S.pastes,
+      timedOut: S.timedOut, secondsLeft: S.secondsLeft, timeLimitMinutes: CONFIG.MINUTES,
+    },
+  }).catch(() => {});
+}
+</script>
+</body>
+</html>
