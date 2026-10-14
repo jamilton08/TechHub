@@ -326,7 +326,22 @@ export const CATEGORIES = [
           },
         ],
       },
-      { id: 'data-structures', title: 'Data structures', lessons: [] },
+      {
+        id: 'data-structures',
+        title: 'Data structures',
+        lessons: [
+          {
+            slug: 'data-vault-json-database',
+            title: 'Data Vault: from one value to a JSON database',
+            description: 'The Room 333 Arcade\'s high-score machine got wiped, and you rebuild its memory in JSON, one level at a time. Sort the six kinds of value, build a player card from "key": value pairs and squash three broken ones, count array positions from 0, follow paths through nested data, then repair a database whose records don\'t match (and watch the leaderboard program crash until they do). Query and update it in Python, save it so it survives a power-off, and beat the boss: link collections by id, then design a database of your own.',
+            file: 'data-vault-json-database.html',
+            kind: 'lab',
+            minutes: 60,
+            added: '2026-10-14',
+            tags: ['JSON', 'data structures', 'database', 'string', 'number', 'boolean', 'null', 'array', 'object', 'key', 'value', 'list', 'dict', 'index', 'nesting', 'path', 'record', 'field', 'table', 'schema', 'id', 'unique', 'json.loads', 'json.dumps', 'Python', 'query', 'save', 'load', 'files', 'link', 'join', 'foreign key', 'next id', 'validation', 'syntax', 'trailing comma', 'game design'],
+          },
+        ],
+      },
     ],
   },
 ];
