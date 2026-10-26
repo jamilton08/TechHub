@@ -65,7 +65,22 @@ export const CATEGORIES = [
             tags: ['quiz', 'pop quiz', 'timed', 'IP address', 'private', 'NAT', 'packets', 'TCP', 'UDP', 'ICMP', 'ports', '53', '9100', 'DNS', 'DHCP', '169.254', 'WAN', 'LAN', 'static IP', 'routing table', 'TTL', 'Wi-Fi', 'switch', 'encryption', 'HTTPS'],
           },
          ] },
-      { id: 'cabling-and-wifi', title: 'Cabling & Wi-Fi', lessons: [] },
+            {
+        id: 'cabling-and-wifi',
+        title: 'Cabling & Wi-Fi',
+        lessons: [
+          {
+            slug: 'home-network-setup',
+            title: 'Set up the Rivera home network',
+            description: 'A family just moved in and the internet company left the modem on the floor. Cable the modem, router, office switch and devices (one cable runs to the office — use the switch), find the router at its address and change the factory password, then configure it through its admin page: Wi-Fi name and WPA password, the DHCP pool and what it must leave out, and a reservation so the printer is always at .50. Then four service calls — a 169.254 laptop, a printer that moved, a PC on the wrong network, a chewed cable — and five questions on IP addresses and ranges.',
+            file: 'home-network-setup.html',
+            kind: 'lab',
+            minutes: 50,
+            added: '2026-10-26',
+            tags: ['home network', 'modem', 'router', 'switch', 'WAN', 'LAN', 'Wi-Fi', 'SSID', 'WPA2', 'WPA3', 'IP address', 'subnet mask', 'gateway', 'DHCP', 'DHCP pool', 'range', 'reservation', 'static IP', 'MAC address', 'printer', 'ipconfig', '169.254', 'APIPA', 'private address', 'admin page', '192.168.1.1', 'troubleshooting', 'link light', 'cable', 'simulation'],
+          },
+        ],
+      },
       { id: 'connection-problems', title: 'Connection problems', lessons: [] },
       {
         id: 'network-security',
