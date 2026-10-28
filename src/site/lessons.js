@@ -339,7 +339,18 @@ export const CATEGORIES = [
             added: '2026-10-09',
             tags: ['quiz', 'pop quiz', 'timed', 'puzzles', 'logic', 'Python', 'game design', 'database', 'SQL', 'SELECT', 'WHERE', 'ORDER BY', 'LIMIT', 'JOIN', 'damage', 'level up', 'XP', 'references', 'dict', 'copy', 'transaction', 'game AI', 'danger', 'if', 'elif', 'else', 'utility', 'score', 'local maximum', 'state machine', 'patrol', 'chase', 'search', 'flee', 'Stat Check', 'Smart Moves'],
           },
+          {
+            slug: 'frame-rate-lab',
+            title: 'Frame Rate Lab: from one picture to smooth motion',
+            description: 'A screen never shows movement: it shows one still picture after another, fast. Flip through twelve frames by hand, guess the frame rate by eye, then write real pygame — the Python Arcade starter — into a recorder that plays back every frame your program draws. Make a ball move, run the same code at 5, 15, 30 and 60 fps and watch its speed change, put a 60 fps recording through a pretend 30 Hz monitor, then fix the bug the way every real game does: delta time. Boss level: an animation of your own that runs the same at any frame rate, downloaded as a .py you can run in the Arcade.',
+            file: 'frame-rate-lab.html',
+            kind: 'lab',
+            minutes: 60,
+            added: '2026-10-28',
+            tags: ['pygame', 'Python', 'game design', 'games', 'frame', 'frames', 'fps', 'frame rate', 'refresh rate', 'Hz', 'monitor', 'game loop', 'while loop', 'clock.tick', 'delta time', 'dt', 'speed', 'pixels per second', 'animation', 'motion', 'flipbook', 'draw.circle', 'draw.rect', 'display.flip', 'screen.fill', 'Python Arcade', 'simulation'],
+          },
         ],
+        
       },
       {
         id: 'data-structures',
