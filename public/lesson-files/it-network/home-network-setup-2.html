@@ -1,0 +1,1586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Riveras bought a house — HSCT</title>
+<!--
+  HSCT LESSON: The Riveras bought a house   (IT Network · ~60 minutes · 100 points)
+  The harder sequel to "Set up the Rivera home network". Six stages:
+    1  Plug it in       two rooms, two switches, six wired devices                20 pts  ~12 min
+    2  Get in           new router, new address, new sticker                       5 pts   ~3 min
+    3  Router           Wi-Fi + guest network, LAN on 192.168.10.x, pool, 3 reservations   24 pts  ~15 min
+    4  Switches         name, fixed management IP, gateway, loop protection — twice      14 pts   ~8 min
+    5  Service calls    five tickets: dead room, loop, address conflict, wrong gateway, pool full  25 pts  ~15 min
+    6  Check            six questions                                               12 pts   ~5 min
+  Self-contained: inline CSS + JS, Google Fonts only.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f3f7f9; --paper:#fff; --ink:#0f2230; --muted:#546672; --line:#cfdbe3;
+  --teal:#0f6e8c; --teal-soft:#e2f0f5; --green:#1f7a3d; --green-soft:#e1f2e6; --red:#b3261e; --red-soft:#fbe3e1;
+  --amber:#b4680b; --amber-soft:#fff1dc; --wan:#e0a100; --lan:#0f6e8c; --cable:#2d3b45; --plum:#6a3d8f; --plum-soft:#efe6f6;
+  --hsct-color: var(--teal);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:17px;line-height:1.55}
+h1,h2,h3,h4{margin:0;line-height:1.15}
+p{margin:0 0 .8rem}
+button{font:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{outline:3px solid #8fc3d6;outline-offset:2px}
+code,pre,.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace}
+.view{display:none}.view.active{display:block}
+.wrap{max-width:880px;margin:0 auto;padding:32px 18px 80px}
+.kicker{color:var(--muted);font-size:14px;margin-bottom:6px}
+h1{font-size:2rem;font-weight:700;letter-spacing:-.01em;margin-bottom:.4rem}
+h2{font-size:1.35rem;font-weight:700;margin-bottom:.5rem}
+h3{font-size:1.05rem;font-weight:600;margin-bottom:.4rem}
+.lede{color:var(--muted);font-size:1.1rem;margin-bottom:1.2rem}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin-bottom:16px}
+.rules{margin:0;padding-left:1.2rem}.rules li{margin:.3rem 0}
+.name-row{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.name-row input{flex:1;min-width:220px;padding:11px 12px;border:1.5px solid var(--line);border-radius:8px;font:inherit}
+.btn{border:2px solid var(--teal);background:var(--teal);color:#fff;border-radius:8px;padding:10px 18px;font-weight:600}
+.btn:hover{filter:brightness(.92)}.btn.ghost{background:transparent;color:var(--teal)}.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.sm{padding:7px 12px;font-size:14px}
+.err{color:var(--red);margin-top:8px;display:none}
+.plan{display:grid;grid-template-columns:auto 1fr auto;gap:6px 14px;margin:0;font-size:15px}
+.plan dt{font-weight:600;color:var(--teal)}.plan dd{margin:0}.plan .mins{color:var(--muted);white-space:nowrap}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.steps{display:flex;gap:6px;flex-wrap:wrap}
+.step{font-size:13px;padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:var(--paper);color:var(--muted)}
+.step.cur{border-color:var(--teal);color:var(--teal);font-weight:600}.step.done{background:var(--green-soft);border-color:var(--green);color:var(--green)}
+.meta{font-size:14px;color:var(--muted);display:flex;gap:14px}
+.meta b{color:var(--ink)}
+.stagehead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin:6px 0 10px}
+.stagehead .mins{color:var(--muted);font-size:14px}
+details.learn{background:var(--teal-soft);border:1px solid #bcd9e4;border-radius:12px;padding:0;margin-bottom:14px}
+details.learn summary{cursor:pointer;font-weight:600;padding:12px 18px;list-style:none;display:flex;justify-content:space-between}
+details.learn summary::-webkit-details-marker{display:none}
+details.learn summary::after{content:"show";font-weight:400;color:var(--muted);font-size:14px}
+details.learn[open] summary::after{content:"hide"}
+details.learn .body{padding:0 18px 14px;font-size:15.5px}
+details.learn .body p{margin:0 0 .6rem}
+.term{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0 0 .6rem}
+.term dt{font-weight:600;white-space:nowrap}.term dd{margin:0}
+.client{display:flex;gap:12px;align-items:flex-start;margin-bottom:12px}
+.avatar{width:40px;height:40px;border-radius:50%;background:var(--amber-soft);color:var(--amber);display:flex;align-items:center;justify-content:center;font-weight:700;flex:none}
+.bubble{background:var(--amber-soft);border-radius:12px;padding:10px 14px;font-size:15.5px}
+.bubble .who{display:block;font-size:13px;color:var(--amber);margin-bottom:2px}
+.bubble ol{margin:.3rem 0 0;padding-left:1.2rem}
+.evidence{background:#111c24;color:#d8e6ee;border-radius:10px;padding:12px 14px;font-size:13.5px;line-height:1.5;overflow:auto;margin:0 0 12px;white-space:pre}
+.evidence .hl{color:#ffd166}
+.fb{padding:12px 14px;border-radius:10px;background:var(--teal-soft);margin:12px 0;display:none;font-size:15.5px}
+.fb.show{display:block}.fb.ok{background:var(--green-soft)}.fb.bad{background:var(--red-soft)}
+.fb ul{margin:.3rem 0 0;padding-left:1.2rem}
+.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.pts{font-size:14px;color:var(--muted);margin-left:auto}
+.q{font-size:1.1rem;font-weight:600;margin:0 0 10px}
+.choices{display:grid;gap:8px;margin-bottom:6px}
+.choice{text-align:left;padding:11px 14px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper);font-size:15.5px}
+.choice:hover{border-color:var(--teal)}
+.choice.right{border-color:var(--green);background:var(--green-soft)}
+.choice.wrong{border-color:var(--red);background:var(--red-soft)}
+.choice:disabled{cursor:default}
+.topo{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:8px;margin-bottom:10px}
+.topo svg{display:block;width:100%;height:auto}
+.topo .dev{fill:#fff;stroke:#9fb3bf;stroke-width:1.5}
+.topo .dev.sw{stroke:var(--plum)}
+.topo .room{fill:none;stroke:#cfdbe3;stroke-dasharray:6 5}
+.topo .roomlbl,.topo .sub{fill:var(--muted);font-size:12px}
+.topo .name{fill:var(--ink);font-size:14px;font-weight:600}
+.topo .port circle{fill:#fff;stroke:var(--lan);stroke-width:2.5;cursor:pointer}
+.topo .port.wan circle{stroke:var(--wan)}
+.topo .port text{font-size:10px;fill:var(--muted);text-anchor:middle;pointer-events:none}
+.topo .port.sel circle{fill:#ffd166;stroke:#b4680b}
+.topo .port.used circle{fill:var(--lan)}.topo .port.used.wan circle{fill:var(--wan)}
+.topo .port:focus-visible{outline:none}.topo .port:focus-visible circle{stroke-width:4;stroke:#8fc3d6}
+.topo .cable line.v{stroke:var(--cable);stroke-width:5;stroke-linecap:round}
+.topo .cable line.hit{stroke:transparent;stroke-width:16;cursor:pointer}
+.topo .cable:hover line.v,.topo .cable:focus-visible line.v{stroke:var(--red)}
+.topo .wifi{fill:var(--muted);font-size:12px}
+.topo .wifi .d{fill:var(--ink);font-size:13px;font-weight:600}
+.cablelist{font-size:14.5px;display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.cablelist span{background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:3px 6px 3px 10px;display:inline-flex;gap:6px;align-items:center}
+.cablelist button{border:0;background:var(--red-soft);color:var(--red);border-radius:999px;width:22px;height:22px;font-size:13px;line-height:1}
+.hint{font-size:14px;color:var(--muted);margin:0 0 8px}
+.scrollhint{display:none;font-size:13px;color:var(--muted);margin:0 0 6px}
+@media (max-width:600px){.scrollhint{display:block}}
+.legend{font-size:13px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap;margin:0 0 6px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:50%;border:2.5px solid var(--lan);vertical-align:-2px;margin-right:4px}
+.legend i.w{border-color:var(--wan)}.legend i.u{background:var(--lan)}
+.sticker{background:#fffbe6;border:1px dashed #d9b300;border-radius:8px;padding:10px 14px;font-size:13.5px;line-height:1.5;max-width:380px;margin:0 0 12px}
+.sticker b{font-size:12px;letter-spacing:.06em;color:#7a5a00}
+.sticker .mono{font-weight:600}
+.browser{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--paper);margin-bottom:12px}
+.bbar{display:flex;gap:8px;align-items:center;padding:8px 10px;background:#e9eff3;border-bottom:1px solid var(--line)}
+.bbar .dots{display:flex;gap:4px}.bbar .dots i{width:10px;height:10px;border-radius:50%;background:#c9d4db;display:block}
+.bbar input{flex:1;min-width:120px;padding:8px 10px;border:1.5px solid var(--line);border-radius:999px;font:14px "IBM Plex Mono",monospace;background:#fff}
+.bpage{padding:22px;min-height:180px}
+.bpage.errpage{color:var(--muted)}
+.bpage.errpage h3{color:var(--ink)}
+.form{display:grid;gap:10px;max-width:460px}
+.form label{display:grid;gap:4px;font-size:14px;color:var(--muted)}
+.form input,.form select{padding:9px 10px;border:1.5px solid var(--line);border-radius:8px;font:inherit;font-size:15px;width:100%}
+.form input.mono{font-family:"IBM Plex Mono",monospace}
+.form .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form input:disabled,.form select:disabled{background:#f3f6f8;color:var(--muted)}
+.form label.toggle{display:flex;flex-direction:row;gap:8px;align-items:center;font-size:15px;color:var(--ink)}
+.form label.toggle input{width:auto;margin:0}
+.form h4{font-size:14px;color:var(--teal);margin:6px 0 0;text-transform:uppercase;letter-spacing:.04em}
+.portal{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--paper);margin-bottom:12px}
+.phead{background:#102a3a;color:#fff;padding:10px 16px;display:flex;justify-content:space-between;font-size:14px;flex-wrap:wrap;gap:6px}
+.portal.sw .phead{background:#3b2353}
+.ptabs{display:flex;border-bottom:1px solid var(--line);background:#f6f9fb;overflow:auto}
+.ptab{border:0;background:transparent;padding:10px 14px;font-size:14.5px;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap}
+.ptab.cur{color:var(--teal);border-bottom-color:var(--teal);font-weight:600}
+.ptab .ok{color:var(--green)}
+.pbody{padding:18px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 16px;font-size:15px;margin:0 0 12px}
+.kv dt{color:var(--muted)}.kv dd{margin:0}
+table.devs{width:100%;border-collapse:collapse;font-size:14px}
+table.devs th,table.devs td{text-align:left;padding:6px 8px;border-top:1px solid var(--line)}
+table.devs th{color:var(--muted);font-weight:600;border-top:0}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--teal-soft);color:var(--teal)}
+.tag.warn{background:var(--red-soft);color:var(--red)}
+.tag.sw{background:var(--plum-soft);color:var(--plum)}
+.reqs{list-style:none;margin:0;padding:0}
+.reqs li{padding:6px 0 6px 28px;position:relative;font-size:15px}
+.reqs li::before{content:"";position:absolute;left:2px;top:9px;width:16px;height:16px;border:2px solid var(--line);border-radius:4px}
+.reqs li.done{color:var(--muted);text-decoration:line-through}
+.reqs li.done::before{background:var(--green);border-color:var(--green)}
+.reqs li.done::after{content:"✓";position:absolute;left:5px;top:5px;color:#fff;font-size:12px;font-weight:700}
+.swgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:700px){.swgrid{grid-template-columns:1fr}}
+.tierbox{display:flex;gap:14px;align-items:center;margin-bottom:12px}
+.recap{margin:0;padding-left:1.2rem;font-size:15.5px}.recap li{margin:.25rem 0}
+@media (max-width:600px){.form .row{grid-template-columns:1fr}.wrap{padding:20px 14px 70px}h1{font-size:1.6rem}.topo{overflow-x:auto;-webkit-overflow-scrolling:touch}.topo svg{min-width:680px}}
+@media (prefers-reduced-motion:no-preference){.choice,.btn,.port circle{transition:background .15s,border-color .15s,fill .15s}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===== 1. INTRO ===== -->
+  <section class="view active" id="view-intro">
+    <p class="kicker">IT Network · Cabling &amp; Wi-Fi · Part 2</p>
+    <h1>The Riveras bought a house</h1>
+    <p class="lede">Six months after you set up their apartment, the Riveras moved into a house and called you back. Two rooms with their own cable runs, two switches, more devices, a guest network, and a nephew who "knows computers." About 60 minutes.</p>
+    <div class="card">
+      <h3>What you'll do</h3>
+      <dl class="plan">
+        <dt>1</dt><dd>Plug it in — modem, router, two switches, six wired devices</dd><dd class="mins">20 pts · ~12 min</dd>
+        <dt>2</dt><dd>Get in — new router, new sticker, new address</dd><dd class="mins">5 pts · ~3 min</dd>
+        <dt>3</dt><dd>Router — Wi-Fi and a guest network, the LAN, the pool, three reservations</dd><dd class="mins">24 pts · ~15 min</dd>
+        <dt>4</dt><dd>Switches — a name, a fixed address and a gateway for each managed switch</dd><dd class="mins">14 pts · ~8 min</dd>
+        <dt>5</dt><dd>Service calls — five tickets, each with the evidence; diagnose, then fix</dd><dd class="mins">25 pts · ~15 min</dd>
+        <dt>6</dt><dd>Check — six questions</dd><dd class="mins">12 pts · ~5 min</dd>
+      </dl>
+    </div>
+    <div class="card">
+      <ul class="rules">
+        <li>This builds on <b>Set up the Rivera home network</b>. The "What you need to know" panels are shorter this time and add the new ideas: managed switches, guest networks, address conflicts, the gateway.</li>
+        <li>Wrong tries cost a few points, never all of them. The router and the switches refuse bad settings and tell you why.</li>
+        <li>The clock starts at Start and stops at the end. "Save and continue later" if the period ends.</li>
+        <li>At the end you download a result file and submit it in Google Classroom.</li>
+      </ul>
+      <div class="name-row">
+        <input id="name" type="text" placeholder="Your full name (goes on your result)" autocomplete="off" maxlength="60">
+        <button class="btn" id="start">Start</button>
+      </div>
+      <div class="err" id="name-err">Enter your name first — it goes on your result file.</div>
+    </div>
+    <div id="hsct-resume"></div>
+  </section>
+
+  <!-- ===== 2. WORK ===== -->
+  <section class="view" id="view-work">
+    <div class="topbar">
+      <div class="steps" id="steps"></div>
+      <div class="meta"><span>Time <b id="clock">0 s</b></span><span>Points <b id="points">0</b> / 100</span></div>
+    </div>
+    <div id="stage"></div>
+    <div id="hsct-save"></div>
+  </section>
+
+  <!-- ===== 3. END ===== -->
+  <section class="view" id="view-end">
+    <p class="kicker">IT Network · Cabling &amp; Wi-Fi · Part 2</p>
+    <h1 id="end-title">House is up.</h1>
+    <p class="lede" id="end-lede"></p>
+    <div class="card">
+      <h3>What you did</h3>
+      <ul class="recap" id="recap"></ul>
+    </div>
+    <div id="hsct-result"></div>
+    <div class="actions"><button class="btn ghost" id="again">Try again</button></div>
+  </section>
+
+</div>
+
+<!-- HSCT KIT START — do not edit; copy the whole block from lesson-template/hsct-lesson.js -->
+<script>
+/* ============================================================================
+   HSCT LESSON KIT  v1.1
+   Every lesson on HSCT TechHub inlines this block unchanged (between the
+   <!-- HSCT KIT START --> and <!-- HSCT KIT END --> markers). It gives a
+   lesson four things:
+
+     1. A clock.   HSCT.start(name) when the student begins. The kit records
+                   wall-clock time and "active" time (tab visible).
+     2. A log.     HSCT.log(type, data) for anything worth remembering —
+                   answers, hints, retries. Ends up inside the result file.
+     3. A result.  HSCT.endScreen(el, {...scores}) renders the standard result
+                   card: name, score, time taken, badge code, and a button
+                   that downloads the encrypted result file the student
+                   submits in Google Classroom.
+     4. Saves.     HSCT.saveable({ get, set }) tells the kit how to snapshot
+                   and restore the lesson's own state. The kit then offers
+                   save files (.hsctsave) and codes the student can bring
+                   back to the lesson, an optional autosave in this browser,
+                   and two ready-made cards: HSCT.resumeUI(el) for the intro
+                   screen and HSCT.saveUI(el) for the work screen.
+
+   The result file is encrypted with the teacher's PUBLIC key below (RSA-OAEP
+   wrapping an AES-256-GCM key). It can only be opened with the matching
+   private key, on the site's /lessons/verify page. Students can't read or
+   edit it.
+
+   A save file is different: the lesson itself has to open it again, so its
+   AES key is wrapped twice — once with a key derived from the student's name
+   and the lesson id (the lesson can re-derive it) and once with the teacher's
+   public key (so saves open on /lessons/verify too, for partial credit).
+   Encryption keeps a save from being casually read or edited; it cannot stop
+   a determined student with the console, which is the same limit the result
+   file has.
+
+   `keep` (opt-in, per lesson): finish({ keep: {...} }) seals a second copy of
+   whatever the lesson passes — typically its own draft object — into the
+   result file, encrypted with the student-derived key, as a SEPARATE blob
+   with its own key. The student can get that part back with HSCT.open(file)
+   (so a lesson can accept its own .hsct as a draft); they still cannot read
+   or alter the graded payload, which stays wrapped to the teacher only. What makes a run checkable is the event log: the result file
+   records every resume (which save, when it was taken, how far along it
+   was), and the verify page shows them.
+
+   API (all on window.HSCT):
+     HSCT.lesson({ id, title, version, course, possible })   once, at load
+     HSCT.start(name)                                        when work begins
+     HSCT.log(type, data)                                    any time
+     HSCT.elapsed()   -> { seconds, activeSeconds }
+     HSCT.finish({ earned, possible, sections, tier, extra, keep }) -> Promise<result>
+     HSCT.endScreen(el, { earned, possible, sections, tier, extra, keep, note })
+                      -> Promise<result>   (calls finish, renders the card)
+     HSCT.download()  / HSCT.copyCode()                      after finish
+     HSCT.open(textOrEnvelope) -> Promise<{ keep, student, finished, badge }>
+                      opens the student-readable `keep` part of a result file
+
+     HSCT.saveable({ get, set, summary, autosave })          once, at load
+        get()        -> plain JSON-able object: the lesson's state
+        set(state)   -> restore it and show the work screen
+        summary()    -> optional { earned, possible, label } shown on verify
+        autosave     -> true: keep the latest save in this browser too
+     HSCT.save()          -> Promise<{ id, filename, text }>   seal a save
+     HSCT.downloadSave()  / HSCT.copySave()                    after save()
+     HSCT.restore(textOrEnvelope) -> Promise<info>   open a save, call set()
+     HSCT.localSave()     -> header of the save kept in this browser, or null
+     HSCT.resumeLocal()   -> Promise<info>
+     HSCT.resumeUI(el)    render the "pick up where you left off" card
+     HSCT.saveUI(el)      render the "save and continue later" card
+   ========================================================================== */
+(function () {
+  'use strict';
+  var KIT = '1.1';
+
+  /* Mr. Cruz's public key. Replace the whole object if the key pair is ever
+     regenerated on /lessons/verify — and keep the private key out of git. */
+  var PUBLIC_KEY = {"kty":"RSA","n":"rZUBRxn7dUikufJq7z2XVn-on4Of0IyQr_YaPSTgIUaGsYKcrZ4FNROL4A_ZM5JShLf6OVp2ZeAI7XN_7iX0tvd79RqAWRM9an6rx-s6bMYSW1wmtRxZyL-BX56vTtikVRLNO7uyzCb8kevJE71Fi6nlPhdXa-iS4vtIEm2Wjh4cLPinAKhMnkO3BpGHUhtFw7Hyus1w04EdLxowk4UcN7d0w4MQRnBV8ehXQVoLVQ0_QtfrtPTQOpScHuwyaw9nwnTA7h7BEOv1ZkbEyq2N4TFixSSCsneUsc3PlbZOndDzMGMmdMr00ulntRZBfyioFzRcsRUGGwAqpB9SuH7XGQ","e":"AQAB","alg":"RSA-OAEP-256","ext":true};
+
+  var VERIFY_URL = 'hsct.tech/lessons/verify';
+  var SAVE_SALT = 'hsct-techhub-save-v1';   // part of the student-side key derivation
+
+  var cfg = null;      // lesson config
+  var ses = null;      // current session
+  var ticker = null;   // active-time interval
+  var result = null;   // { badge, filename, text, envelope, payload }
+  var saver = null;    // { get, set, summary, autosave } from HSCT.saveable
+  var lastSave = null; // { id, filename, text, envelope }
+  var autoTimer = null;
+
+  /* ---------- small helpers ---------- */
+  var enc = new TextEncoder();
+  var dec = new TextDecoder();
+  function b64(buf) {
+    var bytes = new Uint8Array(buf), s = '';
+    for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return btoa(s);
+  }
+  function b64d(s) { var bin = atob(String(s).replace(/-/g, '+').replace(/_/g, '/')), out = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out; }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function fmtDuration(sec) {
+    sec = Math.max(0, Math.round(sec || 0));
+    var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+    if (h) return h + ' h ' + pad(m) + ' min';
+    if (m) return m + ' min ' + pad(s) + ' s';
+    return s + ' s';
+  }
+  function fmtDate(iso) {
+    try { return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+    catch (e) { return iso; }
+  }
+  function slug(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'student'; }
+  function stamp(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes()); }
+  function normName(name) { return String(name || '').trim().replace(/\s+/g, ' '); }
+
+  /* Badge code: 8 characters from a SHA-256 of the result, shown on screen
+     so a screenshot can be matched to its file. Save ids use the same form. */
+  var ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ23456789';
+  function badgeFrom(hashBuf) {
+    var bytes = new Uint8Array(hashBuf), out = '';
+    for (var i = 0; i < 8; i++) out += ALPHABET[bytes[i] % ALPHABET.length];
+    return out.slice(0, 4) + '-' + out.slice(4);
+  }
+
+  function needSubtle() {
+    if (!(window.crypto && crypto.subtle)) {
+      throw new Error('Result files need a secure page (https). Open this lesson from the TechHub site and finish again.');
+    }
+  }
+
+  /* ---------- public API ---------- */
+  function lesson(c) {
+    if (!c || !c.id || !c.title) throw new Error('HSCT.lesson needs { id, title }');
+    cfg = { version: '1.0', course: '', possible: 100 };
+    for (var k in c) cfg[k] = c[k];
+    return HSCT;
+  }
+
+  function start(name) {
+    if (!cfg) throw new Error('Call HSCT.lesson({...}) before HSCT.start(name)');
+    name = normName(name);
+    if (name.length < 2) throw new Error('HSCT.start needs the student\'s name');
+    ses = { name: name, started: new Date().toISOString(), t0: Date.now(), active: 0, events: [], resumes: [], saves: 0 };
+    result = null; lastSave = null;
+    clearInterval(ticker);
+    ticker = setInterval(function () { if (document.visibilityState === 'visible') ses.active += 1; }, 1000);
+    log('start');
+    return HSCT;
+  }
+
+  function log(type, data) {
+    if (!ses) return HSCT;
+    var e = { t: Math.round((Date.now() - ses.t0) / 100) / 10, type: String(type) };
+    if (data && typeof data === 'object') for (var k in data) if (k !== 't' && k !== 'type') e[k] = data[k];
+    if (ses.events.length < 800) ses.events.push(e);
+    scheduleAutosave();
+    return HSCT;
+  }
+
+  function elapsed() {
+    if (!ses) return { seconds: 0, activeSeconds: 0 };
+    return { seconds: Math.round((Date.now() - ses.t0) / 1000), activeSeconds: ses.active };
+  }
+
+  /* Build, seal, and keep the result. Resolves to { badge, filename, text, payload }. */
+  async function finish(opts) {
+    if (!cfg || !ses) throw new Error('HSCT.start(name) was never called');
+    needSubtle();
+    opts = opts || {};
+    clearInterval(ticker);
+    clearTimeout(autoTimer);
+    var finished = new Date();
+    var el = elapsed();
+    var earned = Number(opts.earned || 0), possible = Number(opts.possible || cfg.possible || 0);
+    var payload = {
+      kit: KIT,
+      lesson: { id: cfg.id, title: cfg.title, version: cfg.version, course: cfg.course },
+      student: { name: ses.name },
+      started: ses.started,
+      finished: finished.toISOString(),
+      seconds: el.seconds,
+      activeSeconds: el.activeSeconds,
+      score: { earned: earned, possible: possible, percent: possible ? Math.round(1000 * earned / possible) / 10 : null },
+      tier: opts.tier || null,
+      sections: (opts.sections || []).map(function (s) { return { id: s.id, title: s.title, earned: s.earned, possible: s.possible, status: s.status }; }),
+      extra: opts.extra || null,
+      events: ses.events,
+      resumes: ses.resumes,
+      env: { tz: Intl.DateTimeFormat().resolvedOptions().timeZone, ua: navigator.userAgent, url: location.href.split('?')[0] },
+    };
+    var hash = await crypto.subtle.digest('SHA-256', enc.encode(JSON.stringify(payload)));
+    var badge = badgeFrom(hash);
+    payload.badge = badge;
+
+    /* header travels in the clear but is authenticated (AES-GCM additional data) */
+    var header = { hsct: 1, kit: KIT, lesson: cfg.id, title: cfg.title, student: ses.name, finished: payload.finished, badge: badge };
+    var pub = await crypto.subtle.importKey('jwk', PUBLIC_KEY, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['wrapKey']);
+    var aes = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt']);
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    var data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv, additionalData: enc.encode(JSON.stringify(header)) }, aes, enc.encode(JSON.stringify(payload)));
+    var wrapped = await crypto.subtle.wrapKey('raw', aes, pub, { name: 'RSA-OAEP' });
+    var envelope = {};
+    for (var k in header) envelope[k] = header[k];
+    envelope.key = b64(wrapped); envelope.iv = b64(iv); envelope.data = b64(data);
+    if (opts.keep !== undefined && opts.keep !== null) {
+      /* a separate blob, separate key: the student can read this part back, nothing else */
+      var sk = await studentKey(ses.name);
+      var keepIv = crypto.getRandomValues(new Uint8Array(12));
+      var keepData = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: keepIv, additionalData: enc.encode(JSON.stringify(header)) }, sk, enc.encode(JSON.stringify(opts.keep)));
+      envelope.keep = b64(keepData); envelope.keepIv = b64(keepIv);
+    }
+
+    result = {
+      badge: badge,
+      filename: 'HSCT_' + cfg.id + '_' + slug(ses.name) + '_' + stamp(finished) + '.hsct',
+      text: JSON.stringify(envelope),
+      payload: payload,
+    };
+    clearLocalSave();   // the run is over; no resuming into a finished run
+    return result;
+  }
+
+  function downloadBlob(text, filename) {
+    var blob = new Blob([text], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+    return filename;
+  }
+  async function copyText(text) {
+    try { await navigator.clipboard.writeText(text); return true; }
+    catch (e) {
+      var ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      var ok = false; try { ok = document.execCommand('copy'); } catch (e2) {}
+      ta.remove(); return ok;
+    }
+  }
+  function download() {
+    if (!result) throw new Error('Nothing to download yet — call HSCT.finish first');
+    return downloadBlob(result.text, result.filename);
+  }
+  async function copyCode() {
+    if (!result) throw new Error('Nothing to copy yet — call HSCT.finish first');
+    return copyText(result.text);
+  }
+
+  /* ---------- saves ---------- */
+  function saveable(o) {
+    if (!o || typeof o.get !== 'function' || typeof o.set !== 'function') throw new Error('HSCT.saveable needs { get, set }');
+    saver = { get: o.get, set: o.set, summary: typeof o.summary === 'function' ? o.summary : null, autosave: !!o.autosave };
+    return HSCT;
+  }
+  function localKey() { return 'hsct:save:' + (cfg ? cfg.id : ''); }
+  function clearLocalSave() { try { localStorage.removeItem(localKey()); } catch (e) {} }
+  function scheduleAutosave() {
+    if (!saver || !saver.autosave || !ses || result) return;
+    clearTimeout(autoTimer);
+    autoTimer = setTimeout(function () {
+      buildSave().then(function (s) { try { localStorage.setItem(localKey(), s.text); } catch (e) {} }).catch(function () {});
+    }, 1500);
+  }
+  /* The student-side wrapping key: derived from name + lesson id, so the lesson can re-derive it. */
+  async function studentKey(name) {
+    var base = await crypto.subtle.importKey('raw', enc.encode(normName(name).toLowerCase() + '|' + cfg.id + '|' + SAVE_SALT), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: enc.encode(SAVE_SALT + '|' + cfg.id), iterations: 50000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['wrapKey', 'unwrapKey', 'encrypt', 'decrypt']);
+  }
+  async function buildSave() {
+    if (!cfg || !ses) throw new Error('HSCT.start(name) was never called');
+    if (!saver) throw new Error('HSCT.saveable({ get, set }) was never called');
+    if (result) throw new Error('This run is finished — nothing left to save');
+    needSubtle();
+    var el = elapsed(), saved = new Date();
+    var payload = {
+      kit: KIT, kind: 'save',
+      lesson: { id: cfg.id, title: cfg.title, version: cfg.version, course: cfg.course },
+      student: { name: ses.name },
+      started: ses.started, saved: saved.toISOString(),
+      seconds: el.seconds, activeSeconds: el.activeSeconds,
+      n: ses.saves + 1,
+      summary: saver.summary ? (saver.summary() || null) : null,
+      state: JSON.parse(JSON.stringify(saver.get())),
+      events: ses.events,
+      resumes: ses.resumes,
+    };
+    var hash = await crypto.subtle.digest('SHA-256', enc.encode(JSON.stringify(payload)));
+    var id = badgeFrom(hash);
+    payload.id = id;
+    var header = { hsct: 1, kind: 'save', kit: KIT, lesson: cfg.id, title: cfg.title, student: ses.name, saved: payload.saved, id: id };
+    var aes = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt']);
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    var data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv, additionalData: enc.encode(JSON.stringify(header)) }, aes, enc.encode(JSON.stringify(payload)));
+    var sk = await studentKey(ses.name);
+    var kiv = crypto.getRandomValues(new Uint8Array(12));
+    var skey = await crypto.subtle.wrapKey('raw', aes, sk, { name: 'AES-GCM', iv: kiv });
+    var pub = await crypto.subtle.importKey('jwk', PUBLIC_KEY, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['wrapKey']);
+    var tkey = await crypto.subtle.wrapKey('raw', aes, pub, { name: 'RSA-OAEP' });
+    var envelope = {};
+    for (var k in header) envelope[k] = header[k];
+    envelope.key = b64(skey); envelope.kiv = b64(kiv); envelope.tkey = b64(tkey); envelope.iv = b64(iv); envelope.data = b64(data);
+    return { id: id, filename: 'HSCT-SAVE_' + cfg.id + '_' + slug(ses.name) + '_' + stamp(saved) + '.hsctsave', text: JSON.stringify(envelope), envelope: envelope, payload: payload };
+  }
+  async function save() {
+    var s = await buildSave();
+    ses.saves = s.payload.n;
+    lastSave = s;
+    log('save', { id: s.id });
+    if (saver.autosave) { try { localStorage.setItem(localKey(), s.text); } catch (e) {} }
+    return { id: s.id, filename: s.filename, text: s.text };
+  }
+  function downloadSave() { if (!lastSave) throw new Error('Nothing saved yet — call HSCT.save first'); return downloadBlob(lastSave.text, lastSave.filename); }
+  async function copySave() { if (!lastSave) throw new Error('Nothing saved yet — call HSCT.save first'); return copyText(lastSave.text); }
+
+  var CRYPTO_FIELDS = { key: 1, kiv: 1, tkey: 1, iv: 1, data: 1, keep: 1, keepIv: 1 };
+  function headerOf(env) { var h = {}; for (var k in env) if (!CRYPTO_FIELDS[k]) h[k] = env[k]; return h; }
+  /* Open the student-readable part of a finished result file (sealed with finish({ keep })). */
+  async function open(input) {
+    if (!cfg) throw new Error('Call HSCT.lesson({...}) first');
+    needSubtle();
+    var env = parseEnvelope(input);
+    if (!env || env.hsct !== 1 || !env.data) throw new Error('That is not a result file.');
+    if (env.kind === 'save') throw new Error('That is a save file, not a result.');
+    if (env.lesson !== cfg.id) throw new Error('That result is from a different lesson (' + esc(env.title || env.lesson) + ').');
+    if (!env.keep) throw new Error('That result file has no student copy inside it (it was made before this lesson kept one).');
+    try {
+      var sk = await studentKey(env.student);
+      var plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64d(env.keepIv), additionalData: enc.encode(JSON.stringify(headerOf(env))) }, sk, b64d(env.keep));
+      return { keep: JSON.parse(dec.decode(plain)), student: env.student, finished: env.finished, badge: env.badge };
+    } catch (e) {
+      throw new Error('Could not open that result file: it was changed after it was made.');
+    }
+  }
+  function parseEnvelope(input) {
+    if (input && typeof input === 'object') return input;
+    var t = String(input || '').trim();
+    var i = t.indexOf('{"hsct"'); if (i > 0) t = t.slice(i);
+    try { return JSON.parse(t); } catch (e) { throw new Error('That is not a save file or save code.'); }
+  }
+  /* Open a save made by this lesson and hand its state to the lesson. */
+  async function restore(input) {
+    if (!cfg) throw new Error('Call HSCT.lesson({...}) first');
+    if (!saver) throw new Error('HSCT.saveable({ get, set }) was never called');
+    needSubtle();
+    var env = parseEnvelope(input);
+    if (!env || env.hsct !== 1 || !env.data) throw new Error('That is not a save file or save code.');
+    if (env.kind !== 'save') throw new Error('That is a finished result file, not a save. Results can\'t be resumed.');
+    if (env.lesson !== cfg.id) throw new Error('That save is from a different lesson (' + esc(env.title || env.lesson) + ').');
+    var header = headerOf(env);
+    var payload;
+    try {
+      var sk = await studentKey(env.student);
+      var aes = await crypto.subtle.unwrapKey('raw', b64d(env.key), sk, { name: 'AES-GCM', iv: b64d(env.kiv) }, { name: 'AES-GCM' }, false, ['decrypt']);
+      var plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64d(env.iv), additionalData: enc.encode(JSON.stringify(header)) }, aes, b64d(env.data));
+      payload = JSON.parse(dec.decode(plain));
+    } catch (e) {
+      throw new Error('Could not open that save. It was changed after it was made, or it belongs to a different lesson.');
+    }
+    if (payload.id !== env.id) throw new Error('Could not open that save: its id does not match its contents.');
+    /* rebuild the session so the clock keeps counting from where it stopped */
+    var now = Date.now();
+    ses = {
+      name: payload.student.name, started: payload.started,
+      t0: now - Number(payload.seconds || 0) * 1000, active: Number(payload.activeSeconds || 0),
+      events: Array.isArray(payload.events) ? payload.events : [],
+      resumes: (Array.isArray(payload.resumes) ? payload.resumes : []).concat([{ id: payload.id, savedAt: payload.saved, savedSeconds: payload.seconds, savedEvents: (payload.events || []).length, n: payload.n, version: payload.lesson && payload.lesson.version, resumedAt: new Date(now).toISOString() }]),
+      saves: Number(payload.n || 0),
+    };
+    result = null; lastSave = null;
+    clearInterval(ticker);
+    ticker = setInterval(function () { if (document.visibilityState === 'visible') ses.active += 1; }, 1000);
+    log('resume', { id: payload.id, savedAt: payload.saved });
+    saver.set(payload.state);
+    return { id: payload.id, name: ses.name, savedAt: payload.saved, seconds: payload.seconds, summary: payload.summary || null, resumes: ses.resumes.length };
+  }
+  function localSave() {
+    if (!cfg) return null;
+    try {
+      var t = localStorage.getItem(localKey()); if (!t) return null;
+      var env = JSON.parse(t);
+      if (!env || env.kind !== 'save' || env.lesson !== cfg.id) return null;
+      return { id: env.id, student: env.student, savedAt: env.saved, text: t };
+    } catch (e) { return null; }
+  }
+  function resumeLocal() { var l = localSave(); if (!l) return Promise.reject(new Error('No save in this browser.')); return restore(l.text); }
+
+  /* ---------- the standard end screen ---------- */
+  var CSS = '.hsct-card{--hsct-ink:#101a3f;--hsct-mute:#5b6485;--hsct-line:#d3d9ee;--hsct-accent:var(--hsct-color,#1f3fae);--hsct-ok:#1f7a3d;--hsct-bad:#b3261e;'
+    + 'font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;color:var(--hsct-ink);background:#fff;border:1px solid var(--hsct-line);border-left:6px solid var(--hsct-accent);border-radius:12px;padding:20px 22px;margin:20px 0;line-height:1.45}'
+    + '.hsct-card *{box-sizing:border-box}.hsct-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--hsct-mute)}.hsct-head b{color:var(--hsct-accent)}'
+    + '.hsct-name{font-size:22px;font-weight:700;margin:6px 0 2px}.hsct-score{font-size:15px;margin:0 0 12px}.hsct-score b{font-size:28px;font-weight:700}.hsct-score .hsct-tier{display:inline-block;margin-left:8px;padding:2px 10px;border-radius:999px;background:var(--hsct-accent);color:#fff;font-size:13px;font-weight:600;vertical-align:middle}'
+    + '.hsct-facts{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0 0 14px;font-size:14px}.hsct-facts dt{color:var(--hsct-mute)}.hsct-facts dd{margin:0}.hsct-facts code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;letter-spacing:.08em;font-weight:600}'
+    + '.hsct-secs{width:100%;border-collapse:collapse;font-size:14px;margin:0 0 14px}.hsct-secs td{padding:5px 0;border-top:1px solid var(--hsct-line)}.hsct-secs td:last-child{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}'
+    + '.hsct-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.hsct-btn{font:600 15px "IBM Plex Sans","Segoe UI",system-ui,sans-serif;padding:11px 18px;border-radius:8px;border:2px solid var(--hsct-accent);background:var(--hsct-accent);color:#fff;cursor:pointer}.hsct-btn:hover{filter:brightness(.92)}.hsct-btn.hsct-alt{background:transparent;color:var(--hsct-accent)}.hsct-btn:focus-visible{outline:3px solid #a9b7ea;outline-offset:2px}.hsct-btn:disabled{opacity:.55;cursor:wait}'
+    + '.hsct-note{margin:12px 0 0;font-size:13.5px;color:var(--hsct-mute)}.hsct-status{margin:8px 0 0;font-size:14px;min-height:1.4em}.hsct-status.ok{color:var(--hsct-ok)}.hsct-status.bad{color:var(--hsct-bad)}'
+    /* save / resume cards */
+    + '.hsct-card.hsct-save{border-left-color:var(--hsct-mute)}.hsct-card h3{margin:0 0 4px;font-size:17px}.hsct-card .hsct-sub{margin:0 0 10px;font-size:13.5px;color:var(--hsct-mute)}'
+    + '.hsct-resume-local{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--hsct-line);border-radius:8px;margin:0 0 10px;font-size:14px}'
+    + '.hsct-resume-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}.hsct-resume-row input[type=file]{font-size:13px;max-width:100%}.hsct-resume-row textarea{flex:1;min-width:200px;min-height:40px;font:13px ui-monospace,Menlo,Consolas,monospace;padding:6px 8px;border:1px solid var(--hsct-line);border-radius:6px;resize:vertical}'
+    + '.hsct-btn.hsct-sm{font-size:13.5px;padding:7px 12px}'
+    + '@media print{.hsct-actions,.hsct-note,.hsct-status,.hsct-save{display:none}}';
+  function injectCss() {
+    if (document.getElementById('hsct-kit-css')) return;
+    var s = document.createElement('style'); s.id = 'hsct-kit-css'; s.textContent = CSS; document.head.appendChild(s);
+  }
+  function elOf(el, what) { if (typeof el === 'string') el = document.querySelector(el); if (!el) throw new Error(what + ' needs an element'); return el; }
+
+  /* Renders the card into `el` and seals the result. Resolves with the result. */
+  async function endScreen(el, opts) {
+    el = elOf(el, 'HSCT.endScreen');
+    injectCss();
+    opts = opts || {};
+    var elp = elapsed();
+    var possible = Number(opts.possible || cfg.possible || 0), earned = Number(opts.earned || 0);
+    var pct = possible ? Math.round(100 * earned / possible) : null;
+    var secs = (opts.sections || []).map(function (s) {
+      var right = s.status != null ? esc(s.status) : (s.possible != null ? esc(s.earned) + ' / ' + esc(s.possible) : esc(s.earned));
+      return '<tr><td>' + esc(s.title) + '</td><td>' + right + '</td></tr>';
+    }).join('');
+    var resumed = ses && ses.resumes.length ? '<dt>Resumed</dt><dd>' + ses.resumes.length + ' time' + (ses.resumes.length === 1 ? '' : 's') + ' from a save</dd>' : '';
+    el.innerHTML = '<div class="hsct-card">'
+      + '<div class="hsct-head"><span><b>HSCT TechHub</b> result</span><span>' + esc(cfg.title) + '</span></div>'
+      + '<div class="hsct-name">' + esc(ses ? ses.name : '') + '</div>'
+      + '<div class="hsct-score"><b>' + esc(earned) + '</b> / ' + esc(possible) + (pct != null ? ' <span>(' + pct + '%)</span>' : '') + (opts.tier ? '<span class="hsct-tier">' + esc(opts.tier) + '</span>' : '') + '</div>'
+      + '<dl class="hsct-facts"><dt>Finished</dt><dd>' + esc(fmtDate(new Date().toISOString())) + '</dd>'
+      + '<dt>Time taken</dt><dd>' + esc(fmtDuration(elp.seconds)) + (elp.activeSeconds < elp.seconds - 60 ? ' <span style="color:var(--hsct-mute)">(' + esc(fmtDuration(elp.activeSeconds)) + ' with the tab open)</span>' : '') + '</dd>'
+      + resumed
+      + '<dt>Code</dt><dd><code class="hsct-badge">........</code></dd></dl>'
+      + (secs ? '<table class="hsct-secs"><tbody>' + secs + '</tbody></table>' : '')
+      + '<div class="hsct-actions"><button type="button" class="hsct-btn hsct-dl" disabled>Download your result file</button><button type="button" class="hsct-btn hsct-alt hsct-copy" disabled>Copy result code</button></div>'
+      + '<p class="hsct-note">' + esc(opts.note || 'Submit the file in Google Classroom. If downloads are blocked, copy the code and paste it instead. The file is encrypted: only your teacher can open it.') + '</p>'
+      + '<p class="hsct-status" aria-live="polite">Preparing your result file…</p>'
+      + '</div>';
+    var status = el.querySelector('.hsct-status'), dl = el.querySelector('.hsct-dl'), cp = el.querySelector('.hsct-copy');
+    try {
+      var r = await finish(opts);
+      el.querySelector('.hsct-badge').textContent = r.badge;
+      status.textContent = 'Ready: ' + r.filename;
+      dl.disabled = false; cp.disabled = false;
+      dl.onclick = function () { try { download(); status.className = 'hsct-status ok'; status.textContent = 'Downloaded ' + r.filename + ' — now submit it.'; } catch (e) { status.className = 'hsct-status bad'; status.textContent = e.message; } };
+      cp.onclick = async function () { var ok = await copyCode(); status.className = 'hsct-status ' + (ok ? 'ok' : 'bad'); status.textContent = ok ? 'Code copied — paste it into your submission.' : 'Copy failed. Use the download instead.'; };
+      return r;
+    } catch (e) {
+      status.className = 'hsct-status bad';
+      status.textContent = e.message || String(e);
+      throw e;
+    }
+  }
+
+  /* ---------- the standard resume card (intro screen) ---------- */
+  /* opts.onResume(info) runs after a successful restore (the lesson's set() has already run). */
+  function resumeUI(el, opts) {
+    el = elOf(el, 'HSCT.resumeUI');
+    injectCss();
+    opts = opts || {};
+    var local = localSave();
+    el.innerHTML = '<div class="hsct-card hsct-save">'
+      + '<h3>Pick up where you left off</h3>'
+      + '<p class="hsct-sub">Saved earlier? Open your save file, paste your save code' + (local ? ', or continue the save kept in this browser' : '') + '. The clock continues from where it stopped.</p>'
+      + (local ? '<div class="hsct-resume-local"><span><b>' + esc(local.student) + '</b> · saved ' + esc(fmtDate(local.savedAt)) + ' · <code>' + esc(local.id) + '</code></span><span><button type="button" class="hsct-btn hsct-sm hsct-res-local">Continue</button> <button type="button" class="hsct-btn hsct-alt hsct-sm hsct-res-forget">Forget it</button></span></div>' : '')
+      + '<div class="hsct-resume-row"><input type="file" class="hsct-res-file" accept=".hsctsave,.json,.txt" aria-label="Save file"></div>'
+      + '<div class="hsct-resume-row"><textarea class="hsct-res-code" placeholder="…or paste a save code here" aria-label="Save code"></textarea><button type="button" class="hsct-btn hsct-alt hsct-sm hsct-res-paste">Open code</button></div>'
+      + '<p class="hsct-status" aria-live="polite"></p>'
+      + '</div>';
+    var status = el.querySelector('.hsct-status');
+    function go(text) {
+      status.className = 'hsct-status'; status.textContent = 'Opening…';
+      return restore(text).then(function (info) {
+        status.className = 'hsct-status ok'; status.textContent = 'Welcome back, ' + info.name + '. Continuing from ' + fmtDate(info.savedAt) + '.';
+        if (opts.onResume) opts.onResume(info);
+      }).catch(function (e) { status.className = 'hsct-status bad'; status.textContent = e.message || String(e); });
+    }
+    var f = el.querySelector('.hsct-res-file');
+    f.onchange = function () { var file = f.files && f.files[0]; if (!file) return; file.text().then(go); f.value = ''; };
+    el.querySelector('.hsct-res-paste').onclick = function () { var t = el.querySelector('.hsct-res-code').value.trim(); if (t) go(t); };
+    if (local) {
+      el.querySelector('.hsct-res-local').onclick = function () { go(local.text); };
+      el.querySelector('.hsct-res-forget').onclick = function () { clearLocalSave(); resumeUI(el, opts); };
+    }
+    return HSCT;
+  }
+
+  /* ---------- the standard save card (work screen) ---------- */
+  function saveUI(el) {
+    el = elOf(el, 'HSCT.saveUI');
+    injectCss();
+    var auto = saver && saver.autosave;
+    el.innerHTML = '<div class="hsct-card hsct-save">'
+      + '<h3>Save and continue later</h3>'
+      + '<p class="hsct-sub">' + (auto ? 'Your progress is also kept in this browser automatically. To continue on another device, ' : 'To continue later, ') + 'download a save file or copy a save code, then open it from the lesson\'s start screen. Saves are encrypted; every resume is recorded in your result file.</p>'
+      + '<div class="hsct-actions"><button type="button" class="hsct-btn hsct-sm hsct-sv-dl">Download save file</button><button type="button" class="hsct-btn hsct-alt hsct-sm hsct-sv-copy">Copy save code</button></div>'
+      + '<p class="hsct-status" aria-live="polite">' + (ses && ses.saves ? 'Last save: #' + ses.saves : '') + '</p>'
+      + '</div>';
+    var status = el.querySelector('.hsct-status');
+    el.querySelector('.hsct-sv-dl').onclick = function () {
+      save().then(function (s) { downloadSave(); status.className = 'hsct-status ok'; status.textContent = 'Saved: ' + s.filename + ' (' + s.id + '). Keep that file.'; })
+        .catch(function (e) { status.className = 'hsct-status bad'; status.textContent = e.message || String(e); });
+    };
+    el.querySelector('.hsct-sv-copy').onclick = function () {
+      save().then(function (s) { return copySave().then(function (ok) { status.className = 'hsct-status ' + (ok ? 'ok' : 'bad'); status.textContent = ok ? 'Save code copied (' + s.id + '). Paste it somewhere you can find it — a doc, an email to yourself.' : 'Copy failed. Use the download instead.'; }); })
+        .catch(function (e) { status.className = 'hsct-status bad'; status.textContent = e.message || String(e); });
+    };
+    return HSCT;
+  }
+
+  var HSCT = {
+    kit: KIT, verifyUrl: VERIFY_URL,
+    lesson: lesson, start: start, log: log, elapsed: elapsed,
+    finish: finish, download: download, copyCode: copyCode, endScreen: endScreen, open: open,
+    saveable: saveable, save: save, downloadSave: downloadSave, copySave: copySave, restore: restore,
+    localSave: localSave, resumeLocal: resumeLocal, clearLocalSave: clearLocalSave, resumeUI: resumeUI, saveUI: saveUI,
+    get result() { return result; },
+    get session() { return ses ? { name: ses.name, started: ses.started, resumes: ses.resumes.length, saves: ses.saves } : null; },
+    fmtDuration: fmtDuration,
+  };
+  window.HSCT = HSCT;
+})();
+</script>
+<!-- HSCT KIT END -->
+
+<script>
+/* =========================================================================
+   LESSON: The Riveras bought a house  (home-network-setup-2)
+   ========================================================================= */
+HSCT.lesson({ id: 'home-network-setup-2', title: 'The Riveras bought a house', version: '1.0', course: 'it-network', possible: 100 });
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function show(id) { document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === id)); window.scrollTo(0, 0); }
+
+/* ---------- the world ---------- */
+const NET = '192.168.10.', ROUTER_IP = NET + '1', MASK = '255.255.255.0';
+const DEFAULT_SSID = 'HN6400-Guest', DEFAULT_WPASS = 'default1234', DEFAULT_ADMIN = 'Qz8-Lm3Vt', SW_DEFAULT_NAME = 'GS305E';
+const POOL_MIN = 50, POOL_MAX = 199, POOL_SIZE = 60;   // the client's rules: .2–.49 fixed, .200–.254 kept for the cameras
+const RESERVE = [   // what the client asked for
+  { key: 'printer', name: 'Printer', mac: 'AA:1B:2C:3D:4E:5F', ip: NET + '20' },
+  { key: 'nas', name: 'NAS (network drive)', mac: '00:11:32:7A:C4:9E', ip: NET + '21' },
+  { key: 'nvr', name: 'Camera recorder', mac: 'BC:AD:28:51:0F:73', ip: NET + '22' },
+];
+const SW_MAC = { swA: '28:80:88:1A:2B:3C', swB: '28:80:88:4D:5E:6F' };
+const CLIENT_DEVICES = [
+  { name: 'Office switch', mac: SW_MAC.swA, how: 'wired', sw: 'swA' },
+  { name: 'Living room switch', mac: SW_MAC.swB, how: 'wired', sw: 'swB' },
+  { name: 'Desktop PC', mac: '3C:52:82:11:A0:01', how: 'wired' },
+  { name: 'Printer', mac: 'AA:1B:2C:3D:4E:5F', how: 'wired' },
+  { name: 'NAS (network drive)', mac: '00:11:32:7A:C4:9E', how: 'wired' },
+  { name: 'Smart TV', mac: 'D4:63:C6:2B:77:10', how: 'wired' },
+  { name: 'Game console', mac: '7C:BB:8A:90:14:2E', how: 'wired' },
+  { name: 'Camera recorder', mac: 'BC:AD:28:51:0F:73', how: 'wired' },
+  { name: 'Laptop (Maria)', mac: 'F0:9E:4A:5C:21:B7', how: 'Wi-Fi' },
+  { name: 'Phone (Maria)', mac: '48:E1:E9:0D:33:F2', how: 'Wi-Fi' },
+  { name: 'Phone (Luis)', mac: '9C:F4:8B:66:0A:D1', how: 'Wi-Fi' },
+  { name: 'Tablet (Diego)', mac: 'A4:83:E7:2C:98:11', how: 'Wi-Fi' },
+];
+
+/* ---------- IP helpers ---------- */
+function parseIp(s) {
+  const m = String(s == null ? '' : s).trim().match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!m) return null;
+  const o = m.slice(1).map(Number);
+  return o.some((n) => n > 255) ? null : o;
+}
+const ipNum = (o) => ((o[0] * 256 + o[1]) * 256 + o[2]) * 256 + o[3];
+const ipStr = (n) => [n >>> 24, (n >>> 16) & 255, (n >>> 8) & 255, n & 255].join('.');
+function sameNet(a, b, mask) { for (let i = 0; i < 4; i++) if ((a[i] & mask[i]) !== (b[i] & mask[i])) return false; return true; }
+const onNet = (o) => sameNet(o, parseIp(ROUTER_IP), parseIp(MASK));
+function inPool(o, lan) { const s = parseIp(lan.start), e = parseIp(lan.end); return !!(s && e && ipNum(s) <= ipNum(o) && ipNum(o) <= ipNum(e)); }
+
+/* ---------- validators (pure) ---------- */
+function checkWireless(w) {
+  const p = [];
+  const ssid = String(w.ssid || '').trim();
+  if (!ssid) p.push('The main network needs a name (SSID).');
+  else if (ssid.toLowerCase() === DEFAULT_SSID.toLowerCase()) p.push('That is still the factory name. The Riveras want their own.');
+  if (w.sec === 'Open') p.push('"Open" means no password at all. Use WPA2 or WPA3.');
+  else if (w.sec === 'WEP') p.push('WEP can be cracked in minutes. Use WPA2 or WPA3.');
+  const pw = String(w.wpass || '');
+  if (w.sec !== 'Open') {
+    if (pw.length < 12) p.push('The main Wi-Fi password is ' + pw.length + ' characters. At least 12.');
+    else if (pw.toLowerCase() === DEFAULT_WPASS || pw.toLowerCase() === 'password') p.push('That is the factory password. Pick a new one.');
+  }
+  if (!w.gon) p.push('The client asked for a guest network. Turn it on.');
+  else {
+    const g = String(w.gssid || '').trim();
+    if (!g) p.push('The guest network needs its own name.');
+    else if (g.toLowerCase() === ssid.toLowerCase()) p.push('The guest network has the same name as the main one. Guests need to be able to tell them apart — "' + ssid + ' Guest" works.');
+    const gp = String(w.gpass || '');
+    if (gp.length < 8) p.push('The guest password is ' + gp.length + ' characters. At least 8 — short enough to read off the fridge, long enough to matter.');
+    else if (gp === pw) p.push('The guest password is the same as the main one. The whole point of a guest network is that guests never learn the main password.');
+    if (!w.giso) p.push('"Guest isolation" is off. With it off, anyone on the guest network can see the NAS, the printer and the camera recorder. Turn it on.');
+  }
+  return p;
+}
+function checkLan(l) {
+  const p = [];
+  const r = parseIp(l.ip), m = parseIp(l.mask);
+  if (!r) p.push('"' + l.ip + '" is not a valid IP address.');
+  else if (ipNum(r) !== ipNum(parseIp(ROUTER_IP))) p.push('The client wants the router at ' + ROUTER_IP + ' — the house was already wired for 192.168.10.x. If the router moves, every fixed address in the house has to move with it.');
+  if (!m) p.push('"' + l.mask + '" is not a valid subnet mask.');
+  else if (l.mask !== MASK) p.push('Keep the mask at ' + MASK + ' (a /24): first three numbers are the network, last one is the device.');
+  if (!l.dhcp) { p.push('DHCP is off. Nothing will get an address.'); return p; }
+  const s = parseIp(l.start), e = parseIp(l.end);
+  if (!s) p.push('Pool start "' + l.start + '" is not a valid IP address.');
+  if (!e) p.push('Pool end "' + l.end + '" is not a valid IP address.');
+  if (!r || !m || !s || !e || l.mask !== MASK) return p;
+  if (!onNet(s)) p.push(l.start + ' is not on the router\'s network. With mask ' + MASK + ' the pool has to be ' + NET + '___ — the third number is 10 in this house, not 1.');
+  if (!onNet(e)) p.push(l.end + ' is not on the router\'s network. It has to be ' + NET + '___');
+  if (p.length) return p;
+  const sn = ipNum(s), en = ipNum(e), rn = ipNum(r);
+  if (sn > en) p.push('The pool start comes after the end. Start low, end high.');
+  if (s[3] === 0 || e[3] === 0) p.push('.0 is the network address itself. It can\'t be handed to a device.');
+  if (s[3] === 255 || e[3] === 255) p.push('.255 is the broadcast address. It can\'t be handed to a device.');
+  if (sn <= rn && rn <= en) p.push('The pool includes ' + ROUTER_IP + ', the router\'s own address.');
+  if (p.length) return p;
+  if (s[3] < POOL_MIN) p.push('The pool starts at .' + s[3] + '. The client wants .2–.49 kept free for fixed addresses (the switches and the three reservations). Start at .' + POOL_MIN + ' or higher.');
+  if (e[3] > POOL_MAX) p.push('The pool ends at .' + e[3] + '. The client wants .200–.254 kept free for the cameras coming next month. End at .' + POOL_MAX + ' or lower.');
+  const size = en - sn + 1;
+  if (size < POOL_SIZE) p.push('That pool holds ' + size + ' address' + (size === 1 ? '' : 'es') + '. The client wants at least ' + POOL_SIZE + ' — the house has more devices than the apartment did, and the guest network uses the same pool.');
+  return p;
+}
+function checkReservation(res, lan, existing) {
+  const p = [];
+  if (!res.mac) { p.push('Pick which device gets the fixed address.'); return p; }
+  const dev = CLIENT_DEVICES.find((d) => d.mac === res.mac);
+  const want = RESERVE.find((r) => r.mac === res.mac);
+  if (dev && dev.sw) { p.push('The switches get their fixed addresses on their own admin pages (that\'s the next stage). The client\'s reservation list is the printer, the NAS and the camera recorder.'); return p; }
+  if (!want) { p.push((dev ? dev.name : 'That device') + ' isn\'t on the client\'s list. Reservations: printer → .20, NAS → .21, camera recorder → .22.'); return p; }
+  if ((existing || []).some((x) => x.mac === res.mac)) { p.push(want.name + ' already has a reservation.'); return p; }
+  const ip = parseIp(res.ip);
+  if (!ip) { p.push('"' + res.ip + '" is not a valid IP address.'); return p; }
+  if (!onNet(ip)) { p.push(res.ip + ' is not on this house\'s network (' + NET + '___).'); return p; }
+  if (ipNum(ip) === ipNum(parseIp(ROUTER_IP))) { p.push('That is the router\'s own address.'); return p; }
+  if (ip[3] === 0 || ip[3] === 255) { p.push('.0 and .255 are reserved (network and broadcast).'); return p; }
+  if (inPool(ip, lan)) p.push(res.ip + ' is inside the DHCP pool (' + lan.start + '–' + lan.end + '). Fixed addresses live outside the pool.');
+  if ((existing || []).some((x) => x.ip === res.ip)) p.push(res.ip + ' is already reserved for another device. Two devices, one address: a conflict.');
+  if (ipNum(ip) !== ipNum(parseIp(want.ip))) p.push('The client asked for ' + want.name.replace(/ \(.*\)/, '') + ' at ' + want.ip + ' — the office PC and the camera app are already set up for those addresses.');
+  return p;
+}
+/* A managed switch's settings. `other` is the other switch's saved settings (or null). */
+function checkSwitch(sw, lan, other) {
+  const p = [];
+  const name = String(sw.name || '').trim();
+  if (!name) p.push('Give the switch a name. In six months you will not remember which "GS305E" is which.');
+  else if (name.toUpperCase() === SW_DEFAULT_NAME) p.push('"' + SW_DEFAULT_NAME + '" is the model number, not a name. Name it for the room.');
+  else if (other && other.ok && other.name.trim().toLowerCase() === name.toLowerCase()) p.push('The other switch is already called "' + other.name + '". Two switches, two names.');
+  if (sw.mode !== 'static') p.push('The management address is set to DHCP. It could change after a reboot, and then you\'d have to hunt for the switch\'s page. The client wants a fixed address.');
+  const ip = parseIp(sw.ip), m = parseIp(sw.mask), g = parseIp(sw.gw);
+  if (sw.mode === 'static') {
+    if (!ip) p.push('"' + sw.ip + '" is not a valid IP address.');
+    else if (!onNet(ip)) p.push(sw.ip + ' is not on this house\'s network. It has to be ' + NET + '___ or you will never reach the switch\'s page from this network.');
+    else if (ipNum(ip) === ipNum(parseIp(ROUTER_IP))) p.push(sw.ip + ' is the router. Two devices with the router\'s address takes the whole house down.');
+    else if (ip[3] === 0 || ip[3] === 255) p.push('.0 and .255 can\'t be given to a device.');
+    else if (inPool(ip, lan)) p.push(sw.ip + ' is inside the DHCP pool (' + lan.start + '–' + lan.end + '). The router could hand that address to a phone — a conflict waiting to happen. Fixed addresses go in the .2–.49 space the client kept free.');
+    else if (RESERVE.some((r) => r.ip === sw.ip)) p.push(sw.ip + ' is reserved for the ' + RESERVE.find((r) => r.ip === sw.ip).name + '. Pick a different one.');
+    else if (other && other.ok && other.mode === 'static' && other.ip === sw.ip) p.push(sw.ip + ' is already the other switch\'s address. Each switch needs its own.');
+    if (!m) p.push('"' + sw.mask + '" is not a valid subnet mask.');
+    else if (sw.mask !== MASK) p.push('The mask has to match the router\'s: ' + MASK + '.');
+    if (!g) p.push('"' + sw.gw + '" is not a valid gateway address.');
+    else if (ipNum(g) !== ipNum(parseIp(ROUTER_IP))) p.push('The gateway is the router\'s LAN address, ' + ROUTER_IP + '. ' + (sw.gw === '192.168.1.1' ? 'That one was the apartment\'s router.' : 'Without the right gateway the switch can\'t reach anything outside this network — no firmware updates, no time sync.'));
+  }
+  if (!sw.loop) p.push('Loop protection is off. The client specifically asked for it — see "nephew".');
+  if (!sw.unused) p.push('Unused ports are enabled. The client asked for them off, so a stray cable into an empty port does nothing.');
+  return p;
+}
+function assignAddresses(lan, statics) {
+  const out = [];
+  if (!lan.dhcp) return CLIENT_DEVICES.map((d, i) => ({ d, ip: '169.254.' + (17 + i * 23) + '.' + (40 + i * 31), note: 'self-assigned — no DHCP' }));
+  const s = parseIp(lan.start), e = parseIp(lan.end);
+  if (!s || !e || ipNum(s) > ipNum(e)) return CLIENT_DEVICES.map((d) => ({ d, ip: '—', note: 'pool is invalid' }));
+  let k = ipNum(s);
+  CLIENT_DEVICES.forEach((d) => {
+    const r = (lan.res || []).find((x) => x.mac === d.mac);
+    if (r) { out.push({ d, ip: r.ip, note: 'reserved' }); return; }
+    if (d.sw && statics && statics[d.sw]) { out.push({ d, ip: statics[d.sw], note: 'static (set on the switch)' }); return; }
+    if (k > ipNum(e)) { out.push({ d, ip: '—', note: 'pool is full' }); return; }
+    out.push({ d, ip: ipStr(k++), note: 'from the pool' });
+  });
+  return out;
+}
+
+/* ---------- cabling ---------- */
+const DEV = {
+  modem:   { name: 'Modem', sub: 'from the ISP', x: 40, y: 70, w: 110, h: 60, ports: { ETH: [150, 100] } },
+  router:  { name: 'Router', sub: 'HN-6400 · 1 WAN + 4 LAN', x: 175, y: 50, w: 170, h: 95, ports: { WAN: [195, 145], LAN1: [250, 145], LAN2: [280, 145], LAN3: [310, 145], LAN4: [340, 145] } },
+  swA:     { name: 'Office switch', sub: 'managed · 5 ports', x: 420, y: 62, w: 240, h: 76, sw: true, ports: { P1: [450, 138], P2: [490, 138], P3: [530, 138], P4: [570, 138], P5: [610, 138] } },
+  pc:      { name: 'Desktop PC', sub: 'office', x: 380, y: 185, w: 120, h: 55, ports: { ETH: [440, 185] } },
+  printer: { name: 'Printer', sub: 'office', x: 515, y: 185, w: 120, h: 55, ports: { ETH: [575, 185] } },
+  nas:     { name: 'NAS', sub: 'office · network drive', x: 650, y: 185, w: 130, h: 55, ports: { ETH: [715, 185] } },
+  swB:     { name: 'Living room switch', sub: 'managed · 5 ports', x: 60, y: 300, w: 240, h: 76, sw: true, ports: { P1: [90, 376], P2: [130, 376], P3: [170, 376], P4: [210, 376], P5: [250, 376] } },
+  tv:      { name: 'Smart TV', sub: 'living room', x: 30, y: 425, w: 130, h: 55, ports: { ETH: [95, 425] } },
+  console: { name: 'Game console', sub: 'living room', x: 175, y: 425, w: 140, h: 55, ports: { ETH: [245, 425] } },
+  nvr:     { name: 'Camera recorder', sub: 'living room', x: 330, y: 425, w: 150, h: 55, ports: { ETH: [405, 425] } },
+};
+const WIRED = ['pc', 'printer', 'nas', 'tv', 'console', 'nvr'];
+const ROOM = { pc: 'office', printer: 'office', nas: 'office', swA: 'office', tv: 'living room', console: 'living room', nvr: 'living room', swB: 'living room' };
+const SW_OF_ROOM = { office: 'swA', 'living room': 'swB' };
+const isSw = (d) => !!(DEV[d] && DEV[d].sw);
+function pname(id) { const [d, p] = id.split('.'); return DEV[d].name + ' ' + (p === 'ETH' ? 'port' : p); }
+function devOf(id) { return id.split('.')[0]; }
+
+function checkCabling(cables) {
+  const p = [], used = {};
+  cables.forEach(([a, b]) => { used[a] = b; used[b] = a; });
+  const other = (id) => used[id];
+  cables.forEach(([a, b]) => {
+    if (devOf(a) === devOf(b)) p.push('A cable runs from ' + pname(a) + ' back into ' + pname(b) + ' — the same box. That is a loop. A switch will flood itself with its own traffic and take the whole house down with it.');
+  });
+  const m = other('modem.ETH');
+  if (!m) p.push('The modem isn\'t connected to anything. No modem, no internet.');
+  else if (m !== 'router.WAN') p.push(devOf(m) === 'router' ? 'The modem is plugged into a LAN port. The modem goes into the router\'s WAN port — the internet side.' : 'The modem is plugged into the ' + pname(m) + '. The modem goes into the router\'s WAN port and nowhere else.');
+  const w = other('router.WAN');
+  if (w && w !== 'modem.ETH') p.push('The ' + pname(w) + ' is plugged into the router\'s WAN port. WAN is for the modem only. Everything in the house is on the LAN side.');
+  cables.forEach(([a, b]) => {
+    if (isSw(devOf(a)) && isSw(devOf(b)) && devOf(a) !== devOf(b)) p.push('There is a cable between the two switches, but there is no cable run between the office and the living room. Each room has its own run to the closet — each switch gets its own router LAN port.');
+  });
+  ['swA', 'swB'].forEach((sw) => {
+    const links = cables.filter(([a, b]) => ((devOf(a) === 'router' && devOf(b) === sw) || (devOf(a) === sw && devOf(b) === 'router')) && a !== 'router.WAN' && b !== 'router.WAN');
+    if (links.length > 1) p.push('There are ' + links.length + ' cables between the router and the ' + DEV[sw].name + '. One is enough — two make a loop.');
+  });
+  const reach = new Set(['router']), q = ['router'];
+  while (q.length) {
+    const d = q.shift();
+    cables.forEach(([a, b]) => {
+      [[a, b], [b, a]].forEach(([x, y]) => {
+        if (devOf(x) !== d) return;
+        if (x === 'router.WAN' || y === 'router.WAN' || devOf(y) === 'modem') return;
+        const e = devOf(y);
+        if (!reach.has(e)) { reach.add(e); if (isSw(e)) q.push(e); }
+      });
+    });
+  }
+  WIRED.forEach((d) => {
+    const o = other(d + '.ETH'), nm = DEV[d].name, room = ROOM[d];
+    if (!o) { p.push('The ' + nm + ' isn\'t plugged in.'); return; }
+    const od = devOf(o);
+    if (WIRED.includes(od)) { p.push('The ' + nm + ' is plugged straight into the ' + DEV[od].name + '. Devices don\'t talk to each other directly — they go through a switch.'); return; }
+    if (od === 'modem') return;
+    if (od === 'router') { p.push('The ' + nm + ' is in the ' + room + ', and the router is in the closet. There is one cable run from the closet to the ' + room + ' — the ' + nm + ' shares it through the ' + DEV[SW_OF_ROOM[room]].name.toLowerCase() + '.'); return; }
+    if (isSw(od) && ROOM[od] !== room) { p.push('The ' + nm + ' is in the ' + room + '. Its cable doesn\'t reach the ' + DEV[od].name.toLowerCase() + ' in the ' + ROOM[od] + ' — use the ' + DEV[SW_OF_ROOM[room]].name.toLowerCase() + '.'); return; }
+    if (!reach.has(d)) p.push('The ' + nm + ' is plugged into the ' + pname(o) + ', but that switch has no path to the router. A switch only passes traffic along — it needs its own cable to a router LAN port.');
+  });
+  return p;
+}
+
+/* ---------- tickets ---------- */
+const TICKETS = [
+  {
+    id: 't1', who: 'Maria', title: 'The whole living room is dead',
+    msg: 'The TV, the console and the camera recorder all lost the internet at the same time. The cleaner moved the TV stand this morning. The office is fine.',
+    evidence: 'Smart TV — Network\n   IP Address  . . . . . . . : 192.168.10.101  (DHCP, lease from this morning)\n   Gateway . . . . . . . . . : 192.168.10.1\n   ping 192.168.10.1 . . . . : <span class="hl">Destination host unreachable</span>\n   ping 192.168.10.102 (console): reply   ← the console answers\n\nLiving room switch — front panel\n   Port 1 (uplink to closet) : <span class="hl">off</span>\n   Port 2 (TV) . . . . . . . : green\n   Port 3 (console)  . . . . : green\n   Port 4 (camera recorder)  : green',
+    diag: { q: 'What\'s going on?', right: 2, a: [
+      ['The DHCP pool ran out.', 'The TV has a 192.168.10.x address from this morning. Addresses aren\'t the problem — reaching the router is.'],
+      ['The living room switch died.', 'Three of its ports are green and the TV can ping the console through it. The switch is switching. One port is dark.'],
+      ['The switch\'s uplink to the closet is disconnected. Everything behind the switch can still talk to each other, but nothing can reach the router.', 'Right. Port 1 is the one cable out of the room, and its light is off. The devices keep the addresses they already had, but the path to the gateway is gone.'],
+      ['The router is down.', 'The office is fine, and the office goes through the same router. Only the living room lost it.'],
+    ] },
+    fix: { q: 'What do you do?', right: 0, a: [
+      ['Check the uplink cable at both ends — the switch\'s port 1 and the wall jack behind the TV stand — reseat it, and replace it if the light stays off.', 'Yes. The cleaner pulled the TV stand, the cable popped out of the jack (or got crushed). Cable first; if that doesn\'t bring the light back, try another router LAN port in the closet.'],
+      ['Set the TV to a static IP.', 'The TV\'s address is fine. It can\'t reach the router because the cable is out, and no address fixes a missing cable.'],
+      ['Reboot the router.', 'The router is serving the office without complaint. Rebooting it takes the office down for a minute and changes nothing in the living room.'],
+      ['Move the TV, console and recorder onto Wi-Fi.', 'That "works" the way taping over a warning light works. The client paid for a wired room; put the cable back.'],
+    ] },
+  },
+  {
+    id: 't2', who: 'Luis', title: 'Everything is crawling — and the switch is blinking like crazy',
+    msg: 'Since yesterday every device in the house is slow, Wi-Fi included. Diego said he "added a cable to make the living room faster."',
+    evidence: 'Living room switch — front panel\n   Port 1 (uplink) . . . . . : <span class="hl">flashing nonstop</span>\n   Port 2 (TV) . . . . . . . : flashing nonstop\n   Port 3 (console)  . . . . : flashing nonstop\n   Port 4  . . . . . . . . . : <span class="hl">flashing nonstop — cable goes to…</span>\n   Port 5  . . . . . . . . . : <span class="hl">flashing nonstop — …port 4 of this same switch</span>\n\nRouter — Status\n   LAN traffic . . . . . . . : <span class="hl">98% utilization</span>, mostly broadcast',
+    diag: { q: 'What\'s going on?', right: 1, a: [
+      ['The internet company is throttling them.', 'The slowdown is inside the house too — every LAN port is flashing and the router\'s LAN is at 98%. The ISP can\'t cause that.'],
+      ['Port 4 is cabled to port 5 on the same switch: a loop. Every broadcast goes around forever, multiplies, and floods the whole network — a broadcast storm.', 'Right. A switch forwards broadcasts out every port. With a loop, each one comes back in and goes out again, and again, until the network is nothing but copies of old messages. It reaches the router and the Wi-Fi too.'],
+      ['The switch needs a firmware update.', 'The lights tell the story: two ports cabled to each other on the same box. Firmware doesn\'t cause that; a nephew does.'],
+      ['Too many devices for the pool.', 'A full pool gives new devices a 169.254 address. It doesn\'t make every existing device slow.'],
+    ] },
+    fix: { q: 'What\'s the fix that stays fixed?', right: 3, a: [
+      ['Reboot the switch.', 'The storm stops for about two seconds, until the first broadcast goes around the loop again. The cable is still there.'],
+      ['Widen the DHCP pool.', 'Nothing to do with addresses. The network is flooded with traffic, not out of addresses.'],
+      ['Replace the switch with a bigger one.', 'A bigger switch loops just as happily. The cable is the problem.'],
+      ['Pull the port 4 ↔ port 5 cable, then turn on loop protection on both switches so a port gets shut down automatically the next time someone does this.', 'Yes. Remove the loop, then make the switch defend itself. Loop protection (on a managed switch) sees its own traffic coming back and disables the port. That is why the client asked for it.'],
+    ] },
+  },
+  {
+    id: 't3', who: 'Maria', title: 'The PC says there\'s an "IP address conflict"',
+    msg: 'The office PC keeps popping up a warning and dropping off the network for a minute at a time. It started after Diego set up the NAS "so it\'s always at the same address."',
+    evidence: 'Office PC — Windows\n   <span class="hl">"Another device on the network is using your computer\'s IP address."</span>\n   IPv4 Address  . . . . . . : 192.168.10.120  (DHCP)\n\nNAS — Network settings\n   IP Address  . . . . . . . : <span class="hl">192.168.10.120  (Manual)</span>\n   Set by  . . . . . . . . . : Diego, last weekend\n\nRouter — LAN & DHCP\n   Pool  . . . . . . . . . . : 192.168.10.100 – 192.168.10.199\n   Reservation . . . . . . . : NAS → 192.168.10.21',
+    diag: { q: 'What\'s going on?', right: 0, a: [
+      ['The NAS was given a manual address inside the DHCP pool. The router doesn\'t know about it, handed the same address to the PC, and now two devices answer to .120.', 'Right. The router only tracks the addresses it gives out. A manual address inside the pool is invisible to it, so sooner or later it hands that address to someone else. Two devices, one address: both lose.'],
+      ['The PC has a virus.', 'The warning is Windows being accurate: another device really is using its address. Look at the NAS.'],
+      ['The router\'s pool is too small.', 'The pool has 100 addresses and the house uses twelve. Size isn\'t the problem; a manual address inside it is.'],
+      ['The NAS\'s reservation is wrong.', 'The reservation at .21 is fine. The NAS isn\'t using it — Diego overrode it with a manual .120 on the NAS itself.'],
+    ] },
+    fix: { q: 'What do you do?', right: 2, a: [
+      ['Change the PC to a manual address, 192.168.10.121.', 'Now you have two manual addresses inside the pool, and the next device the router hands .121 to will conflict with the PC. You moved the problem.'],
+      ['Shrink the pool so it ends at .119.', 'That protects .120 and throws away 80 addresses to work around one mistake. The client asked for at least 60, so this is also against the spec.'],
+      ['Set the NAS back to "obtain automatically". The reservation already guarantees it .21 every time — that was the whole point of the reservation.', 'Yes. "Always the same address" is what the reservation does, from the router\'s side, where the router can see it. A manual address only belongs outside the pool, and here it isn\'t even needed.'],
+      ['Reboot both devices.', 'They come back, the router hands the PC .120 again (its lease), the NAS still says .120, and the warning is back within the hour.'],
+    ] },
+  },
+  {
+    id: 't4', who: 'Luis', title: 'Laptop can print but can\'t get online',
+    msg: 'Maria\'s laptop prints fine and can open the NAS, but no websites load. Her phone, on the same Wi-Fi, is fine. Diego "optimized" the laptop.',
+    evidence: 'Laptop — ipconfig\n   IPv4 Address  . . . . . . : 192.168.10.30   (Manual)\n   Subnet Mask . . . . . . . : 255.255.255.0\n   Default Gateway . . . . . : <span class="hl">192.168.1.1</span>\n\n   ping 192.168.10.20 (printer) : reply\n   ping 192.168.10.21 (NAS) . . : reply\n   ping 8.8.8.8 . . . . . . . . : <span class="hl">Request timed out</span>\n\nRouter (sticker) . . . . . . : 192.168.10.1',
+    diag: { q: 'What\'s going on?', right: 3, a: [
+      ['The Wi-Fi password changed.', 'The laptop is on the Wi-Fi — it reaches the printer and the NAS. The connection is fine.'],
+      ['The laptop\'s address is on the wrong network.', '192.168.10.30 is on this house\'s network — that\'s why the printer and NAS answer. Look one line further down.'],
+      ['The internet is down.', 'Maria\'s phone is online on the same Wi-Fi. The internet is there; the laptop can\'t find the way out.'],
+      ['The gateway is wrong. 192.168.1.1 was the apartment\'s router; this house\'s router is 192.168.10.1. Local devices work because they never need the gateway; anything outside the network does.', 'Right. The gateway is "the way out." The laptop sends every non-local packet to 192.168.1.1, which doesn\'t exist here, so it goes nowhere. Local traffic never touches the gateway, so printing works.'],
+    ] },
+    fix: { q: 'What do you do?', right: 1, a: [
+      ['Change the router\'s address to 192.168.1.1 to match the laptop.', 'That breaks every reservation, both switches and the camera app to fix one laptop that was mis-typed. Fix the one wrong thing.'],
+      ['Set the laptop back to "obtain automatically" — it gets an address, the mask and the right gateway from the router in one go.', 'Yes. DHCP hands out all four things together: address, mask, gateway, DNS. A manual setup only has to be wrong in one of them to half-work, like this one did.'],
+      ['Reinstall Windows.', 'One field is wrong in the network settings. Reinstalling the operating system is a day of work to change one number.'],
+      ['Reboot the router.', 'The router isn\'t doing anything wrong. The laptop is sending its traffic to a router that doesn\'t exist.'],
+    ] },
+  },
+  {
+    id: 't5', who: 'Maria', title: 'Party tonight — guests can\'t get on the Wi-Fi',
+    msg: 'We have thirty people over. The first ones got on the guest network fine; now new arrivals say "connected, no internet." Our own stuff still works.',
+    evidence: 'Router — Status\n   DHCP pool . . . . . . . . : 192.168.10.100 – 192.168.10.159\n   Leases  . . . . . . . . . : <span class="hl">60 of 60 in use</span>\n   Lease time  . . . . . . . : 24 hours\n\nGuest phone — Wi-Fi\n   Connected to  . . . . . . : Rivera Guest\n   IP Address  . . . . . . . : <span class="hl">169.254.88.3</span>\n   Gateway . . . . . . . . . : (none)',
+    diag: { q: 'What\'s going on?', right: 1, a: [
+      ['The guest network is broken.', 'The first guests got on fine through it, and it is still handing out 169.254 — which is a symptom of no address available, not a broken network.'],
+      ['The pool is full: 60 addresses, 60 leases. New devices ask for an address, get nothing, and give themselves a 169.254 one.', 'Right. 100 to 159 is 60 addresses, and every one is leased for 24 hours — including to phones that already left. Nothing is free for the next arrival.'],
+      ['The ISP is slow with thirty people on it.', 'Slow would be slow. "Connected, no internet" with a 169.254 address is "no address." Different problem.'],
+      ['Guest isolation is blocking them.', 'Isolation stops guests from seeing the NAS and the printer. It doesn\'t stop them getting an address.'],
+    ] },
+    fix: { q: 'What do you do?', right: 2, a: [
+      ['Turn off the guest network so everyone uses the main one.', 'Same pool, same 60 addresses, and now thirty people have the main password. Worse on both counts.'],
+      ['Reboot the router to clear the leases.', 'Most routers remember leases across a reboot, and even if this one forgot, the same 60 devices would grab the same 60 addresses in the next minute.'],
+      ['Widen the pool to 192.168.10.100 – 192.168.10.199 (that\'s 100 addresses, still inside the range the client allowed), and shorten the lease time so phones that leave give their address back sooner.', 'Yes. The client\'s rule was "at least 60, stay between .50 and .199" — so there was room for 150. A hundred, plus a 2-hour lease, handles a party. (Tonight, the widened pool alone fixes it instantly.)'],
+      ['Give every guest a reservation.', 'Thirty reservations typed from thirty phones\' MAC addresses, during a party. No.'],
+    ] },
+  },
+];
+
+/* ---------- quiz ---------- */
+const QUIZ = [
+  { q: 'A DHCP pool runs from 192.168.10.50 to 192.168.10.199. How many addresses is that?', right: 2, a: ['149', '199', '150', '100'], fb: '199 − 50 + 1 = 150. Both ends count.' },
+  { q: 'The router is 192.168.10.1 with mask 255.255.255.0. Which address is on the same network?', right: 0, a: ['192.168.10.250', '192.168.1.10', '192.168.100.10', '10.168.10.1'], fb: 'First three numbers must match: 192.168.10. Only 192.168.10.250 does. The others look close and are on three different networks.' },
+  { q: 'The pool is .100–.199. Which address is safe to give a switch as a fixed management address?', right: 1, a: ['192.168.10.150', '192.168.10.5', '192.168.10.0', '192.168.10.255'], fb: '.5 is outside the pool and is a normal device address. .150 is inside the pool (conflict waiting to happen); .0 and .255 can never be given to a device.' },
+  { q: 'Windows says "another device on the network is using your computer\'s IP address." The most likely cause?', right: 3, a: ['The Wi-Fi password was changed', 'The DHCP pool is too big', 'The router is on the wrong network', 'Someone set a manual address on a device inside the DHCP pool'], fb: 'The router only knows about the addresses it hands out. A manual address inside the pool is invisible to it, and eventually it gives the same one to someone else.' },
+  { q: 'A laptop can reach the printer and the NAS but nothing on the internet. Its address is right. What\'s the first thing to check?', right: 1, a: ['The Wi-Fi password', 'The default gateway', 'The subnet mask', 'The printer\'s reservation'], fb: 'Local traffic never uses the gateway; internet traffic always does. "Inside works, outside doesn\'t" points at the gateway.' },
+  { q: 'What is a managed switch\'s management IP address for?', right: 2, a: ['The switch can\'t forward traffic without it', 'It\'s the address devices plugged into the switch get', 'Reaching the switch\'s settings page — the switch forwards traffic whether or not it has one', 'It replaces the router\'s gateway'], fb: 'A switch switches with no address at all. The management address exists so you can open its page (to turn on loop protection, see port lights, update firmware). Fixed, so you can find it.' },
+];
+
+/* ---------- state ---------- */
+let state;
+function freshState() {
+  return {
+    stage: 1,
+    cables: [], sel: null,
+    s1: { checks: 0, ok: false, score: 0 },
+    s2: { phase: 'addr', addrFails: 0, loginFails: 0, pwFails: 0, score: 0, ok: false },
+    portal: { tab: 'status', ssid: DEFAULT_SSID, sec: 'WPA2', wpass: DEFAULT_WPASS, gon: false, gssid: '', gpass: '', giso: false, ip: ROUTER_IP, mask: MASK, dhcp: true, start: NET + '100', end: NET + '149', res: [], resMac: '', resIp: '' },
+    s3: { wireless: { fails: 0, ok: false }, lan: { fails: 0, ok: false }, res: { fails: 0, ok: false }, score: 0, ok: false },
+    sw: { swA: { name: SW_DEFAULT_NAME, mode: 'dhcp', ip: '', mask: MASK, gw: '', loop: false, unused: false, fails: 0, ok: false }, swB: { name: SW_DEFAULT_NAME, mode: 'dhcp', ip: '', mask: MASK, gw: '', loop: false, unused: false, fails: 0, ok: false } },
+    s4: { score: 0, ok: false },
+    s5: { i: 0, t: TICKETS.map(() => ({ diagTries: 0, diagOk: false, fixTries: 0, fixOk: false })), score: 0, ok: false },
+    s6: { i: 0, answers: [], score: 0, ok: false },
+  };
+}
+const STAGES = [
+  { n: 1, name: 'Plug it in', mins: 12, pts: 20 },
+  { n: 2, name: 'Get in', mins: 3, pts: 5 },
+  { n: 3, name: 'Router', mins: 15, pts: 24 },
+  { n: 4, name: 'Switches', mins: 8, pts: 14 },
+  { n: 5, name: 'Service calls', mins: 15, pts: 25 },
+  { n: 6, name: 'Check', mins: 5, pts: 12 },
+];
+function total() { return state.s1.score + state.s2.score + state.s3.score + state.s4.score + state.s5.score + state.s6.score; }
+function stageDone(n) { return state['s' + n].ok; }
+
+/* ---------- saves ---------- */
+HSCT.saveable({
+  autosave: true,
+  get: () => state,
+  set: (s) => { state = s; state.sel = null; show('view-work'); render(); HSCT.saveUI('#hsct-save'); },
+  summary: () => ({ earned: total(), possible: 100, label: 'stage ' + state.stage + ' of 6 — ' + STAGES[state.stage - 1].name }),
+});
+HSCT.resumeUI('#hsct-resume');
+
+/* ---------- 1. intro ---------- */
+$('start').onclick = () => {
+  const name = $('name').value.trim();
+  if (name.length < 2) { $('name-err').style.display = 'block'; $('name').focus(); return; }
+  $('name-err').style.display = 'none';
+  state = freshState();
+  HSCT.start(name);
+  show('view-work'); render(); HSCT.saveUI('#hsct-save');
+};
+$('name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('start').click(); });
+setInterval(() => { if (state && document.getElementById('view-work').classList.contains('active')) $('clock').textContent = HSCT.fmtDuration(HSCT.elapsed().seconds); }, 1000);
+
+/* ---------- 2. work ---------- */
+function render() {
+  $('steps').innerHTML = STAGES.map((s) => `<span class="step${s.n === state.stage ? ' cur' : ''}${stageDone(s.n) ? ' done' : ''}">${s.n}. ${s.name}</span>`).join('');
+  $('points').textContent = total();
+  $('clock').textContent = HSCT.fmtDuration(HSCT.elapsed().seconds);
+  const st = $('stage');
+  st.innerHTML = '';
+  ({ 1: renderStage1, 2: renderStage2, 3: renderStage3, 4: renderStage4, 5: renderStage5, 6: renderStage6 })[state.stage](st);
+}
+function stageHead(n, learnHtml) {
+  const s = STAGES[n - 1];
+  return `<div class="stagehead"><h2>${s.n}. ${esc(s.name)}</h2><span class="mins">${s.pts} points · about ${s.mins} min</span></div>
+    <details class="learn" ${stageDone(n) ? '' : 'open'}><summary>What you need to know</summary><div class="body">${learnHtml}</div></details>`;
+}
+function nextBtn(n) {
+  return `<div class="actions"><button type="button" class="btn" id="next" ${stageDone(n) ? '' : 'disabled'}>${n === 6 ? 'Finish' : 'Next: ' + STAGES[n].name + ' →'}</button><span class="pts">Stage score: <b>${state['s' + n].score}</b> / ${STAGES[n - 1].pts}</span></div>`;
+}
+function wireNext(n) {
+  $('next').onclick = () => {
+    if (!stageDone(n)) return;
+    HSCT.log('stage-done', { stage: n, score: state['s' + n].score, total: total() });
+    if (n === 6) { renderEnd(); return; }
+    state.stage = n + 1; render(); HSCT.saveUI('#hsct-save');
+  };
+}
+function fbBox(el, cls, html) { el.className = 'fb show ' + cls; el.innerHTML = html; }
+
+/* ----- stage 1 ----- */
+function renderStage1(st) {
+  st.innerHTML = stageHead(1, `
+    <p>Same four kinds of boxes as the apartment — modem, router, switch, Wi-Fi — with two things new.</p>
+    <dl class="term">
+      <dt>Two rooms, two runs</dt><dd>The modem and router live in a closet. The electrician ran <b>one</b> cable from the closet to the office and <b>one</b> from the closet to the living room. There is no cable between the two rooms.</dd>
+      <dt>Two switches</dt><dd>Each room gets its own switch on the end of its run. A switch has <b>one</b> uplink back to a router LAN port; the room's devices plug into the rest of its ports. A device's cable only reaches the switch in <b>its own</b> room.</dd>
+      <dt>Managed switch</dt><dd>These switches have a settings page of their own (next stages). Cabling-wise they behave like any switch.</dd>
+    </dl>
+    <p>The rules that still catch people: modem → WAN and nothing else in WAN; never a cable from a box back into the same box; one uplink per switch, not two.</p>`)
+  + `<div class="client"><div class="avatar">M</div><div class="bubble"><span class="who">Maria Rivera</span>Modem and router are in the hallway closet where the line comes in. The office has the PC, the printer and the new NAS drive; the living room has the TV, the console and the camera recorder. One switch in each room. The laptop, our phones and Diego's tablet are on Wi-Fi.</div></div>
+    <p class="hint">Click a port, then another port to run a cable. Click a cable (or its ✕) to remove it. Keyboard: Tab to a port, Enter to pick it.</p>
+    <div class="legend"><span><i class="w"></i>WAN port</span><span><i></i>LAN / Ethernet port</span><span><i class="u"></i>port in use</span></div>
+    <p class="scrollhint">Swipe the diagram sideways to see all of it.</p>
+    <div class="topo" id="topo"></div>
+    <div class="cablelist" id="cablelist"></div>
+    <div class="fb" id="fb1"></div>
+    <div class="actions"><button type="button" class="btn" id="check1" ${state.s1.ok ? 'disabled' : ''}>Check the cabling</button><button type="button" class="btn ghost sm" id="clear1" ${state.s1.ok ? 'disabled' : ''}>Unplug everything</button></div>`
+  + nextBtn(1);
+  drawTopo(); renderCableList();
+  if (state.s1.ok) fbBox($('fb1'), 'ok', 'Cabled correctly. Modem → WAN, one uplink per switch, every device on its own room\'s switch.');
+  $('check1').onclick = () => {
+    const problems = checkCabling(state.cables);
+    state.s1.checks++;
+    HSCT.log('cable-check', { n: state.s1.checks, cables: state.cables.length, problems: problems.length });
+    if (problems.length) {
+      fbBox($('fb1'), 'bad', '<b>Not yet — ' + problems.length + ' thing' + (problems.length === 1 ? '' : 's') + ' to fix.</b><ul>' + problems.map((p) => '<li>' + esc(p) + '</li>').join('') + '</ul>');
+      $('fb1').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } else {
+      state.s1.ok = true; state.s1.score = Math.max(8, 20 - 4 * (state.s1.checks - 1));
+      render(); $('fb1').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  };
+  $('clear1').onclick = () => { if (state.s1.ok) return; state.cables = []; state.sel = null; HSCT.log('cable-clear'); drawTopo(); renderCableList(); $('fb1').className = 'fb'; };
+  wireNext(1);
+}
+function drawTopo() {
+  const used = {};
+  state.cables.forEach(([a, b]) => { used[a] = b; used[b] = a; });
+  let s = `<svg viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg" role="group" aria-label="Network diagram: closet with modem and router, office with a switch and three devices, living room with a switch and three devices">`;
+  s += `<rect class="room" x="14" y="30" width="350" height="140" rx="14"/><text class="roomlbl" x="26" y="48">HALLWAY CLOSET · the line comes in here</text>`;
+  s += `<rect class="room" x="364" y="30" width="426" height="225" rx="14"/><text class="roomlbl" x="376" y="48">OFFICE · one run from the closet</text>`;
+  s += `<rect class="room" x="14" y="270" width="476" height="220" rx="14"/><text class="roomlbl" x="26" y="288">LIVING ROOM · one run from the closet</text>`;
+  s += `<line x1="0" y1="100" x2="40" y2="100" stroke="#9fb3bf" stroke-width="3" stroke-dasharray="4 4"/>`;
+  s += `<g>` + state.cables.map(([a, b], i) => {
+    const [ax, ay] = portPos(a), [bx, by] = portPos(b);
+    return `<g class="cable" tabindex="0" role="button" data-i="${i}" aria-label="Cable from ${esc(pname(a))} to ${esc(pname(b))} — remove"><line class="v" x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}"/><line class="hit" x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}"/></g>`;
+  }).join('') + `</g>`;
+  Object.entries(DEV).forEach(([id, d]) => {
+    s += `<rect class="dev${d.sw ? ' sw' : ''}" x="${d.x}" y="${d.y}" width="${d.w}" height="${d.h}" rx="10"/>`;
+    s += `<text class="name" x="${d.x + 12}" y="${d.y + 24}">${esc(d.name)}</text><text class="sub" x="${d.x + 12}" y="${d.y + 42}">${esc(d.sub)}</text>`;
+    Object.entries(d.ports).forEach(([p, [x, y]]) => {
+      const pid = id + '.' + p, cls = ['port', p === 'WAN' ? 'wan' : '', used[pid] ? 'used' : '', state.sel === pid ? 'sel' : ''].join(' ');
+      s += `<g class="${cls}" tabindex="0" role="button" data-port="${pid}" aria-pressed="${state.sel === pid}" aria-label="${esc(pname(pid))}${used[pid] ? ' (in use, connected to ' + esc(pname(used[pid])) + ')' : ''}"><circle cx="${x}" cy="${y}" r="9"/><text x="${x}" y="${y - 14}">${p}</text></g>`;
+    });
+  });
+  s += `<rect class="room" x="510" y="290" width="276" height="180" rx="10"/><text class="wifi" x="524" y="312">Wi-Fi devices · no cable needed</text>`;
+  s += `<text class="wifi" x="524" y="340"><tspan class="d">Laptop</tspan> (Maria)</text><text class="wifi" x="524" y="366"><tspan class="d">Phone</tspan> (Maria)</text><text class="wifi" x="524" y="392"><tspan class="d">Phone</tspan> (Luis)</text><text class="wifi" x="524" y="418"><tspan class="d">Tablet</tspan> (Diego)</text><text class="wifi" x="524" y="450"><tspan class="d">Guests</tspan> (guest network)</text>`;
+  s += `<text class="wifi" x="735" y="380" font-size="28">📶</text>`;
+  s += `</svg>`;
+  const t = $('topo'); t.innerHTML = s;
+  const act = (e) => { const port = e.target.closest('.port'), cable = e.target.closest('.cable'); if (port) pickPort(port.dataset.port); else if (cable) removeCable(+cable.dataset.i); };
+  t.onclick = act;
+  t.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); act(e); } if (e.key === 'Escape') { state.sel = null; drawTopo(); } };
+}
+function portPos(id) { const [d, p] = id.split('.'); return DEV[d].ports[p]; }
+function pickPort(pid) {
+  if (state.s1.ok) return;
+  const used = {}; state.cables.forEach(([a, b]) => { used[a] = b; used[b] = a; });
+  if (used[pid]) { fbBox($('fb1'), '', esc(pname(pid)) + ' already has a cable (to ' + esc(pname(used[pid])) + '). Remove that cable first.'); state.sel = null; drawTopo(); return; }
+  if (!state.sel) { state.sel = pid; drawTopo(); return; }
+  if (state.sel === pid) { state.sel = null; drawTopo(); return; }
+  state.cables.push([state.sel, pid]);
+  HSCT.log('cable-add', { from: state.sel, to: pid });
+  state.sel = null; $('fb1').className = 'fb';
+  drawTopo(); renderCableList();
+  const g = $('topo').querySelector(`[data-port="${pid}"]`); if (g) g.focus();
+}
+function removeCable(i) {
+  if (state.s1.ok) return;
+  const c = state.cables[i]; if (!c) return;
+  state.cables.splice(i, 1);
+  HSCT.log('cable-remove', { from: c[0], to: c[1] });
+  $('fb1').className = 'fb'; drawTopo(); renderCableList();
+}
+function renderCableList() {
+  $('cablelist').innerHTML = state.cables.length
+    ? state.cables.map((c, i) => `<span>${esc(pname(c[0]))} ↔ ${esc(pname(c[1]))} <button type="button" data-i="${i}" aria-label="Remove cable ${esc(pname(c[0]))} to ${esc(pname(c[1]))}" ${state.s1.ok ? 'disabled' : ''}>✕</button></span>`).join('')
+    : '<span style="border:0;background:none;color:var(--muted)">No cables yet.</span>';
+  $('cablelist').querySelectorAll('button').forEach((b) => { b.onclick = () => removeCable(+b.dataset.i); });
+}
+
+/* ----- stage 2 ----- */
+const STICKER = `<div class="sticker"><b>HN-6400 · ROUTER</b><br>Admin page: <span class="mono">http://192.168.10.1</span><br>Username: <span class="mono">admin</span> &nbsp; Password: <span class="mono">Qz8-Lm3Vt</span><br>Wi-Fi name: <span class="mono">HN6400-Guest</span> &nbsp; Wi-Fi password: <span class="mono">default1234</span><br><small>Change the admin password on first login.</small></div>`;
+function renderStage2(st) {
+  st.innerHTML = stageHead(2, `
+    <p>New house, new router, new sticker. The router's page is the router itself — you open <b>its</b> address from a device on its network. Read the sticker: this model does not use the address the apartment's router did.</p>
+    <p>First login uses the factory password. Change it before anything else.</p>`)
+  + `<div class="client"><div class="avatar">L</div><div class="bubble"><span class="who">Luis Rivera</span>Everything's plugged in. The new router's sticker is on the bottom. Use the office PC — it's wired and already got an address: 192.168.10.112.</div></div>`
+  + STICKER
+  + `<p class="hint">You're on the Desktop PC. Type the router's address and press Enter.</p>
+    <div class="browser"><div class="bbar"><span class="dots"><i></i><i></i><i></i></span><input id="url" type="text" aria-label="Address bar" placeholder="Type an address…" autocomplete="off" ${state.s2.phase !== 'addr' ? 'disabled value="http://192.168.10.1"' : ''}><button type="button" class="btn sm" id="go" ${state.s2.phase !== 'addr' ? 'disabled' : ''}>Go</button></div><div class="bpage" id="bpage"></div></div>`
+  + nextBtn(2);
+  renderBrowser();
+  const go = () => tryAddress($('url').value);
+  $('go').onclick = go;
+  $('url').addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+  wireNext(2);
+}
+function s2score() { return Math.max(2, 5 - state.s2.addrFails - state.s2.loginFails - state.s2.pwFails); }
+function tryAddress(raw) {
+  const t = String(raw || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/:\d+$/, '');
+  const pg = $('bpage');
+  if (!t) { pg.className = 'bpage errpage'; pg.innerHTML = '<p>Type the router\'s address in the bar.</p>'; return; }
+  const ip = parseIp(t);
+  let msg;
+  if (ip) {
+    if (ipNum(ip) === ipNum(parseIp(ROUTER_IP))) { state.s2.phase = 'login'; HSCT.log('router-address', { typed: t, ok: true, fails: state.s2.addrFails }); $('url').disabled = true; $('go').disabled = true; renderBrowser(); return; }
+    if (t === '192.168.1.1') msg = `<h3>Nothing answered at 192.168.1.1</h3><p>That was the apartment's router. This house is on a different network — the sticker says which address this router uses.</p>`;
+    else if (onNet(ip)) msg = `<h3>Nothing answered at ${esc(t)}</h3><p>Right network, wrong device. The router's own address is on the sticker.</p>`;
+    else msg = `<h3>Nothing answered at ${esc(t)}</h3><p>The PC is on 192.168.10.x. A router it can reach is on 192.168.10.x too. Read the sticker.</p>`;
+  } else if (/^[\d.]+$/.test(t)) {
+    msg = `<h3>That isn't a valid address</h3><p>Four numbers, 0–255, dots between. Check the sticker.</p>`;
+  } else {
+    msg = `<h3>This site can't be reached</h3><p><span class="mono">${esc(t)}</span> is a name on the internet. The router's page is the router itself, in the closet. Use its IP address.</p>`;
+  }
+  state.s2.addrFails++;
+  HSCT.log('router-address', { typed: t, ok: false, fails: state.s2.addrFails });
+  pg.className = 'bpage errpage'; pg.innerHTML = msg;
+}
+function renderBrowser() {
+  const pg = $('bpage'), ph = state.s2.phase;
+  if (ph === 'addr') { pg.className = 'bpage errpage'; pg.innerHTML = '<p>Type the router\'s address in the bar above and press Enter.</p>'; return; }
+  pg.className = 'bpage';
+  if (ph === 'login') {
+    pg.innerHTML = `<h3>HN-6400 · Sign in</h3><p class="hint">Username and password from the sticker.</p>
+      <form class="form" id="loginf"><label>Username<input id="lu" autocomplete="off"></label><label>Password<input id="lp" type="password" class="mono" autocomplete="off"></label><div><button type="submit" class="btn">Sign in</button></div><div class="fb" id="fb2"></div></form>`;
+    $('loginf').onsubmit = (e) => {
+      e.preventDefault();
+      if ($('lu').value.trim() === 'admin' && $('lp').value === DEFAULT_ADMIN) { state.s2.phase = 'newpw'; HSCT.log('router-login', { ok: true, fails: state.s2.loginFails }); renderBrowser(); return; }
+      state.s2.loginFails++; HSCT.log('router-login', { ok: false, fails: state.s2.loginFails });
+      fbBox($('fb2'), 'bad', 'Wrong username or password. Both are on the sticker — exactly as printed.');
+    };
+    return;
+  }
+  if (ph === 'newpw') {
+    pg.innerHTML = `<h3>First login: set a new admin password</h3><p class="hint">At least 10 characters, letters and numbers, not the factory one.</p>
+      <form class="form" id="pwf"><label>New admin password<input id="np" type="text" class="mono" autocomplete="off"></label><div><button type="submit" class="btn">Save password</button></div><div class="fb" id="fb2"></div></form>`;
+    $('pwf').onsubmit = (e) => {
+      e.preventDefault();
+      const v = $('np').value, probs = [];
+      if (v.length < 10) probs.push('at least 10 characters (that\'s ' + v.length + ')');
+      if (!/[a-z]/i.test(v) || !/\d/.test(v)) probs.push('both letters and numbers');
+      if (v === DEFAULT_ADMIN || /^password/i.test(v) || v === DEFAULT_WPASS) probs.push('something that isn\'t the factory password or "password"');
+      if (probs.length) { state.s2.pwFails++; HSCT.log('admin-password', { ok: false, fails: state.s2.pwFails }); fbBox($('fb2'), 'bad', 'Not yet. It needs ' + esc(probs.join('; ')) + '.'); return; }
+      state.s2.phase = 'in'; state.s2.ok = true; state.s2.score = s2score();
+      HSCT.log('admin-password', { ok: true, fails: state.s2.pwFails, length: v.length });
+      render(); HSCT.saveUI('#hsct-save');
+    };
+    return;
+  }
+  pg.innerHTML = `<h3>You're in.</h3><p>Admin password changed. The router at <span class="mono">192.168.10.1</span> is yours to configure.</p>`;
+}
+
+/* ----- stage 3: router portal ----- */
+function renderStage3(st) {
+  st.innerHTML = stageHead(3, `
+    <dl class="term">
+      <dt>This house is 192.168.<b>10</b>.x</dt><dd>Same idea as the apartment, different third number. Mask ${MASK}: first three numbers are the network, the last is the device. Nothing from 192.168.<b>1</b>.x belongs here.</dd>
+      <dt>Guest network</dt><dd>A second Wi-Fi name with its own password. With <b>guest isolation</b> on, guests get internet but can't see the NAS, the printer or the cameras. Guests never learn the main password. Both networks share the one DHCP pool.</dd>
+      <dt>The address plan</dt><dd>The client is splitting the 254 addresses into zones: <b>.2–.49</b> fixed addresses (switches, reservations), <b>.50–.199</b> the DHCP pool, <b>.200–.254</b> held for the cameras. Planning the zones first is what separates a tech from a nephew.</dd>
+      <dt>Reservations</dt><dd>Three this time. Each ties a MAC address to an address outside the pool.</dd>
+    </dl>`)
+  + `<div class="client"><div class="avatar">M</div><div class="bubble"><span class="who">Maria Rivera</span>Here's what we want:<ol>
+      <li>Wi-Fi named for us, WPA2 or WPA3, 12+ character password. And a <b>guest network</b> with its own name and password for when people are over — they should not be able to see our drive or cameras.</li>
+      <li>Router stays at <b>192.168.10.1</b>. Keep <b>.2–.49</b> free for fixed addresses and <b>.200–.254</b> free for the cameras next month. Hand out at least <b>60</b> addresses in between.</li>
+      <li>Reservations: <b>printer → .20</b>, <b>NAS → .21</b>, <b>camera recorder → .22</b>. The PC and the camera app are already set up for those. MAC addresses are on the stickers; the router shows them too.</li></ol></div></div>
+    <div class="card"><h3>Checklist</h3><ul class="reqs" id="reqs"></ul></div>
+    <div class="portal"><div class="phead"><span>HN-6400 · Admin</span><span>admin · 192.168.10.1</span></div><div class="ptabs" id="ptabs"></div><div class="pbody" id="pbody"></div></div>`
+  + nextBtn(3);
+  renderPortal(); wireNext(3);
+}
+function renderReqs() {
+  $('reqs').innerHTML = [
+    ['Main Wi-Fi renamed, WPA2/WPA3, 12+ chars · guest network on, own name and password, isolation on', state.s3.wireless.ok],
+    ['Router at 192.168.10.1 / 255.255.255.0 · DHCP pool inside .50–.199, at least 60 addresses', state.s3.lan.ok],
+    ['Three reservations: printer .20, NAS .21, camera recorder .22 (' + state.portal.res.length + ' of 3)', state.s3.res.ok],
+  ].map(([t, ok]) => `<li class="${ok ? 'done' : ''}">${esc(t)}</li>`).join('');
+}
+function statics() { const o = {}; ['swA', 'swB'].forEach((k) => { const s = state.sw[k]; if (s.ok && s.mode === 'static') o[k] = s.ip; }); return o; }
+function renderPortal() {
+  renderReqs();
+  const P = state.portal, S = state.s3;
+  const tabs = [['status', 'Status'], ['wireless', 'Wireless'], ['lan', 'LAN & DHCP'], ['res', 'Reservations']];
+  $('ptabs').innerHTML = tabs.map(([id, t]) => `<button type="button" class="ptab${P.tab === id ? ' cur' : ''}" data-tab="${id}">${t}${id !== 'status' && S[id] && S[id].ok ? ' <span class="ok">✓</span>' : ''}</button>`).join('');
+  $('ptabs').querySelectorAll('.ptab').forEach((b) => { b.onclick = () => { P.tab = b.dataset.tab; HSCT.log('portal-tab', { tab: P.tab }); renderPortal(); }; });
+  const body = $('pbody');
+  if (P.tab === 'status') {
+    const rows = assignAddresses(P, statics());
+    body.innerHTML = `<dl class="kv"><dt>Internet</dt><dd>Connected <span class="tag">WAN 74.101.22.189 — the house's one public address</span></dd><dt>Router LAN</dt><dd class="mono">${esc(P.ip)} / ${esc(P.mask)}</dd><dt>DHCP</dt><dd>${P.dhcp ? 'On · pool <span class="mono">' + esc(P.start) + ' – ' + esc(P.end) + '</span>' : '<span class="tag warn">Off</span>'}</dd><dt>Wi-Fi</dt><dd>${esc(P.ssid)} · ${esc(P.sec)}${P.gon ? ' &nbsp; guest: ' + esc(P.gssid || '(unnamed)') + (P.giso ? ' · isolated' : ' · <span class="tag warn">not isolated</span>') : ' &nbsp; <span class="tag">no guest network</span>'}</dd></dl>
+      <h3>Connected devices</h3><p class="hint">What each device gets with the settings as they are now. Updates as you change the other tabs.</p>
+      <table class="devs"><thead><tr><th>Device</th><th>MAC</th><th>IP address</th><th></th></tr></thead><tbody>${rows.map((r) => `<tr><td>${esc(r.d.name)} <span class="tag${r.d.sw ? ' sw' : ''}">${r.d.sw ? 'switch' : esc(r.d.how)}</span></td><td class="mono">${esc(r.d.mac)}</td><td class="mono">${esc(r.ip)}</td><td><small>${esc(r.note)}</small></td></tr>`).join('')}</tbody></table>`;
+    return;
+  }
+  if (P.tab === 'wireless') {
+    const ok = S.wireless.ok, dis = ok ? 'disabled' : '';
+    body.innerHTML = `<form class="form" id="wf"><h4>Main network</h4><label>Network name (SSID)<input id="w-ssid" value="${esc(P.ssid)}" maxlength="32" autocomplete="off" ${dis}></label>
+      <label>Security<select id="w-sec" ${dis}>${['Open', 'WEP', 'WPA2', 'WPA3', 'WPA2/WPA3'].map((o) => `<option ${P.sec === o ? 'selected' : ''}>${o}</option>`).join('')}</select></label>
+      <label>Wi-Fi password<input id="w-pass" class="mono" value="${esc(P.wpass)}" maxlength="63" autocomplete="off" ${dis}></label>
+      <h4>Guest network</h4>
+      <label class="toggle"><input id="g-on" type="checkbox" ${P.gon ? 'checked' : ''} ${dis}> Enable guest network</label>
+      <label>Guest network name<input id="g-ssid" value="${esc(P.gssid)}" maxlength="32" autocomplete="off" ${dis}></label>
+      <label>Guest password<input id="g-pass" class="mono" value="${esc(P.gpass)}" maxlength="63" autocomplete="off" ${dis}></label>
+      <label class="toggle"><input id="g-iso" type="checkbox" ${P.giso ? 'checked' : ''} ${dis}> Guest isolation (guests can't see devices on the main network)</label>
+      <div class="actions" style="margin-top:0"><button type="submit" class="btn" ${dis}>Apply</button>${ok ? '<span class="tag">Saved ✓</span>' : ''}</div><div class="fb" id="fb3"></div></form>`;
+    $('wf').onsubmit = (e) => {
+      e.preventDefault();
+      P.ssid = $('w-ssid').value; P.sec = $('w-sec').value; P.wpass = $('w-pass').value; P.gon = $('g-on').checked; P.gssid = $('g-ssid').value; P.gpass = $('g-pass').value; P.giso = $('g-iso').checked;
+      applyTab('wireless', checkWireless(P), 'Wireless saved: <b>' + esc(P.ssid) + '</b> (' + esc(P.sec) + ', ' + P.wpass.length + ' chars) and guest network <b>' + esc(P.gssid) + '</b>, isolated.');
+    };
+    return;
+  }
+  if (P.tab === 'lan') {
+    const ok = S.lan.ok, dis = ok ? 'disabled' : '';
+    body.innerHTML = `<form class="form" id="lf"><div class="row"><label>Router LAN IP address<input id="l-ip" class="mono" value="${esc(P.ip)}" autocomplete="off" ${dis}></label><label>Subnet mask<input id="l-mask" class="mono" value="${esc(P.mask)}" autocomplete="off" ${dis}></label></div>
+      <label class="toggle"><input id="l-dhcp" type="checkbox" ${P.dhcp ? 'checked' : ''} ${dis}> DHCP server on</label>
+      <div class="row"><label>Pool start<input id="l-start" class="mono" value="${esc(P.start)}" autocomplete="off" ${dis}></label><label>Pool end<input id="l-end" class="mono" value="${esc(P.end)}" autocomplete="off" ${dis}></label></div>
+      <div class="actions" style="margin-top:0"><button type="submit" class="btn" ${dis}>Apply</button>${ok ? '<span class="tag">Saved ✓</span>' : ''}</div><div class="fb" id="fb3"></div></form>`;
+    $('lf').onsubmit = (e) => {
+      e.preventDefault();
+      P.ip = $('l-ip').value.trim(); P.mask = $('l-mask').value.trim(); P.dhcp = $('l-dhcp').checked; P.start = $('l-start').value.trim(); P.end = $('l-end').value.trim();
+      const size = parseIp(P.start) && parseIp(P.end) ? ipNum(parseIp(P.end)) - ipNum(parseIp(P.start)) + 1 : 0;
+      applyTab('lan', checkLan(P), 'LAN saved. Pool <b>' + esc(P.start) + ' – ' + esc(P.end) + '</b> (' + size + ' addresses). .2–.' + (parseIp(P.start)[3] - 1) + ' and .' + (parseIp(P.end)[3] + 1) + '–.254 are free for fixed addresses.');
+    };
+    return;
+  }
+  if (P.tab === 'res') {
+    const ok = S.res.ok, dis = ok ? 'disabled' : '';
+    body.innerHTML = `<p class="hint">A reservation gives one device (by MAC address) the same IP address every time. Add the three the client asked for.</p>
+      ${P.res.length ? '<table class="devs"><thead><tr><th>Device</th><th>MAC</th><th>Reserved IP</th></tr></thead><tbody>' + P.res.map((r) => `<tr><td>${esc(r.name)}</td><td class="mono">${esc(r.mac)}</td><td class="mono">${esc(r.ip)}</td></tr>`).join('') + '</tbody></table>' : ''}
+      <form class="form" id="rf" style="margin-top:12px"><label>Device<select id="r-mac" ${dis}><option value="">— choose a connected device —</option>${CLIENT_DEVICES.map((d) => `<option value="${d.mac}" ${P.resMac === d.mac ? 'selected' : ''}>${esc(d.name)} — ${d.mac}</option>`).join('')}</select></label>
+      <label>Reserved IP address<input id="r-ip" class="mono" value="${esc(P.resIp)}" placeholder="192.168.10.___" autocomplete="off" ${dis}></label>
+      <div class="actions" style="margin-top:0"><button type="submit" class="btn" ${dis}>Add reservation</button>${ok ? '<span class="tag">All three saved ✓</span>' : ''}</div><div class="fb" id="fb3"></div></form>`;
+    $('rf').onsubmit = (e) => {
+      e.preventDefault();
+      P.resMac = $('r-mac').value; P.resIp = $('r-ip').value.trim();
+      const probs = checkReservation({ mac: P.resMac, ip: P.resIp }, P, P.res);
+      if (!probs.length) { const d = CLIENT_DEVICES.find((x) => x.mac === P.resMac); P.res.push({ name: d.name, mac: d.mac, ip: P.resIp }); P.resMac = ''; P.resIp = ''; }
+      applyTab('res', probs, 'Reservation saved (' + P.res.length + ' of 3).' + (P.res.length === 3 ? ' Check the Status tab — all three now say "reserved".' : ''));
+    };
+  }
+}
+function applyTab(which, probs, okMsg) {
+  const S = state.s3, P = state.portal;
+  if (probs.length) {
+    S[which].fails++;
+    HSCT.log('portal-apply', { tab: which, ok: false, fails: S[which].fails, problems: probs.length });
+    fbBox($('fb3'), 'bad', '<b>The router refused that.</b><ul>' + probs.map((p) => '<li>' + esc(p) + '</li>').join('') + '</ul>');
+    return;
+  }
+  if (which === 'res') { S.res.ok = P.res.length >= 3; HSCT.log('portal-apply', { tab: 'res', ok: true, fails: S.res.fails, n: P.res.length }); }
+  else {
+    S[which].ok = true;
+    HSCT.log('portal-apply', { tab: which, ok: true, fails: S[which].fails, values: which === 'wireless' ? { ssid: P.ssid, sec: P.sec, len: P.wpass.length, guest: P.gssid, glen: P.gpass.length, iso: P.giso } : { ip: P.ip, mask: P.mask, dhcp: P.dhcp, start: P.start, end: P.end } });
+    if (which === 'lan') { const keep = P.res.filter((r) => !inPool(parseIp(r.ip), P)); if (keep.length !== P.res.length) { P.res = keep; S.res.ok = false; } }
+  }
+  S.score = ['wireless', 'lan', 'res'].reduce((sum, k) => sum + (S[k].ok ? Math.max(3, 8 - 2 * S[k].fails) : 0), 0);
+  S.ok = S.wireless.ok && S.lan.ok && S.res.ok;
+  renderPortal();
+  if (!(which === 'res' && S.res.ok)) fbBox($('fb3'), 'ok', okMsg);
+  $('points').textContent = total();
+  if (S.ok) { render(); HSCT.saveUI('#hsct-save'); $('next').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+}
+
+/* ----- stage 4: switches ----- */
+function renderStage4(st) {
+  st.innerHTML = stageHead(4, `
+    <dl class="term">
+      <dt>Managed switch</dt><dd>An unmanaged switch just switches. A <b>managed</b> one also has a settings page — port lights, loop protection, firmware — and so it needs an address of its own to reach that page. It forwards traffic either way; the address is only for <b>you</b>.</dd>
+      <dt>Management address</dt><dd>Set it <b>static</b> so it doesn't wander: on this network (192.168.10.x), outside the DHCP pool, not the router's, not a reserved one, different for each switch. Mask matches the router's. Gateway is the router (so the switch can fetch updates and sync its clock).</dd>
+      <dt>Loop protection</dt><dd>The switch watches for its own traffic coming back in. If someone cables two of its ports together, it shuts the port down instead of melting the network.</dd>
+      <dt>Unused ports off</dt><dd>A spare port that's disabled does nothing when a stray cable lands in it. Small hassle, big safety.</dd>
+    </dl>`)
+  + `<div class="client"><div class="avatar">L</div><div class="bubble"><span class="who">Luis Rivera</span>The switches came as "GS305E" and "GS305E". Give each one a name I'll recognize, a fixed address in the space Maria kept free, and turn on whatever stops Diego from plugging a cable into a cable again. Shut off the ports we're not using.</div></div>
+    <div class="swgrid">${['swA', 'swB'].map((k) => switchPanel(k)).join('')}</div>`
+  + nextBtn(4);
+  ['swA', 'swB'].forEach((k) => {
+    $('sf-' + k).onsubmit = (e) => {
+      e.preventDefault();
+      const S = state.sw[k];
+      S.name = $(k + '-name').value; S.mode = $(k + '-mode').value; S.ip = $(k + '-ip').value.trim(); S.mask = $(k + '-mask').value.trim(); S.gw = $(k + '-gw').value.trim(); S.loop = $(k + '-loop').checked; S.unused = $(k + '-unused').checked;
+      const other = state.sw[k === 'swA' ? 'swB' : 'swA'];
+      const probs = checkSwitch(S, state.portal, other);
+      const fb = $('fb4-' + k);
+      if (probs.length) { S.fails++; HSCT.log('switch-apply', { sw: k, ok: false, fails: S.fails, problems: probs.length }); fbBox(fb, 'bad', '<b>The switch refused that.</b><ul>' + probs.map((p) => '<li>' + esc(p) + '</li>').join('') + '</ul>'); return; }
+      S.ok = true;
+      HSCT.log('switch-apply', { sw: k, ok: true, fails: S.fails, values: { name: S.name, ip: S.ip, gw: S.gw, loop: S.loop, unused: S.unused } });
+      state.s4.score = ['swA', 'swB'].reduce((sum, j) => sum + (state.sw[j].ok ? Math.max(3, 7 - 2 * state.sw[j].fails) : 0), 0);
+      state.s4.ok = state.sw.swA.ok && state.sw.swB.ok;
+      render(); HSCT.saveUI('#hsct-save');
+      fbBox($('fb4-' + k), 'ok', '<b>' + esc(S.name) + '</b> saved at ' + esc(S.ip) + ', gateway ' + esc(S.gw) + ', loop protection on, unused ports off. Its page is now at http://' + esc(S.ip) + ' for good.');
+      if (state.s4.ok) $('next').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    };
+    $(k + '-mode').onchange = () => { const st2 = $(k + '-mode').value === 'static'; ['ip', 'mask', 'gw'].forEach((f) => { $(k + '-' + f).disabled = !st2 || state.sw[k].ok; }); };
+  });
+  wireNext(4);
+}
+function switchPanel(k) {
+  const S = state.sw[k], dis = S.ok ? 'disabled' : '', room = k === 'swA' ? 'office' : 'living room', stat = S.mode === 'static';
+  return `<div class="portal sw"><div class="phead"><span>${esc(SW_DEFAULT_NAME)} · managed switch</span><span>${esc(room)} · ${esc(SW_MAC[k])}</span></div><div class="pbody">
+    <form class="form" id="sf-${k}"><label>Switch name<input id="${k}-name" value="${esc(S.name)}" maxlength="32" autocomplete="off" ${dis}></label>
+    <label>Management address<select id="${k}-mode" ${dis}><option value="dhcp" ${!stat ? 'selected' : ''}>DHCP (get one from the router)</option><option value="static" ${stat ? 'selected' : ''}>Static (fixed)</option></select></label>
+    <label>IP address<input id="${k}-ip" class="mono" value="${esc(S.ip)}" placeholder="192.168.10.___" autocomplete="off" ${dis || (!stat ? 'disabled' : '')}></label>
+    <div class="row"><label>Subnet mask<input id="${k}-mask" class="mono" value="${esc(S.mask)}" autocomplete="off" ${dis || (!stat ? 'disabled' : '')}></label><label>Gateway<input id="${k}-gw" class="mono" value="${esc(S.gw)}" placeholder="the router" autocomplete="off" ${dis || (!stat ? 'disabled' : '')}></label></div>
+    <label class="toggle"><input id="${k}-loop" type="checkbox" ${S.loop ? 'checked' : ''} ${dis}> Loop protection</label>
+    <label class="toggle"><input id="${k}-unused" type="checkbox" ${S.unused ? 'checked' : ''} ${dis}> Disable unused ports (port 5)</label>
+    <div class="actions" style="margin-top:0"><button type="submit" class="btn" ${dis}>Apply</button>${S.ok ? '<span class="tag">Saved ✓</span>' : ''}</div><div class="fb${S.ok ? ' show ok' : ''}" id="fb4-${k}">${S.ok ? '<b>' + esc(S.name) + '</b> saved at ' + esc(S.ip) + '.' : ''}</div></form></div></div>`;
+}
+
+/* ----- stage 5: tickets ----- */
+function renderStage5(st) {
+  const i = state.s5.i, T = TICKETS[i], R = state.s5.t[i];
+  st.innerHTML = stageHead(5, `
+    <p>Same rule as always: <b>read the evidence before you touch anything.</b> New tells this time:</p>
+    <dl class="term">
+      <dt>One room dead, rest fine</dt><dd>Look at that room's switch — specifically its uplink port.</dd>
+      <dt>Everything slow, lights going crazy</dt><dd>A loop. Find the cable that goes from a switch back into itself.</dd>
+      <dt>"Address conflict"</dt><dd>Two devices, one address. Someone set a manual address inside the pool.</dd>
+      <dt>Inside works, outside doesn't</dt><dd>The gateway. Local traffic never uses it; internet traffic always does.</dd>
+      <dt>169.254 on new devices only</dt><dd>The pool is full. Count the addresses.</dd>
+    </dl>
+    <p>Each ticket: 3 points for the diagnosis, 2 for the fix. A second try is worth 1.</p>`)
+  + `<p class="hint">Call ${i + 1} of ${TICKETS.length}</p>
+    <div class="card"><h3>${esc(T.title)}</h3>
+      <div class="client"><div class="avatar">${T.who[0]}</div><div class="bubble"><span class="who">${esc(T.who)} Rivera</span>${esc(T.msg)}</div></div>
+      <pre class="evidence">${T.evidence}</pre>
+      <div id="diag"></div><div id="fix"></div>
+    </div>`
+  + nextBtn(5);
+  renderTicketPart('diag');
+  if (R.diagOk || R.diagTries >= 2) renderTicketPart('fix');
+  wireNext(5);
+}
+function renderTicketPart(part) {
+  const i = state.s5.i, T = TICKETS[i], R = state.s5.t[i], Q = T[part], el = $(part);
+  const triesKey = part + 'Tries', okKey = part + 'Ok';
+  const done = R[okKey] || R[triesKey] >= 2;
+  el.innerHTML = `<p class="q">${esc(Q.q)}</p><div class="choices">${Q.a.map((o, k) => `<button type="button" class="choice" data-k="${k}" ${done ? 'disabled' : ''}>${esc(o[0])}</button>`).join('')}</div><div class="fb${done ? ' show ' + (R[okKey] ? 'ok' : 'bad') : ''}">${done ? (R[okKey] ? 'Right. ' : 'Not this time. ') + esc(Q.a[Q.right][1]) : ''}</div>`;
+  if (done) { el.querySelectorAll('.choice')[Q.right].classList.add('right'); if (part === 'fix' && i === TICKETS.length - 1 && state.s5.ok === false) {} return; }
+  el.querySelectorAll('.choice').forEach((b) => {
+    b.onclick = () => {
+      const k = +b.dataset.k, right = k === Q.right;
+      R[triesKey]++;
+      HSCT.log('ticket', { id: T.id, part, picked: k, right, try: R[triesKey] });
+      const fb = el.querySelector('.fb');
+      if (right) {
+        R[okKey] = true; b.classList.add('right'); el.querySelectorAll('.choice').forEach((c) => { c.disabled = true; });
+        fbBox(fb, 'ok', (R[triesKey] === 1 ? 'Right. ' : 'Right, second try. ') + esc(Q.a[k][1]));
+      } else {
+        b.classList.add('wrong'); b.disabled = true;
+        if (R[triesKey] >= 2) { el.querySelectorAll('.choice').forEach((c) => { c.disabled = true; }); el.querySelectorAll('.choice')[Q.right].classList.add('right'); fbBox(fb, 'bad', 'Not quite. ' + esc(Q.a[k][1]) + ' The answer: ' + esc(Q.a[Q.right][1])); }
+        else fbBox(fb, 'bad', 'Not quite. ' + esc(Q.a[k][1]) + ' One more try.');
+      }
+      const settled = R[okKey] || R[triesKey] >= 2;
+      if (settled && part === 'diag') renderTicketPart('fix');
+      if (settled && part === 'fix') ticketDone();
+    };
+  });
+}
+function ticketPoints(R) { return (R.diagOk ? (R.diagTries === 1 ? 3 : 1) : 0) + (R.fixOk ? (R.fixTries === 1 ? 2 : 1) : 0); }
+function ticketDone() {
+  state.s5.score = state.s5.t.reduce((s, R) => s + ticketPoints(R), 0);
+  $('points').textContent = total();
+  if (state.s5.i < TICKETS.length - 1) {
+    $('fix').insertAdjacentHTML('beforeend', `<div class="actions"><button type="button" class="btn" id="nextTicket">Next call →</button><span class="pts">This call: <b>${ticketPoints(state.s5.t[state.s5.i])}</b> / 5</span></div>`);
+    $('nextTicket').onclick = () => { state.s5.i++; render(); HSCT.saveUI('#hsct-save'); };
+  } else {
+    state.s5.ok = true; render(); HSCT.saveUI('#hsct-save'); $('next').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+/* ----- stage 6: quiz ----- */
+function renderStage6(st) {
+  const i = state.s6.i, Q = QUIZ[i], ans = state.s6.answers[i];
+  st.innerHTML = stageHead(6, `<p>Six questions, one try each, 2 points apiece. All of it came up today.</p>`)
+  + `<p class="hint">Question ${i + 1} of ${QUIZ.length}</p>
+    <div class="card"><p class="q">${esc(Q.q)}</p><div class="choices" id="qc">${Q.a.map((o, k) => `<button type="button" class="choice" data-k="${k}" ${ans ? 'disabled' : ''}>${esc(o)}</button>`).join('')}</div><div class="fb" id="fb6"></div>
+    <div class="actions"><button type="button" class="btn" id="nextQ" ${ans ? '' : 'disabled'}>${i === QUIZ.length - 1 ? 'See your result' : 'Next question'}</button></div></div>`
+  + nextBtn(6);
+  const mark = (k) => { const cs = $('qc').querySelectorAll('.choice'); cs.forEach((c, j) => { c.disabled = true; if (j === Q.right) c.classList.add('right'); else if (j === k) c.classList.add('wrong'); }); fbBox($('fb6'), k === Q.right ? 'ok' : 'bad', (k === Q.right ? 'Correct. ' : 'Not quite. ') + esc(Q.fb)); };
+  if (ans) mark(ans.picked);
+  $('qc').querySelectorAll('.choice').forEach((b) => {
+    b.onclick = () => {
+      if (state.s6.answers[i]) return;
+      const k = +b.dataset.k, right = k === Q.right;
+      state.s6.answers[i] = { picked: k, right };
+      state.s6.score = state.s6.answers.filter((a) => a && a.right).length * 2;
+      HSCT.log('quiz', { q: i, picked: k, right });
+      mark(k); $('nextQ').disabled = false; $('points').textContent = total(); $('nextQ').focus();
+    };
+  });
+  $('nextQ').onclick = () => {
+    if (!state.s6.answers[i]) return;
+    if (i < QUIZ.length - 1) { state.s6.i++; render(); HSCT.saveUI('#hsct-save'); return; }
+    state.s6.ok = true; render(); $('next').click();
+  };
+  wireNext(6);
+}
+
+/* ---------- 3. end ---------- */
+function tierFor(t) { return t >= 90 ? 'Network Pro' : t >= 75 ? 'Certified' : t >= 50 ? 'Apprentice' : 'Retry'; }
+function renderEnd() {
+  show('view-end');
+  const t = total(), tier = tierFor(t), P = state.portal;
+  $('end-title').textContent = tier === 'Retry' ? 'House is up — barely.' : 'House is up.';
+  $('end-lede').textContent = {
+    'Network Pro': 'Two switches, three reservations, a guest network, five calls — and an address plan a real tech would sign off on. The Riveras are keeping your number.',
+    'Certified': 'Solid. The house works and you can explain why. Look at the stage that cost you — that\'s the one to reread.',
+    'Apprentice': 'It works, with help. Reread the panels for the stages that cost you, then try again for a better result.',
+    'Retry': 'The pieces are there but they didn\'t connect yet. Try again — the panels at the top of each stage are the whole lesson.',
+  }[tier];
+  $('recap').innerHTML = [
+    'Cabled the closet, two switch uplinks, six wired devices (' + state.cables.length + ' cables, ' + state.s1.checks + ' check' + (state.s1.checks === 1 ? '' : 's') + ')',
+    'Found the router at 192.168.10.1, signed in, changed the admin password',
+    'Wi-Fi "' + P.ssid + '" + guest "' + P.gssid + '"; pool ' + P.start + ' – ' + P.end + '; reservations ' + P.res.map((r) => r.ip.split('.')[3] ? '.' + r.ip.split('.')[3] : r.ip).join(', '),
+    'Switches: ' + ['swA', 'swB'].map((k) => state.sw[k].name + ' @ ' + state.sw[k].ip).join(' · '),
+    'Closed ' + TICKETS.length + ' service calls: ' + state.s5.t.map((R, i) => TICKETS[i].title.split(' —')[0].split(':')[0] + ' (' + ticketPoints(R) + '/5)').join(', '),
+    'Check: ' + state.s6.answers.filter((a) => a && a.right).length + ' of ' + QUIZ.length,
+  ].map((s) => '<li>' + esc(s) + '</li>').join('');
+  HSCT.endScreen('#hsct-result', {
+    earned: t, possible: 100, tier,
+    sections: STAGES.map((s) => ({ id: 's' + s.n, title: s.n + '. ' + s.name, earned: state['s' + s.n].score, possible: s.pts })),
+    extra: {
+      cables: state.cables, cableChecks: state.s1.checks,
+      login: { addrFails: state.s2.addrFails, loginFails: state.s2.loginFails, pwFails: state.s2.pwFails },
+      portal: { ssid: P.ssid, sec: P.sec, wpassLength: P.wpass.length, guest: { on: P.gon, ssid: P.gssid, passLength: P.gpass.length, iso: P.giso }, ip: P.ip, mask: P.mask, dhcp: P.dhcp, start: P.start, end: P.end, res: P.res, fails: { wireless: state.s3.wireless.fails, lan: state.s3.lan.fails, res: state.s3.res.fails } },
+      switches: { swA: state.sw.swA, swB: state.sw.swB },
+      tickets: state.s5.t.map((R, i) => ({ id: TICKETS[i].id, diagTries: R.diagTries, diagOk: R.diagOk, fixTries: R.fixTries, fixOk: R.fixOk, points: ticketPoints(R) })),
+      quiz: state.s6.answers,
+    },
+  });
+}
+$('again').onclick = () => { show('view-intro'); HSCT.resumeUI('#hsct-resume'); $('name').focus(); };
+</script>
+</body>
+</html>
