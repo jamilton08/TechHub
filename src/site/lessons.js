@@ -219,7 +219,22 @@ export const CATEGORIES = [
           },
         ],
       },
-      { id: 'working-with-a-team', title: 'Working with a team', lessons: [] },
+      {
+        id: 'working-with-a-team',
+        title: 'Working with a team',
+        lessons: [
+          {
+            slug: 'team-up-campus-trail',
+            title: 'Team Up: the campus trail',
+            description: 'Make a character and walk the campus. The bulletin board explains soft skills, group ethics and respect; then six forks on the trail each hold a situation a real team hits, and the path you walk is your answer. Wrong path, you are sent back to the start of that fork. At the Team Hall, put your team on the roster and give everyone a role: Programmer, Presenter, Project Manager, and say why.',
+            file: 'team-up-campus-trail.html',
+            kind: 'game',
+            minutes: 40,
+            added: '2026-10-29',
+            tags: ['teamwork', 'team', 'soft skills', 'group ethics', 'respect', 'roles', 'programmer', 'presenter', 'project manager', 'roster', 'feedback', 'credit', 'communication', 'deadline', 'Workplace Challenge', 'simulation', 'walk', 'character'],
+          },
+        ],
+      },
       { id: 'communication', title: 'Communication', lessons: [] },
     ],
   },
