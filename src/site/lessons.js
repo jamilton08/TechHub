@@ -227,7 +227,7 @@ export const CATEGORIES = [
             slug: 'team-up-campus-trail',
             title: 'Team Up: the campus trail',
             description: 'Make a character and walk the campus. The bulletin board explains soft skills, group ethics and respect; then six forks on the trail each hold a situation a real team hits, and the path you walk is your answer. Wrong path, you are sent back to the start of that fork. At the Team Hall, put your team on the roster and give everyone a role: Programmer, Presenter, Project Manager, and say why.',
-            file: 'team-up-campus-trail.html',
+            file: '/lesson-files/career-and-finance/team-up-campus-trail.html',   // the file lives in the career-and-finance folder; absolute path works from any category
             kind: 'game',
             minutes: 40,
             added: '2026-10-29',
