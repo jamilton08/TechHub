@@ -79,7 +79,7 @@ export const CATEGORIES = [
             added: '2026-10-26',
             tags: ['home network', 'modem', 'router', 'switch', 'WAN', 'LAN', 'Wi-Fi', 'SSID', 'WPA2', 'WPA3', 'IP address', 'subnet mask', 'gateway', 'DHCP', 'DHCP pool', 'range', 'reservation', 'static IP', 'MAC address', 'printer', 'ipconfig', '169.254', 'APIPA', 'private address', 'admin page', '192.168.1.1', 'troubleshooting', 'link light', 'cable', 'simulation'],
           },
-                   {
+          {
             slug: 'home-network-setup-2',
             title: 'The Riveras bought a house',
             description: 'The harder sequel to Set up the Rivera home network. Two rooms with their own cable runs and a managed switch in each, six wired devices, a guest network, and a new subnet (192.168.10.x) so nothing can be copied from last time. Plan the address space in zones, add three reservations, then configure each switch: a name, a fixed management address, the gateway, loop protection. Five service calls with the evidence: a dead room, a broadcast storm, an IP address conflict, a laptop that can print but can\'t get online, and a party that empties the DHCP pool.',
@@ -88,6 +88,16 @@ export const CATEGORIES = [
             minutes: 60,
             added: '2026-10-28',
             tags: ['home network', 'managed switch', 'switch', 'uplink', 'loop', 'broadcast storm', 'loop protection', 'router', 'WAN', 'LAN', 'guest network', 'guest isolation', 'WPA3', 'IP address', 'subnet', '192.168.10.1', 'DHCP', 'DHCP pool', 'lease', 'reservation', 'static IP', 'management IP', 'gateway', 'default gateway', 'IP conflict', 'duplicate IP', 'MAC address', 'NAS', 'camera', 'printer', 'ipconfig', '169.254', 'troubleshooting', 'simulation'],
+          },
+          {
+            slug: 'manolo-house-network',
+            title: 'OG Manolo\'s house: wire the whole thing',
+            description: 'Part 3, and this time you walk the house. Make a character, ring Manolo\'s bell, and cable the closet (modem → router → the two wall jacks), then the office and the living room, each with its own switch. Find the router\'s page from the office PC, set up Wi-Fi with a guest network, the 192.168.10.x plan, the pool and three reservations, then plug your laptop into each managed switch and give it a name, a fixed address and loop protection. Put Manolo\'s tablet on the Wi-Fi. Day 2: five service calls, each in the room where it\'s happening, then six questions on the porch.',
+            file: 'manolo-house-network.html',
+            kind: 'game',
+            minutes: 60,
+            added: '2026-10-29',
+            tags: ['home network', 'modem', 'router', 'managed switch', 'switch', 'wall jack', 'cable run', 'uplink', 'WAN', 'LAN', 'Wi-Fi', 'SSID', 'WPA3', 'guest network', 'guest isolation', 'IP address', 'subnet', '192.168.10.1', 'DHCP', 'DHCP pool', 'reservation', 'static IP', 'management IP', 'gateway', 'loop', 'broadcast storm', 'loop protection', 'IP conflict', 'MAC address', 'ipconfig', '169.254', 'troubleshooting', 'simulation', 'character', 'walk'],
           },
         ],
       },
