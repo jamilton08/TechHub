@@ -89,7 +89,7 @@ export const CATEGORIES = [
             added: '2026-10-28',
             tags: ['home network', 'managed switch', 'switch', 'uplink', 'loop', 'broadcast storm', 'loop protection', 'router', 'WAN', 'LAN', 'guest network', 'guest isolation', 'WPA3', 'IP address', 'subnet', '192.168.10.1', 'DHCP', 'DHCP pool', 'lease', 'reservation', 'static IP', 'management IP', 'gateway', 'default gateway', 'IP conflict', 'duplicate IP', 'MAC address', 'NAS', 'camera', 'printer', 'ipconfig', '169.254', 'troubleshooting', 'simulation'],
           },
-          {
+           {
             slug: 'manolo-house-network',
             title: 'OG Manolo\'s house: wire the whole thing',
             description: 'Part 3, and this time you walk the house. Make a character, ring Manolo\'s bell, and cable the closet (modem → router → the two wall jacks), then the office and the living room, each with its own switch. Find the router\'s page from the office PC, set up Wi-Fi with a guest network, the 192.168.10.x plan, the pool and three reservations, then plug your laptop into each managed switch and give it a name, a fixed address and loop protection. Put Manolo\'s tablet on the Wi-Fi. Day 2: five service calls, each in the room where it\'s happening, then six questions on the porch.',
@@ -383,6 +383,16 @@ export const CATEGORIES = [
             minutes: 60,
             added: '2026-10-28',
             tags: ['pygame', 'Python', 'game design', 'games', 'frame', 'frames', 'fps', 'frame rate', 'refresh rate', 'Hz', 'monitor', 'game loop', 'while loop', 'clock.tick', 'delta time', 'dt', 'speed', 'pixels per second', 'animation', 'motion', 'flipbook', 'draw.circle', 'draw.rect', 'display.flip', 'screen.fill', 'Python Arcade', 'simulation'],
+          },
+          {
+            slug: 'build-the-final-boss',
+            title: 'Build the Final Boss: stop SniperSpawn',
+            description: 'SniperSpawn has hijacked the Arcade engine: 50 assignments a day, all auto-failed. Make a character and walk the campus to build the one thing that can stop him — a boss, one part per zone, out of what you already know: break his infinite loop at the gate, repair the boss\'s JSON stats in the Data Vault, write the SQL query and the move-picking rule in the Stat Lab, code the if / elif brain in the Tower, fix the shared-memory checkpoint at the Save Shrine, and make movement frame-rate-proof on the Field. Tech coins hide in the tall grass; kiosks sell three tiers of hints (the third is a scaffold); mentors explain for free. Then load your boss into the Arcade and watch your own think(), pick_move() and move() fight him, turn by turn.',
+            file: 'build-the-final-boss.html',
+            kind: 'game',
+            minutes: 90,
+            added: '2026-11-02',
+            tags: ['boss', 'SniperSpawn', 'Python', 'while', 'infinite loop', 'JSON', 'types', 'string', 'number', 'boolean', 'null', 'array', 'SQL', 'SELECT', 'WHERE', 'ORDER BY', 'rows', 'dict', 'for', 'if', 'elif', 'else', 'state', 'copy', 'deepcopy', 'references', 'delta time', 'dt', 'fps', 'game AI', 'game design', 'character', 'walk', 'world', 'hints', 'coins', 'review', 'Data Vault', 'Stat Check', 'Smart Moves', 'Save Point', 'Frame Rate Lab', 'Think it then code it'],
           },
         ],
         
