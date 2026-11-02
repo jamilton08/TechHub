@@ -136,6 +136,17 @@ export const CATEGORIES = [
             added: '2026-09-30',
             tags: ['forensics', 'digital forensics', 'evidence', 'warrant', 'chain of custody', 'forensic copy', 'write blocker', 'hash', 'SHA-256', 'integrity', 'logs', 'access.log', 'timeline', 'IP address', 'public', 'private', 'WHOIS', '443', 'exfiltration', 'data breach', 'patient records', 'privacy', 'law', 'ethics', 'findings report', 'security'],
           },
+          {
+            slug: 'manolo-squishy-mafia',
+            title: 'OG Manolo\'s house 4: the Squishy Mafia',
+            description: 'A gray van has been across the street for three days, something tried the camera recorder\'s login 400 times last night, Junior "opened the cameras to his phone from anywhere," and the tablet keeps joining a second "Casa Manolo." Walk the house and the block, read the evidence, and name the five holes in Nena\'s notebook. Then take her car to Byte Depot (not the hardware store), buy the right gear under $350 — a PoE managed switch for the four cameras, a backup drive, cables — and drive it home. Cable the camera rack in the garage, give the switch a fixed address and a Cameras VLAN, re-open port 5 on the living room switch, and on the router: close Junior\'s port forwards, UPnP and remote admin, build the isolated cameras network, move the Wi-Fi to WPA3 with a new password. Harden the recorder, set up a nightly backup and verify it with SHA-256, and put the tablet on the real network instead of the evil twin.',
+            file: 'manolo-squishy-mafia.html',
+            kind: 'game',
+            minutes: 75,
+            added: '2026-11-02',
+            tags: ['home network', 'security', 'port forward', 'UPnP', 'remote admin', 'firewall', 'default password', 'brute force', 'evil twin', 'BSSID', 'WPA3', 'WPS', 'VLAN', 'tagged', 'trunk', 'PoE', 'managed switch', 'cameras', 'NVR', 'firmware', 'backup', '3-2-1', 'SHA-256', 'hash', 'ransomware', 'isolation', 'segmentation', '192.168.20.1', 'DHCP', 'gateway', 'drive', 'car', 'shopping', 'budget', 'Manolo', 'Nena', 'Junior', 'Packet Run', 'Packet Trail', 'Seized Drive', 'simulation', 'character', 'walk'],
+          },
+
         ],
       },
     ],
