@@ -275,7 +275,18 @@ export const CATEGORIES = [
     tone: 'blue',
     blurb: 'Tech jobs and the money that comes with them: what the roles are, what they pay, and what to do with a paycheck.',
     topics: [
-      { id: 'tech-careers', title: 'Tech careers', lessons: [] },
+      { id: 'tech-careers', title: 'Tech careers', lessons: [
+        {
+            slug: 'job-shadow-byte-works',
+            title: 'Job Shadow: a day at Bronx Byte Works',
+            description: 'A simulated work-based learning day. Make a character, walk into a small IT and software company on Fordham Road, and shadow its IT manager from sign-in to clock-out: a help desk ticket (an offline printer and a 169.254 address), a real bug in a developer\'s loop, an outage during a client call, lunch with the manager, an upset customer to explain things to without jargon, a team standup, and a debrief built from what you actually did. After each stop you write one section of the HSCT Work-Based Learning Experience Reflection. At the end you download it as a Word document: the school\'s worksheet, filled in, with a log of everything you did at every stop.',
+            file: 'job-shadow-byte-works.html',
+            kind: 'game',
+            minutes: 70,
+            added: '2026-11-04',
+            tags: ['job shadow', 'work-based learning', 'WBL', 'reflection', 'worksheet', 'career', 'IT', 'help desk', 'developer', 'network', 'outage', 'customer', 'soft skills', 'communication', 'teamwork', 'problem solving', 'standup', 'strengths', 'career insight', 'simulation', 'character', 'walk', 'world', 'docx', 'Career Pathways'],
+          },
+      ] },
       {
         id: 'resumes-and-interviews',
         title: 'Resumes & interviews',
