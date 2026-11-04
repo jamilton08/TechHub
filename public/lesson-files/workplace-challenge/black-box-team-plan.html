@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Black Box: plan your team's game — HSCT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<!--
+  BLACK BOX · TEAM PLAN  (HSCT Room 333 · Workplace Challenge)
+  A planning worksheet for a team of four. Everything the team types lives in `P` (plain JSON),
+  autosaves in this browser, and downloads as <team>-black-box-plan.json for Google Classroom.
+  Load plan brings a downloaded file back. Self-contained: inline CSS and JS, Google Fonts only.
+-->
+<style>
+/* Layout: one column of numbered stops, same theme as the HSCT lesson pages. Light only, by design. */
+:root{
+  --bg:#f5f7fc; --paper:#fff; --ink:#101a3f; --muted:#5b6485; --line:#d3d9ee; --line-2:#e6eaf5;
+  --blue:#1f3fae; --blue-soft:#e9edf8; --green:#1f7a3d; --green-soft:#e1f2e6; --red:#b3261e; --red-soft:#fbe3e1;
+  --amber:#8a5a00; --amber-soft:#fff4d6; --maroon:#7a1f3d; --maroon-soft:#f6e6ec;
+  --screen:#100d22; --code-bg:#0f1530; --code-ink:#dfe6ff; --code-mute:#7d88b3;
+  --sans:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.55}
+h1,h2,h3,h4{margin:0;line-height:1.15;text-wrap:balance}
+p{margin:0 0 .8rem}
+button{font:inherit;cursor:pointer;color:inherit}
+input,select,textarea{font:inherit;color:inherit}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,canvas:focus-visible,[tabindex]:focus-visible{outline:3px solid #a9b7ea;outline-offset:2px}
+code,kbd,pre{font-family:var(--mono)}
+code{font-size:.92em;background:var(--blue-soft);padding:.05em .35em;border-radius:5px}
+kbd{font-size:.82em;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:.05em .4em;background:#fff}
+[hidden]{display:none !important}
+.wrap{max-width:820px;margin:0 auto;padding-block:40px 80px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.eyebrow{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:8px}
+h1{font-size:2.1rem;font-weight:700;letter-spacing:-.015em;margin-bottom:.45rem}
+h2{font-size:1.45rem;font-weight:700;letter-spacing:-.01em;margin-bottom:.4rem}
+h3{font-size:1.05rem;font-weight:700;margin-bottom:.3rem}
+.lead{font-size:1.08rem;color:var(--ink);max-width:66ch}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-bottom:16px}
+.card.soft{background:var(--blue-soft);border-color:#c7d1f0}
+.stop{margin-top:44px}
+.stop-head{display:flex;justify-content:space-between;gap:12px;align-items:baseline;flex-wrap:wrap;margin-bottom:10px}
+.pts{color:var(--muted);font-size:14px;white-space:nowrap}
+.done-when{display:flex;gap:10px;align-items:flex-start;background:var(--green-soft);border:1px solid #bfe0c8;border-radius:10px;padding:10px 14px;margin:14px 0 0;font-size:15px}
+.done-when b{color:var(--green)}
+.btn{border:2px solid var(--blue);background:var(--blue);color:#fff;border-radius:8px;padding:10px 16px;font-weight:600;line-height:1.2}
+.btn.ghost{background:#fff;color:var(--blue)}
+.btn.sm{padding:6px 10px;font-size:14px;border-width:1.5px}
+.btn.danger{border-color:var(--red);background:#fff;color:var(--red)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:12px;min-width:0}
+.field label{font-size:14px;font-weight:600;color:var(--muted)}
+.field .hint{font-size:13px;color:var(--muted);font-weight:400}
+input[type=text],input[type=number],select,textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff;line-height:1.4}
+textarea{resize:vertical;min-height:64px;overflow:hidden}
+input[type=number]{width:5.5em;font-family:var(--mono)}
+.mono{font-family:var(--mono)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media (max-width:640px){.grid2,.grid4{grid-template-columns:1fr}}
+.tbl-wrap{overflow-x:auto;margin:8px 0}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:6px 6px;border-bottom:1px solid var(--line-2);vertical-align:top}
+th{font-size:12.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+td input[type=text],td select,td textarea{padding:6px 8px;font-size:15px}
+td textarea{min-height:40px}
+#objects-tbl td:nth-child(1) input{min-width:8em}
+#objects-tbl td:nth-child(2) input,#objects-tbl td:nth-child(7) input{min-width:11em}
+#state-tbl td:nth-child(1) input{min-width:7em}
+#state-tbl td:nth-child(2) input{min-width:7em}
+td.num{width:6em}
+td.ctl{white-space:nowrap;width:1%}
+td .x{border:none;background:none;color:var(--muted);font-size:18px;line-height:1;padding:4px 6px;border-radius:6px}
+td .x:hover{background:var(--red-soft);color:var(--red)}
+.rubric td:last-child{text-align:right;font-family:var(--mono);white-space:nowrap}
+.rubric tr.core td{font-weight:600;background:var(--amber-soft)}
+.check{display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--line-2)}
+.check:last-child{border-bottom:none}
+.check input{margin-top:5px;width:18px;height:18px}
+.rule{background:var(--code-bg);color:var(--code-ink);border-radius:10px;padding:14px 16px;overflow-x:auto;font-size:14.5px;line-height:1.5;margin:10px 0}
+.rule .c{color:var(--code-mute)}
+.rule .k{color:#ffb86b}
+.rule .s{color:#9ee7a0}
+.loop{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-family:var(--mono);font-size:14px;background:var(--paper);border:1px dashed var(--line);border-radius:10px;padding:10px 12px}
+.loop span.arrow{color:var(--muted)}
+.pill{display:inline-block;font-size:12.5px;font-weight:600;border-radius:999px;padding:2px 9px;background:var(--blue-soft);color:var(--blue)}
+.pill.g{background:var(--green-soft);color:var(--green)}
+.pill.r{background:var(--red-soft);color:var(--red)}
+.pill.a{background:var(--amber-soft);color:var(--amber)}
+/* sketch pad */
+.pad{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:start}
+@media (max-width:700px){.pad{grid-template-columns:1fr}}
+.pad canvas{width:100%;max-width:600px;height:auto;border:1px solid var(--line);border-radius:8px;background:#fff;touch-action:none;display:block;cursor:crosshair}
+.palette{display:flex;flex-direction:column;gap:6px;min-width:170px}
+.palette button{display:flex;align-items:center;gap:8px;border:1.5px solid var(--line);background:#fff;border-radius:8px;padding:6px 8px;text-align:left;font-size:14px}
+.palette button.on{border-color:var(--blue);background:var(--blue-soft)}
+.palette .sw{width:18px;height:18px;border-radius:4px;border:1px solid rgba(0,0,0,.15);flex:none}
+/* log preview */
+.logline{font-family:var(--mono);font-size:13.5px;background:var(--code-bg);color:var(--code-ink);border-radius:8px;padding:8px 10px;white-space:pre-wrap;word-break:break-word}
+.logline .k{color:#ffb86b}.logline .s{color:#9ee7a0}.logline .n{color:#8ecbff}
+/* status */
+.status{font-size:14px;color:var(--muted);min-height:1.4em}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.summary .item{display:flex;gap:8px;align-items:flex-start;font-size:15px;padding:8px 10px;border-radius:8px;background:var(--paper);border:1px solid var(--line)}
+.summary .item.ok{border-color:#bfe0c8;background:var(--green-soft)}
+.summary .item .mark{font-family:var(--mono);font-weight:600;flex:none}
+.summary .item.ok .mark{color:var(--green)}
+.summary .item:not(.ok) .mark{color:var(--red)}
+.topbar{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);margin:0 0 18px;padding:8px 0;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.topbar .team{font-weight:600}
+.print-only{display:none}
+@media print{
+  html,body{background:#fff;font-size:12.5px}
+  .wrap{max-width:none;padding:0}
+  .no-print,.topbar,.btn,.palette,.hint,.done-when{display:none !important}
+  .print-only{display:block}
+  .card{border:1px solid #bbb;page-break-inside:avoid;padding:10px 12px}
+  .stop{margin-top:18px;page-break-inside:avoid}
+  input[type=text],select,textarea{border:none;border-bottom:1px solid #bbb;border-radius:0;padding:2px 4px;background:#fff}
+  textarea{resize:none;min-height:0}
+  .rule,.logline{background:#f1f3fa;color:#101a3f;border:1px solid #ccc}
+  .rule .c{color:#666}.rule .k,.logline .k{color:#8a5a00}.rule .s,.logline .s{color:#1f7a3d}.logline .n{color:#1f3fae}
+  .pad canvas{max-width:380px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none !important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">Workplace Challenge · Team game · Plan</div>
+  <h1>Black Box: plan your team's game</h1>
+  <p class="lead">A plane's black box lets investigators replay exactly what happened. Your team's game gets one. Before anyone writes code, you plan the game here, together: what's in it, what can change, how you win and lose, and what the black box records. One plan per team.</p>
+
+  <div class="topbar no-print">
+    <div class="status" id="status">Autosaves in this browser.</div>
+    <div class="row">
+      <span class="team" id="top-team"></span>
+      <button class="btn sm ghost" id="btn-load-top" type="button">Load plan</button>
+      <button class="btn sm" id="btn-save-top" type="button">Download plan (.json)</button>
+    </div>
+  </div>
+
+  <div class="card soft">
+    <h3>How this works</h3>
+    <p>Four people, one game, one grade. The <b>Project Manager</b> drives this page; everyone talks. Where it says <b>Done when</b>, that's what Mr. Cruz checks before your team gets the green light to code.</p>
+    <p>Two classes. Stops 1–5 today. Stops 6–8 next class, then you pitch the plan to Mr. Cruz. He approves it, or sends it back with notes. Nobody codes until the plan is approved.</p>
+    <p style="margin:0">This page autosaves in this browser. At the end, <b>Download plan</b> and the Project Manager submits the file in Google Classroom. Next class, <b>Load plan</b> brings it back on any computer.</p>
+  </div>
+
+  <!-- ====================== THE BRIEF ====================== -->
+  <section class="stop" id="brief">
+    <div class="stop-head"><h2>The brief: what you're building</h2><span class="pts">read this first</span></div>
+    <div class="card">
+      <p>A game in the Python Arcade (pygame). The player moves around a level and touches <b>objects</b>. Some give points, some take hearts, some open things, some chase you. The game ends in a <b>win</b> or a <b>loss</b>. Every game you've built this year was state plus rules that change the state. This time there's one new rule, and it's the whole project:</p>
+      <div class="rule"><span class="c"># THE ONE RULE: nothing touches state directly. Every change goes through change().</span>
+<span class="k">def</span> change(state, key, new, cause):
+    old = state[key]
+    state[key] = new
+    LOG.append({<span class="s">"t"</span>: now(), <span class="s">"key"</span>: key, <span class="s">"old"</span>: old, <span class="s">"new"</span>: new, <span class="s">"cause"</span>: cause})
+
+<span class="c"># a coin:</span>   change(state, <span class="s">"score"</span>, state[<span class="s">"score"</span>] + 10, <span class="s">"coin#4"</span>)
+<span class="c"># spikes:</span>   change(state, <span class="s">"hearts"</span>, state[<span class="s">"hearts"</span>] - 1, <span class="s">"spikes#2"</span>)
+<span class="c"># winning:</span>  change(state, <span class="s">"status"</span>, <span class="s">"won"</span>, <span class="s">"flag"</span>)</div>
+      <p>The <code>LOG</code> is your black box: a list of records, which makes it a table (Data Vault, Stat Check). It saves with the game. And it has a test: <code>replay(new_game(), LOG)</code> must rebuild your final state exactly. If any rule changes state without going through <code>change()</code>, the replay drifts and the test fails. If it isn't in the log, it didn't happen.</p>
+      <div class="loop"><span>press a key</span><span class="arrow">→</span><span>rules call change()</span><span class="arrow">→</span><span>LOG grows</span><span class="arrow">→</span><span>screen drawn from state</span><span class="arrow">↺</span></div>
+
+      <h3 style="margin-top:18px">What the finished game needs</h3>
+      <div class="tbl-wrap"><table class="rubric">
+        <thead><tr><th>Part</th><th>Comes from</th><th>Points</th></tr></thead>
+        <tbody>
+          <tr><td>An <code>OBJECTS</code> table and a <code>LEVEL</code> that never change, and one <code>state</code> dict that does. 4+ object kinds. Rules read columns, never names: one <code>touch()</code> handles every object.</td><td>Save Point · Stat Check</td><td>15</td></tr>
+          <tr><td>One way to win and one way to lose, both rules that read state.</td><td>Save Point</td><td>15</td></tr>
+          <tr class="core"><td>The black box: every change goes through <code>change()</code>, <code>replay()</code> passes, every object kind shows up in the log at least once.</td><td>this project</td><td>25</td></tr>
+          <tr><td>Save and load: state + log to a JSON file and back. Checkpoints are real copies.</td><td>Save Point · Data Vault</td><td>15</td></tr>
+          <tr><td>Three questions answered from the log in Python, one of them also in SQL.</td><td>Data Vault · Stat Check</td><td>15</td></tr>
+          <tr><td>One enemy with a sense → think → act brain. Its hits are logged with a cause like <code>"bat#3"</code>.</td><td>Smart Moves</td><td>10</td></tr>
+          <tr><td>Design doc (this plan, kept up to date) and the demo: lose on purpose, then read the black box out loud to explain why.</td><td>Team Up</td><td>5</td></tr>
+        </tbody>
+      </table></div>
+      <p class="small muted" style="margin:6px 0 0">Movement uses delta time so it runs at the same speed on every computer (Frame Rate Lab). Positions change every frame, so they are <b>not</b> logged. The black box records events: points, hearts, items, objects removed, status. That's what makes it readable.</p>
+    </div>
+  </section>
+
+  <!-- ====================== STOP 1: TEAM ====================== -->
+  <section class="stop" id="s1">
+    <div class="stop-head"><h2>Stop 1 · The team</h2><span class="pts">from the Team Hall roster</span></div>
+    <div class="card">
+      <div class="field"><label for="team-name">Team name</label><input type="text" id="team-name" data-k="team.name" placeholder="The same one you posted in the Team Hall"></div>
+      <div class="tbl-wrap"><table id="members-tbl">
+        <thead><tr><th>Name</th><th>Role</th><th>Why this role (one line)</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <p class="small muted">Four people, three roles: the usual split is two Programmers, one Presenter, one Project Manager. The Presenter and the Project Manager still code. Everyone knows the whole game, not just one part.</p>
+
+      <h3 style="margin-top:14px">Team agreements</h3>
+      <p class="small muted">You walked these on the campus trail. Check each one your team agrees to, out loud.</p>
+      <div id="agreements"></div>
+      <div class="done-when"><b>Done when</b><span>four names, every role filled, every agreement checked.</span></div>
+    </div>
+  </section>
+
+  <!-- ====================== STOP 2: THE PITCH ====================== -->
+  <section class="stop" id="s2">
+    <div class="stop-head"><h2>Stop 2 · The pitch</h2><span class="pts">talk first, type second</span></div>
+    <div class="card">
+      <p>Fifteen minutes of talking before anyone types. Every person pitches one idea. Ask what problem it solves, say what worries you (fork 1). Then pick one, or combine two.</p>
+      <div class="field"><label for="game-name">Game name</label><input type="text" id="game-name" data-k="pitch.name" placeholder="Short. Something you can say in the demo."></div>
+      <div class="grid2">
+        <div class="field"><label for="p-you">You are…</label><input type="text" id="p-you" data-k="pitch.you" placeholder="a janitor robot on the last day of school"></div>
+        <div class="field"><label for="p-goal">…trying to…</label><input type="text" id="p-goal" data-k="pitch.goal" placeholder="collect every lost phone before the bell"></div>
+      </div>
+      <div class="field"><label for="p-against">…but in your way:</label><input type="text" id="p-against" data-k="pitch.against" placeholder="the hall monitor, the wet floors, and a clock"></div>
+      <div class="field"><label for="p-controls">How you play <span class="hint">keys, what happens when you press them</span></label><textarea id="p-controls" data-k="pitch.controls" placeholder="← → move, space jumps. Walk into an object to touch it."></textarea></div>
+      <div class="field"><label for="p-fun">What makes it fun for 60 seconds <span class="hint">the one thing a player will tell their friend about</span></label><textarea id="p-fun" data-k="pitch.fun"></textarea></div>
+
+      <h3 style="margin-top:14px">Sketch the level</h3>
+      <p class="small muted">Pick a piece, then click or drag on the grid. This is a sketch, not the real level; it's here so the four of you are picturing the same game. The object pieces take their names from Stop 3.</p>
+      <div class="pad">
+        <canvas id="pad" width="600" height="360" tabindex="0" aria-label="Level sketch grid"></canvas>
+        <div class="palette" id="palette"></div>
+      </div>
+      <div class="row no-print" style="margin-top:8px"><button class="btn sm ghost" type="button" id="pad-clear">Clear the sketch</button></div>
+      <div class="done-when"><b>Done when</b><span>a name, all three pitch blanks, controls, and a sketch with the hero, a goal, and at least two kinds of object on it.</span></div>
+    </div>
+  </section>
+
+  <!-- ====================== STOP 3: OBJECTS ====================== -->
+  <section class="stop" id="s3">
+    <div class="stop-head"><h2>Stop 3 · The objects table</h2><span class="pts">Stat Check: rules read columns</span></div>
+    <div class="card">
+      <p>Every object in your game is one row. The columns are what the rule reads. Your <code>touch()</code> rule will never say "if it's a coin": it reads <code>points</code> and <code>hearts</code> from the row and applies them. Adding a new object later should mean adding a row, not new code.</p>
+      <div class="tbl-wrap"><table id="objects-tbl">
+        <thead><tr><th>Kind</th><th>Looks like</th><th>Points</th><th>Hearts</th><th>Removed on touch?</th><th>Moves?</th><th>Other effect</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <div class="row no-print"><button class="btn sm ghost" type="button" id="obj-add">+ Add an object</button></div>
+      <p class="small muted" style="margin-top:10px">Points and hearts can be negative. "Other effect" is for anything the columns don't cover: opens a door, teleports, saves the game, speeds you up. If more than one object needs the same other effect, that's a new column.</p>
+      <div class="done-when"><b>Done when</b><span>at least 4 kinds. At least one gives something, one takes something, one moves, and one is the goal.</span></div>
+    </div>
+  </section>
+
+  <!-- ====================== STOP 4: STATE ====================== -->
+  <section class="stop" id="s4">
+    <div class="stop-head"><h2>Stop 4 · What never changes, what does</h2><span class="pts">Save Point: game data vs save data</span></div>
+    <div class="card">
+      <div class="grid2">
+        <div class="field"><label for="static-list">Never changes <span class="hint">ships with the game, never in a save</span></label><textarea id="static-list" data-k="state.static" placeholder="LEVEL (the map)&#10;OBJECTS table&#10;hero speed, jump height&#10;enemy speed"></textarea></div>
+        <div>
+          <div class="field" style="margin-bottom:6px"><label>Changes while you play <span class="hint">this is state. This is what a save file holds.</span></label></div>
+          <div class="tbl-wrap"><table id="state-tbl">
+            <thead><tr><th>Key</th><th>Starts at</th><th>Changed by</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+          <div class="row no-print"><button class="btn sm ghost" type="button" id="state-add">+ Add a key</button></div>
+        </div>
+      </div>
+      <p class="small muted" style="margin-top:10px">Don't store anything you can work out from the rest. "Coins left" is the number of coin objects still in <code>state["things"]</code>; count it when you need it.</p>
+      <div class="done-when"><b>Done when</b><span>every object in Stop 3 appears in some key's "changed by", and nothing in the state table could be computed from another key.</span></div>
+    </div>
+  </section>
+
+  <!-- ====================== STOP 5: WIN & LOSE ====================== -->
+  <section class="stop" id="s5">
+    <div class="stop-head"><h2>Stop 5 · Win and lose</h2><span class="pts">both are rules that read state</span></div>
+    <div class="card">
+      <div class="grid2">
+        <div>
+          <h3><span class="pill g">WIN</span></h3>
+          <div class="field"><label for="win-text">In words</label><textarea id="win-text" data-k="end.winText" placeholder="Touch the exit door with all 5 phones in your bag."></textarea></div>
+          <div class="field"><label for="win-code">As a check on state <span class="hint">pseudo-Python is fine</span></label><textarea id="win-code" class="mono" data-k="end.winCode" placeholder='if len(state["bag"]) == 5 and touching(exit):&#10;    change(state, "status", "won", "exit")'></textarea></div>
+        </div>
+        <div>
+          <h3><span class="pill r">LOSE</span></h3>
+          <div class="field"><label for="lose-text">In words</label><textarea id="lose-text" data-k="end.loseText" placeholder="Run out of hearts, or the bell rings (turn 300)."></textarea></div>
+          <div class="field"><label for="lose-code">As a check on state</label><textarea id="lose-code" class="mono" data-k="end.loseCode" placeholder='if state["hearts"] <= 0:&#10;    change(state, "status", "lost", "hearts")'></textarea></div>
+        </div>
+      </div>
+      <div class="field"><label for="end-screen">What the player sees when it ends <span class="hint">and what the game offers next: retry, load a save, quit</span></label><textarea id="end-screen" data-k="end.screen"></textarea></div>
+      <div class="done-when"><b>Done when</b><span>both conditions name a state key, and both can actually happen with the objects in Stop 3.</span></div>
+    </div>
+  </section>
+
+  <!-- ====================== STOP 6: THE BLACK BOX ====================== -->
+  <section class="stop" id="s6">
+    <div class="stop-head"><h2>Stop 6 · The black box</h2><span class="pts">next class · the part that's graded most</span></div>
+    <div class="card">
+      <p>For each object, write the record it leaves in the log. The example line on the right is built from what you type, so you can see what your log will look like before you write a line of code.</p>
+      <div id="log-rows"></div>
+
+      <h3 style="margin-top:18px">Three questions you'll ask the log</h3>
+      <p class="small muted">Queries. Write the question in English, then which keys and causes the Python needs to look at. One of the three you'll also write in SQL.</p>
+      <div class="tbl-wrap"><table id="queries-tbl">
+        <thead><tr><th>Question</th><th>Needs (keys, causes)</th><th>SQL too?</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <div class="field" style="margin-top:12px"><label for="not-logged">What is <u>not</u> logged, and why</label><textarea id="not-logged" data-k="log.notLogged" placeholder="Hero and enemy x/y every frame: too many lines, and you can't read a black box with 3,600 entries a minute. We log what the rules change: score, hearts, bag, things, status."></textarea></div>
+      <div class="done-when"><b>Done when</b><span>every object has a record, the three questions are ones the demo will actually answer, and one is marked for SQL.</span></div>
+    </div>
+  </section>
+
+  <!-- ====================== STOP 7: THE ENEMY ====================== -->
+  <section class="stop" id="s7">
+    <div class="stop-head"><h2>Stop 7 · The enemy brain</h2><span class="pts">Smart Moves: sense → think → act</span></div>
+    <div class="card">
+      <div class="field"><label for="enemy-name">Enemy</label><input type="text" id="enemy-name" data-k="enemy.name" placeholder="the hall monitor"></div>
+      <div class="grid4">
+        <div class="field"><label for="e-sense">Senses <span class="hint">what it's allowed to know</span></label><textarea id="e-sense" data-k="enemy.senses" placeholder="distance to the hero, whether it can see them in a straight line, its own hp"></textarea></div>
+        <div class="field"><label for="e-states">States <span class="hint">and what switches them</span></label><textarea id="e-states" data-k="enemy.states" placeholder="patrol → chase when it sees you → search when it loses you → patrol after 6 turns"></textarea></div>
+        <div class="field"><label for="e-scores">Scores <span class="hint">or rules, if it's simpler</span></label><textarea id="e-scores" data-k="enemy.scores" placeholder="+10 per step closer to the hero, −50 for a wet floor square"></textarea></div>
+        <div class="field"><label for="e-fair">Fair <span class="hint">how the player can beat it</span></label><textarea id="e-fair" data-k="enemy.fair" placeholder="it shouts before it chases; it can't go through doors"></textarea></div>
+      </div>
+      <div class="field"><label for="e-log">What it writes in the log when it catches you</label><input type="text" id="e-log" class="mono" data-k="enemy.log" placeholder='change(state, "hearts", state["hearts"] - 1, "monitor#1")'></div>
+      <div class="done-when"><b>Done when</b><span>all four boxes have a real answer, and the log line names the enemy with a <code>kind#id</code> cause.</span></div>
+    </div>
+  </section>
+
+  <!-- ====================== STOP 8: THE PLAN ====================== -->
+  <section class="stop" id="s8">
+    <div class="stop-head"><h2>Stop 8 · Who does what by when</h2><span class="pts">the Project Manager owns this table</span></div>
+    <div class="card">
+      <p>The milestones are filled in. Put a name on every row and a day on every row. Two people can share a row. The Project Manager updates the status column every class, and says "we are behind" early (fork 2).</p>
+      <div class="tbl-wrap"><table id="tasks-tbl">
+        <thead><tr><th>Task</th><th>Owner</th><th>Due</th><th>Status</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <div class="row no-print"><button class="btn sm ghost" type="button" id="task-add">+ Add a task</button></div>
+      <div class="field" style="margin-top:12px"><label for="risks">What could go wrong, and the plan if it does</label><textarea id="risks" data-k="plan.risks" placeholder="Replay fails on Day 4 → freeze new objects, find the rule that skips change(). Someone is out → their row has a backup name."></textarea></div>
+      <div class="done-when"><b>Done when</b><span>every row has an owner and a day, the black box row is done before any polish rows, and the Presenter has practice time on the schedule.</span></div>
+    </div>
+  </section>
+
+  <!-- ====================== FINISH ====================== -->
+  <section class="stop" id="finish">
+    <div class="stop-head"><h2>Finish · Hand in the plan</h2></div>
+    <div class="card">
+      <div class="summary" id="summary"></div>
+      <p style="margin-top:14px">Download the plan. The Project Manager submits the file in Google Classroom. Keep it: next class, <b>Load plan</b> brings it back, and you'll update it as the game changes. The plan you hand in with the finished game is the design doc.</p>
+      <div class="row no-print">
+        <button class="btn" type="button" id="btn-save">Download plan (.json)</button>
+        <button class="btn ghost" type="button" id="btn-load">Load plan</button>
+        <button class="btn ghost" type="button" id="btn-print">Print</button>
+        <button class="btn danger" type="button" id="btn-reset">Start over</button>
+      </div>
+      <div id="reset-confirm" class="row no-print" hidden style="margin-top:10px">
+        <span>Erase this plan from this browser?</span>
+        <button class="btn sm danger" type="button" id="btn-reset-yes">Yes, erase it</button>
+        <button class="btn sm ghost" type="button" id="btn-reset-no">Keep it</button>
+      </div>
+      <input type="file" id="file-in" accept=".json,application/json" hidden>
+      <p class="small muted print-only" id="print-stamp"></p>
+    </div>
+  </section>
+
+</div>
+
+<script>
+/* ===================================================================
+   DATA  (everything the team types lives here)
+   =================================================================== */
+const KEY = 'hsct-blackbox-plan-v1';
+const ROLES = ['Programmer', 'Presenter', 'Project Manager'];
+const AGREEMENTS = [
+  'If my part is going to be late, I tell the team the day I know it, and say what I can finish.',
+  'When someone pitches an idea, I ask what problem it solves before I say what worries me.',
+  'Credit goes to the person who did the work, by name, every time.',
+  'If a teammate goes quiet, I message them directly first. If nothing by the next day, the Project Manager steps in.',
+  'If I change someone else\'s work, I message them exactly what I changed.',
+  'When someone says my code is hard to read, I ask which part and what would make it clearer.',
+];
+const PAD_W = 20, PAD_H = 12;
+const PAD_FIXED = [
+  { id: 'floor', name: 'Floor', color: '#ffffff' },
+  { id: 'wall', name: 'Wall', color: '#101a3f' },
+  { id: 'hero', name: 'Hero start', color: '#1f3fae' },
+  { id: 'goal', name: 'Goal / exit', color: '#1f7a3d' },
+  { id: 'enemy', name: 'Enemy', color: '#b3261e' },
+];
+const OBJ_COLORS = ['#f2c14e', '#8a5a00', '#7a1f3d', '#2a9d8f', '#e76f51', '#6a4c93', '#577590', '#f4a261'];
+const DEFAULT_TASKS = [
+  'Plan approved by Mr. Cruz (this page)',
+  'Level + hero moving with delta time',
+  'OBJECTS table + touch() rule for every kind',
+  'change() + LOG; replay() test passes',
+  'Win and lose; end screen',
+  'Save and load (state + log → JSON)',
+  'Three queries in Python, one in SQL',
+  'Enemy brain, logged',
+  'Polish: sounds, look, difficulty',
+  'Presentation: lose on purpose, read the black box',
+  'Presenter rehearses out loud, twice',
+];
+
+function freshPlan() {
+  return {
+    v: 1,
+    team: { name: '', members: [0, 1, 2, 3].map(() => ({ name: '', role: '', why: '' })), agreements: AGREEMENTS.map(() => false) },
+    pitch: { name: '', you: '', goal: '', against: '', controls: '', fun: '', pad: Array(PAD_W * PAD_H).fill('floor') },
+    objects: [
+      { kind: 'coin', look: '', points: 10, hearts: 0, removed: 'yes', moves: 'no', other: '' },
+      { kind: 'spikes', look: '', points: 0, hearts: -1, removed: 'no', moves: 'no', other: '' },
+      { kind: '', look: '', points: 0, hearts: 0, removed: 'yes', moves: 'no', other: '' },
+      { kind: '', look: '', points: 0, hearts: 0, removed: 'no', moves: 'no', other: '' },
+    ],
+    state: {
+      static: '',
+      keys: [
+        { key: 'score', start: '0', by: '' },
+        { key: 'hearts', start: '3', by: '' },
+        { key: 'bag', start: '[]', by: '' },
+        { key: 'things', start: 'from LEVEL', by: '' },
+        { key: 'status', start: '"playing"', by: '' },
+      ],
+    },
+    end: { winText: '', winCode: '', loseText: '', loseCode: '', screen: '' },
+    log: { rows: {}, queries: [{ q: '', needs: '', sql: false }, { q: '', needs: '', sql: false }, { q: '', needs: '', sql: false }], notLogged: '' },
+    enemy: { name: '', senses: '', states: '', scores: '', fair: '', log: '' },
+    plan: { tasks: DEFAULT_TASKS.map((t) => ({ task: t, owner: '', due: '', status: 'not started' })), risks: '' },
+    saved: null,
+  };
+}
+let P = freshPlan();
+
+/* ===================================================================
+   HELPERS
+   =================================================================== */
+const $ = (s, el) => (el || document).querySelector(s);
+const $$ = (s, el) => Array.from((el || document).querySelectorAll(s));
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function getPath(obj, path) { return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj); }
+function setPath(obj, path, val) { const ks = path.split('.'); let o = obj; for (let i = 0; i < ks.length - 1; i++) { if (o[ks[i]] == null) o[ks[i]] = {}; o = o[ks[i]]; } o[ks[ks.length - 1]] = val; }
+function grow(ta) { ta.style.height = 'auto'; ta.style.height = (ta.scrollHeight + 2) + 'px'; }
+let saveTimer = null;
+function touchSave(msg) {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try { localStorage.setItem(KEY, JSON.stringify(P)); setStatus(msg || 'Saved in this browser · ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })); }
+    catch (e) { setStatus('Could not autosave here (private window?). Download the plan before you leave.'); }
+  }, 250);
+}
+function setStatus(t) { $('#status').textContent = t; }
+function slug(s) { return (s || 'team').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'team'; }
+function objectKinds() { return P.objects.map((o) => (o.kind || '').trim()).filter(Boolean); }
+function memberNames() { return P.team.members.map((m) => (m.name || '').trim()).filter(Boolean); }
+
+/* ===================================================================
+   SIMPLE FIELDS  (data-k="path")
+   =================================================================== */
+function bindSimple() {
+  $$('[data-k]').forEach((el) => {
+    const k = el.dataset.k;
+    const v = getPath(P, k);
+    el.value = v == null ? '' : v;
+    if (el.tagName === 'TEXTAREA') grow(el);
+    el.addEventListener('input', () => {
+      setPath(P, k, el.value);
+      if (el.tagName === 'TEXTAREA') grow(el);
+      if (k === 'team.name') renderTop();
+      if (k === 'enemy.name') drawPad();
+      touchSave(); renderSummary();
+    });
+  });
+}
+function renderTop() { $('#top-team').textContent = P.team.name ? P.team.name : ''; }
+
+/* ===================================================================
+   STOP 1 · TEAM
+   =================================================================== */
+function renderMembers() {
+  const tb = $('#members-tbl tbody');
+  tb.innerHTML = P.team.members.map((m, i) => `
+    <tr>
+      <td><input type="text" id="m-name-${i}" value="${esc(m.name)}" placeholder="Name" aria-label="Member ${i + 1} name"></td>
+      <td><select id="m-role-${i}" aria-label="Member ${i + 1} role"><option value="">Role…</option>${ROLES.map((r) => `<option ${m.role === r ? 'selected' : ''}>${r}</option>`).join('')}</select></td>
+      <td><input type="text" id="m-why-${i}" value="${esc(m.why)}" placeholder="Finishes what they start / comfortable talking / writes things down…"></td>
+    </tr>`).join('');
+  P.team.members.forEach((m, i) => {
+    $(`#m-name-${i}`).addEventListener('input', (e) => { m.name = e.target.value; renderTaskOwners(); touchSave(); renderSummary(); });
+    $(`#m-role-${i}`).addEventListener('change', (e) => { m.role = e.target.value; touchSave(); renderSummary(); });
+    $(`#m-why-${i}`).addEventListener('input', (e) => { m.why = e.target.value; touchSave(); });
+  });
+}
+function renderAgreements() {
+  const host = $('#agreements');
+  host.innerHTML = AGREEMENTS.map((a, i) => `<label class="check"><input type="checkbox" id="agree-${i}" ${P.team.agreements[i] ? 'checked' : ''}><span>${esc(a)}</span></label>`).join('');
+  AGREEMENTS.forEach((a, i) => $(`#agree-${i}`).addEventListener('change', (e) => { P.team.agreements[i] = e.target.checked; touchSave(); renderSummary(); }));
+}
+
+/* ===================================================================
+   STOP 2 · SKETCH PAD
+   =================================================================== */
+let padTool = 'wall';
+const pad = $('#pad'), ctx = pad.getContext('2d');
+const CELL = pad.width / PAD_W;
+function padPieces() {
+  const objs = objectKinds().slice(0, OBJ_COLORS.length).map((k, i) => ({ id: 'obj:' + k, name: k, color: OBJ_COLORS[i] }));
+  return PAD_FIXED.concat(objs);
+}
+function pieceColor(id) {
+  const p = padPieces().find((x) => x.id === id);
+  if (p) return p.color;
+  if (id.startsWith('obj:')) return '#c9c9c9';
+  return '#ffffff';
+}
+function renderPalette() {
+  const host = $('#palette');
+  const pieces = padPieces();
+  if (!pieces.some((p) => p.id === padTool)) padTool = 'wall';
+  host.innerHTML = pieces.map((p) => `<button type="button" class="${p.id === padTool ? 'on' : ''}" data-id="${esc(p.id)}"><span class="sw" style="background:${p.color}"></span>${esc(p.name)}</button>`).join('')
+    + (objectKinds().length === 0 ? '<span class="small muted">Name objects in Stop 3 and they show up here.</span>' : '');
+  $$('button', host).forEach((b) => b.addEventListener('click', () => { padTool = b.dataset.id; renderPalette(); }));
+}
+function drawPad() {
+  ctx.clearRect(0, 0, pad.width, pad.height);
+  for (let y = 0; y < PAD_H; y++) for (let x = 0; x < PAD_W; x++) {
+    const id = P.pitch.pad[y * PAD_W + x] || 'floor';
+    ctx.fillStyle = pieceColor(id);
+    ctx.fillRect(x * CELL, y * CELL, CELL, CELL);
+    if (id === 'hero' || id === 'goal' || id === 'enemy' || id.startsWith('obj:')) {
+      ctx.fillStyle = '#fff'; ctx.font = `600 ${CELL * .5}px IBM Plex Mono, monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const ch = id === 'hero' ? '@' : id === 'goal' ? 'F' : id === 'enemy' ? 'E' : id.slice(4, 5).toUpperCase();
+      ctx.fillText(ch, x * CELL + CELL / 2, y * CELL + CELL / 2 + 1);
+    }
+  }
+  ctx.strokeStyle = '#e6eaf5'; ctx.lineWidth = 1;
+  for (let x = 0; x <= PAD_W; x++) { ctx.beginPath(); ctx.moveTo(x * CELL + .5, 0); ctx.lineTo(x * CELL + .5, pad.height); ctx.stroke(); }
+  for (let y = 0; y <= PAD_H; y++) { ctx.beginPath(); ctx.moveTo(0, y * CELL + .5); ctx.lineTo(pad.width, y * CELL + .5); ctx.stroke(); }
+}
+let painting = false;
+function padCell(e) {
+  const r = pad.getBoundingClientRect();
+  const x = Math.floor((e.clientX - r.left) / r.width * PAD_W), y = Math.floor((e.clientY - r.top) / r.height * PAD_H);
+  if (x < 0 || y < 0 || x >= PAD_W || y >= PAD_H) return -1;
+  return y * PAD_W + x;
+}
+function paint(e) {
+  const i = padCell(e); if (i < 0) return;
+  if (padTool === 'hero') P.pitch.pad = P.pitch.pad.map((c) => (c === 'hero' ? 'floor' : c)); // one hero
+  P.pitch.pad[i] = padTool;
+  drawPad();
+}
+pad.addEventListener('pointerdown', (e) => { painting = true; pad.setPointerCapture(e.pointerId); paint(e); });
+pad.addEventListener('pointermove', (e) => { if (painting) paint(e); });
+pad.addEventListener('pointerup', () => { painting = false; touchSave(); renderSummary(); });
+pad.addEventListener('pointercancel', () => { painting = false; touchSave(); });
+$('#pad-clear').addEventListener('click', () => { P.pitch.pad = Array(PAD_W * PAD_H).fill('floor'); drawPad(); touchSave(); renderSummary(); });
+
+/* ===================================================================
+   STOP 3 · OBJECTS
+   =================================================================== */
+function renderObjects() {
+  const tb = $('#objects-tbl tbody');
+  tb.innerHTML = P.objects.map((o, i) => `
+    <tr>
+      <td><input type="text" id="o-kind-${i}" class="mono" value="${esc(o.kind)}" placeholder="coin" aria-label="Object ${i + 1} kind"></td>
+      <td><input type="text" id="o-look-${i}" value="${esc(o.look)}" placeholder="yellow circle"></td>
+      <td class="num"><input type="number" id="o-pts-${i}" value="${esc(o.points)}" step="1"></td>
+      <td class="num"><input type="number" id="o-hp-${i}" value="${esc(o.hearts)}" step="1"></td>
+      <td><select id="o-rem-${i}"><option ${o.removed === 'yes' ? 'selected' : ''}>yes</option><option ${o.removed === 'no' ? 'selected' : ''}>no</option></select></td>
+      <td><select id="o-mov-${i}"><option ${o.moves === 'no' ? 'selected' : ''}>no</option><option ${o.moves === 'yes' ? 'selected' : ''}>yes</option></select></td>
+      <td><input type="text" id="o-oth-${i}" value="${esc(o.other)}" placeholder="opens the door / goal"></td>
+      <td class="ctl"><button type="button" class="x no-print" id="o-del-${i}" aria-label="Remove object">×</button></td>
+    </tr>`).join('');
+  P.objects.forEach((o, i) => {
+    $(`#o-kind-${i}`).addEventListener('input', (e) => { o.kind = e.target.value; renderPalette(); drawPad(); renderLogRows(); renderSummary(); touchSave(); });
+    $(`#o-look-${i}`).addEventListener('input', (e) => { o.look = e.target.value; touchSave(); });
+    $(`#o-pts-${i}`).addEventListener('input', (e) => { o.points = Number(e.target.value) || 0; renderLogRows(); renderSummary(); touchSave(); });
+    $(`#o-hp-${i}`).addEventListener('input', (e) => { o.hearts = Number(e.target.value) || 0; renderLogRows(); renderSummary(); touchSave(); });
+    $(`#o-rem-${i}`).addEventListener('change', (e) => { o.removed = e.target.value; renderLogRows(); touchSave(); });
+    $(`#o-mov-${i}`).addEventListener('change', (e) => { o.moves = e.target.value; renderSummary(); touchSave(); });
+    $(`#o-oth-${i}`).addEventListener('input', (e) => { o.other = e.target.value; renderSummary(); touchSave(); });
+    $(`#o-del-${i}`).addEventListener('click', () => { P.objects.splice(i, 1); renderObjects(); renderPalette(); drawPad(); renderLogRows(); renderSummary(); touchSave(); });
+  });
+}
+$('#obj-add').addEventListener('click', () => { P.objects.push({ kind: '', look: '', points: 0, hearts: 0, removed: 'yes', moves: 'no', other: '' }); renderObjects(); $(`#o-kind-${P.objects.length - 1}`).focus(); touchSave(); });
+
+/* ===================================================================
+   STOP 4 · STATE KEYS
+   =================================================================== */
+function renderStateKeys() {
+  const tb = $('#state-tbl tbody');
+  tb.innerHTML = P.state.keys.map((k, i) => `
+    <tr>
+      <td><input type="text" id="k-key-${i}" class="mono" value="${esc(k.key)}" placeholder="score"></td>
+      <td><input type="text" id="k-start-${i}" class="mono" value="${esc(k.start)}" placeholder="0"></td>
+      <td><input type="text" id="k-by-${i}" value="${esc(k.by)}" placeholder="coin, slime"></td>
+      <td class="ctl"><button type="button" class="x no-print" id="k-del-${i}" aria-label="Remove key">×</button></td>
+    </tr>`).join('');
+  P.state.keys.forEach((k, i) => {
+    $(`#k-key-${i}`).addEventListener('input', (e) => { k.key = e.target.value; renderLogRows(); touchSave(); });
+    $(`#k-start-${i}`).addEventListener('input', (e) => { k.start = e.target.value; touchSave(); });
+    $(`#k-by-${i}`).addEventListener('input', (e) => { k.by = e.target.value; renderSummary(); touchSave(); });
+    $(`#k-del-${i}`).addEventListener('click', () => { P.state.keys.splice(i, 1); renderStateKeys(); renderLogRows(); renderSummary(); touchSave(); });
+  });
+}
+$('#state-add').addEventListener('click', () => { P.state.keys.push({ key: '', start: '', by: '' }); renderStateKeys(); $(`#k-key-${P.state.keys.length - 1}`).focus(); touchSave(); });
+
+/* ===================================================================
+   STOP 6 · LOG ROWS (one per object kind) + QUERIES
+   =================================================================== */
+function logLine(kind, r) {
+  const key = r.key || '?', old = r.old === '' ? '?' : r.old, nw = r.new === '' ? '?' : r.new;
+  const q = (v) => (/^-?\d+(\.\d+)?$/.test(v) || v === '?' ? `<span class="n">${esc(v)}</span>` : `<span class="s">"${esc(v)}"</span>`);
+  return `{<span class="k">"t"</span>: <span class="n">12.40</span>, <span class="k">"key"</span>: <span class="s">"${esc(key)}"</span>, <span class="k">"old"</span>: ${q(String(old))}, <span class="k">"new"</span>: ${q(String(nw))}, <span class="k">"cause"</span>: <span class="s">"${esc(kind)}#1"</span>}`;
+}
+function renderLogRows() {
+  const host = $('#log-rows');
+  const kinds = objectKinds();
+  if (!kinds.length) { host.innerHTML = '<p class="muted">Name your objects in Stop 3 first.</p>'; return; }
+  const keyOpts = P.state.keys.map((k) => k.key).filter(Boolean);
+  host.innerHTML = kinds.map((kind, i) => {
+    const r = P.log.rows[kind] || (P.log.rows[kind] = { key: '', old: '', new: '' });
+    return `<div class="grid2" style="align-items:end;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--line-2)">
+      <div>
+        <div class="field" style="margin-bottom:6px"><label>When the hero touches <code>${esc(kind)}</code></label></div>
+        <div class="row">
+          <span class="small muted">key</span><input type="text" id="lr-key-${i}" class="mono" list="key-list" value="${esc(r.key)}" placeholder="${esc(keyOpts[0] || 'score')}" style="width:9em">
+          <span class="small muted">goes from</span><input type="text" id="lr-old-${i}" class="mono" value="${esc(r.old)}" placeholder="0" style="width:6em">
+          <span class="small muted">to</span><input type="text" id="lr-new-${i}" class="mono" value="${esc(r.new)}" placeholder="10" style="width:6em">
+        </div>
+      </div>
+      <div class="logline" id="lr-out-${i}">${logLine(kind, r)}</div>
+    </div>`;
+  }).join('') + `<datalist id="key-list">${keyOpts.map((k) => `<option value="${esc(k)}">`).join('')}</datalist>`;
+  kinds.forEach((kind, i) => {
+    const r = P.log.rows[kind];
+    ['key', 'old', 'new'].forEach((f) => $(`#lr-${f}-${i}`).addEventListener('input', (e) => { r[f] = e.target.value; $(`#lr-out-${i}`).innerHTML = logLine(kind, r); renderSummary(); touchSave(); }));
+  });
+}
+function renderQueries() {
+  const tb = $('#queries-tbl tbody');
+  tb.innerHTML = P.log.queries.map((q, i) => `
+    <tr>
+      <td><input type="text" id="q-q-${i}" value="${esc(q.q)}" placeholder="${['How many points did spikes cost us?', 'What second did hearts first drop below 2?', 'Which object ended the game?'][i] || ''}"></td>
+      <td><input type="text" id="q-n-${i}" class="mono" value="${esc(q.needs)}" placeholder='key == "hearts", cause starts with "spikes"'></td>
+      <td><label class="check" style="border:none;padding:0"><input type="checkbox" id="q-s-${i}" ${q.sql ? 'checked' : ''}><span class="small">SQL</span></label></td>
+    </tr>`).join('');
+  P.log.queries.forEach((q, i) => {
+    $(`#q-q-${i}`).addEventListener('input', (e) => { q.q = e.target.value; renderSummary(); touchSave(); });
+    $(`#q-n-${i}`).addEventListener('input', (e) => { q.needs = e.target.value; touchSave(); });
+    $(`#q-s-${i}`).addEventListener('change', (e) => { q.sql = e.target.checked; renderSummary(); touchSave(); });
+  });
+}
+
+/* ===================================================================
+   STOP 8 · TASKS
+   =================================================================== */
+function renderTasks() {
+  const tb = $('#tasks-tbl tbody');
+  const names = memberNames();
+  const STATUS = ['not started', 'in progress', 'stuck', 'done'];
+  const pillClass = (s) => (s === 'done' ? 'g' : s === 'stuck' ? 'r' : s === 'in progress' ? 'a' : '');
+  tb.innerHTML = P.plan.tasks.map((t, i) => `
+    <tr>
+      <td><input type="text" id="t-task-${i}" value="${esc(t.task)}" ${i === 3 ? 'style="font-weight:600"' : ''}></td>
+      <td><input type="text" id="t-owner-${i}" list="owner-list" value="${esc(t.owner)}" placeholder="who" style="min-width:8em"></td>
+      <td><input type="text" id="t-due-${i}" value="${esc(t.due)}" placeholder="Day 2" style="width:6.5em"></td>
+      <td><select id="t-status-${i}" class="pill ${pillClass(t.status)}" style="border:none;width:auto;padding:4px 8px">${STATUS.map((s) => `<option ${t.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select></td>
+      <td class="ctl"><button type="button" class="x no-print" id="t-del-${i}" aria-label="Remove task">×</button></td>
+    </tr>`).join('') + `<datalist id="owner-list">${names.map((n) => `<option value="${esc(n)}">`).join('')}</datalist>`;
+  P.plan.tasks.forEach((t, i) => {
+    $(`#t-task-${i}`).addEventListener('input', (e) => { t.task = e.target.value; touchSave(); });
+    $(`#t-owner-${i}`).addEventListener('input', (e) => { t.owner = e.target.value; renderSummary(); touchSave(); });
+    $(`#t-due-${i}`).addEventListener('input', (e) => { t.due = e.target.value; renderSummary(); touchSave(); });
+    $(`#t-status-${i}`).addEventListener('change', (e) => { t.status = e.target.value; e.target.className = 'pill ' + pillClass(t.status); touchSave(); });
+    $(`#t-del-${i}`).addEventListener('click', () => { P.plan.tasks.splice(i, 1); renderTasks(); renderSummary(); touchSave(); });
+  });
+}
+function renderTaskOwners() { const dl = $('#owner-list'); if (dl) dl.innerHTML = memberNames().map((n) => `<option value="${esc(n)}">`).join(''); }
+$('#task-add').addEventListener('click', () => { P.plan.tasks.push({ task: '', owner: '', due: '', status: 'not started' }); renderTasks(); $(`#t-task-${P.plan.tasks.length - 1}`).focus(); touchSave(); });
+
+/* ===================================================================
+   SUMMARY  (the "done when" checks, live)
+   =================================================================== */
+function checks() {
+  const m = P.team.members;
+  const kinds = objectKinds();
+  const padSet = new Set(P.pitch.pad);
+  const objOnPad = Array.from(padSet).filter((c) => c.startsWith('obj:')).length;
+  const byText = P.state.keys.map((k) => (k.by || '').toLowerCase()).join(' ');
+  const rowsOk = kinds.length > 0 && kinds.every((k) => { const r = P.log.rows[k]; return r && r.key && r.old !== '' && r.new !== ''; });
+  return [
+    { ok: m.filter((x) => x.name.trim()).length === 4 && m.every((x) => x.role) && P.team.agreements.every(Boolean), t: 'Stop 1 · four names, roles, agreements' },
+    { ok: !!(P.pitch.name && P.pitch.you && P.pitch.goal && P.pitch.against && P.pitch.controls) && padSet.has('hero') && padSet.has('goal') && objOnPad >= 2, t: 'Stop 2 · pitch filled, sketch has hero, goal, 2+ objects' },
+    { ok: kinds.length >= 4 && P.objects.some((o) => o.points > 0 || o.hearts > 0) && P.objects.some((o) => o.points < 0 || o.hearts < 0) && P.objects.some((o) => o.moves === 'yes') && P.objects.some((o) => /goal|exit|win|flag/i.test(o.other)), t: 'Stop 3 · 4+ kinds: one gives, one takes, one moves, one is the goal' },
+    { ok: kinds.length > 0 && kinds.every((k) => byText.includes(k.toLowerCase())), t: 'Stop 4 · every object changes some key' },
+    { ok: /state\[/.test(P.end.winCode) && /state\[/.test(P.end.loseCode) && !!P.end.winText && !!P.end.loseText, t: 'Stop 5 · win and lose both read a state key' },
+    { ok: rowsOk && P.log.queries.every((q) => q.q.trim()) && P.log.queries.some((q) => q.sql), t: 'Stop 6 · a record per object, 3 questions, one in SQL' },
+    { ok: !!(P.enemy.senses && P.enemy.states && P.enemy.scores && P.enemy.fair) && /#/.test(P.enemy.log), t: 'Stop 7 · enemy brain, logged with kind#id' },
+    { ok: P.plan.tasks.length > 0 && P.plan.tasks.every((t) => t.owner.trim() && t.due.trim()), t: 'Stop 8 · every task has an owner and a day' },
+  ];
+}
+function renderSummary() {
+  const c = checks();
+  $('#summary').innerHTML = c.map((x) => `<div class="item ${x.ok ? 'ok' : ''}"><span class="mark">${x.ok ? '✓' : '·'}</span><span>${esc(x.t)}</span></div>`).join('');
+}
+
+/* ===================================================================
+   SAVE / LOAD / PRINT / RESET
+   =================================================================== */
+function download() {
+  P.saved = new Date().toISOString();
+  const blob = new Blob([JSON.stringify(P, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${slug(P.team.name)}-black-box-plan.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  touchSave('Downloaded. Submit the .json in Google Classroom.');
+}
+function loadFromObject(obj) {
+  if (!obj || obj.v !== 1 || !obj.team || !obj.objects) { setStatus('That file is not a Black Box plan.'); return; }
+  const fresh = freshPlan();
+  P = Object.assign(fresh, obj);
+  P.team = Object.assign(fresh.team, obj.team); P.pitch = Object.assign(fresh.pitch, obj.pitch);
+  P.state = Object.assign(fresh.state, obj.state); P.end = Object.assign(fresh.end, obj.end);
+  P.log = Object.assign(fresh.log, obj.log); P.enemy = Object.assign(fresh.enemy, obj.enemy); P.plan = Object.assign(fresh.plan, obj.plan);
+  if (!Array.isArray(P.pitch.pad) || P.pitch.pad.length !== PAD_W * PAD_H) P.pitch.pad = Array(PAD_W * PAD_H).fill('floor');
+  renderAll();
+  touchSave('Plan loaded.');
+}
+$('#file-in').addEventListener('change', (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => { try { loadFromObject(JSON.parse(rd.result)); } catch (err) { setStatus('Could not read that file.'); } };
+  rd.readAsText(f);
+  e.target.value = '';
+});
+['#btn-save', '#btn-save-top'].forEach((s) => $(s).addEventListener('click', download));
+['#btn-load', '#btn-load-top'].forEach((s) => $(s).addEventListener('click', () => $('#file-in').click()));
+$('#btn-print').addEventListener('click', () => { $('#print-stamp').textContent = `${P.team.name || 'Team'} · ${P.pitch.name || 'Game'} · printed ${new Date().toLocaleDateString()}`; window.print(); });
+$('#btn-reset').addEventListener('click', () => { $('#reset-confirm').hidden = false; });
+$('#btn-reset-no').addEventListener('click', () => { $('#reset-confirm').hidden = true; });
+$('#btn-reset-yes').addEventListener('click', () => {
+  $('#reset-confirm').hidden = true;
+  P = freshPlan();
+  try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ }
+  renderAll(); setStatus('Erased. Starting fresh.');
+});
+
+/* ===================================================================
+   BOOT
+   =================================================================== */
+function renderAll() {
+  bindSimple(); renderTop(); renderMembers(); renderAgreements(); renderObjects(); renderPalette(); drawPad();
+  renderStateKeys(); renderLogRows(); renderQueries(); renderTasks(); renderSummary();
+  $$('textarea').forEach(grow);
+}
+(function boot() {
+  try { const raw = localStorage.getItem(KEY); if (raw) { const obj = JSON.parse(raw); if (obj && obj.v === 1) { loadFromObject(obj); setStatus('Picked up where you left off.'); return; } } } catch (e) { /* ignore */ }
+  renderAll();
+})();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(drawPad);
+</script>
+</body>
+</html>
