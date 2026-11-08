@@ -241,6 +241,21 @@ class TeamSocketTests(TransactionTestCase):
         self.assertEqual([m["online"] for m in p["members"]], [False, True])
         await c2.disconnect()
 
+    async def test_pos_is_relayed_not_stored(self):
+        c1, _ = await self._connect(self.ana)
+        await self._drain_until(c1, "presence")
+        c2, _ = await self._connect(self.ben)
+        await self._drain_until(c1, "presence")
+        await c1.send_json_to({"type": "pos", "map": "campus", "x": 5, "y": 9, "facing": "up", "look": {"skin": "#fff"}, "in": None, "junk": "x" * 500})
+        p = await self._drain_until(c2, "pos")
+        self.assertEqual(p["member"]["name"], "Ana Lopez")
+        self.assertEqual((p["map"], p["x"], p["y"], p["facing"]), ("campus", 5, 9, "up"))
+        self.assertEqual(p["look"], {"skin": "#fff"})
+        self.assertNotIn("junk", p)
+        n = await database_sync_to_async(Event.objects.count)()
+        self.assertEqual(n, 0)   # nothing written
+        await c1.disconnect(); await c2.disconnect()
+
     async def test_bad_token_rejected(self):
         c = WebsocketCommunicator(self.app, f"/ws/team/{self.team.code}/?token=nope")
         ok, code = await c.connect()

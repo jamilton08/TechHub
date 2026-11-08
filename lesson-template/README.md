@@ -10,7 +10,7 @@ from `lesson-starter.html` and follows this document.
 | File | What it is |
 | --- | --- |
 | `lesson-starter.html` | A complete, working lesson (a 3-question quiz). Copy it to start a new one. |
-| `hsct-lesson.js` | The kit (v1.2): clock, event log, encryption, the standard result card, save/resume, and teams. Every lesson inlines this whole file between the `<!-- HSCT KIT START -->` / `END` markers. Never edit it inside a lesson; edit it here and run `node scripts/update-kit.mjs` to re-copy it into every lesson. |
+| `hsct-lesson.js` | The kit (v1.3): clock, event log, encryption, the standard result card, save/resume, teams, and live presence for worlds. Every lesson inlines this whole file between the `<!-- HSCT KIT START -->` / `END` markers. Never edit it inside a lesson; edit it here and run `node scripts/update-kit.mjs` to re-copy it into every lesson. |
 | `teacher-public-key.jwk` | The public key baked into the kit. Safe to share. |
 | `teacher-private-key.jwk` | **Opens result files. Keep it out of git** (it is in `.gitignore`). Move a copy somewhere safe. Paste it once into `/lessons/verify`. |
 
@@ -179,6 +179,10 @@ type the code and their name, and press Start. From then on:
   box), and `merge(part)` takes a teammate's part in and re-renders. Walkable-world
   lessons should do this, or two students walking at once will fight over one
   character.
+- **Worlds are multiplayer** (kit 1.3 + world kit 0.4): each student has their own character and
+  sees teammates walk around with name tags; positions go over the websocket and are never stored.
+  The world kit registers itself, so by default the team shares the work (answers, parts, picked
+  coins) and not position/look — see `README-world.md`.
 - **The clock is the team's**: started when the team was made.
 - Saves are off in team mode (the state lives on the server); a refresh or a new
   computer rejoins with the same code and name.

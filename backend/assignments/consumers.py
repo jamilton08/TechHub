@@ -15,6 +15,8 @@ Team room  —  wss://api.hsct.tech/ws/team/<CODE>/?token=<member token>
     state        { version, state, summary }               version = the one this change was based on
     status       { phase }                                 intro | work | end
     heartbeat    { activeSeconds }                         every ~15 s
+    pos          { map, x, y, facing, look, ... }          (kit 1.3) where this member's character is —
+                                                           RELAYED to the room as pos {member, ...}, never stored
     ping         {}                                        → pong
 
 Teacher board  —  wss://api.hsct.tech/ws/assignment/<id>/   (Django session, staff)
@@ -73,12 +75,32 @@ class TeamConsumer(AsyncJsonWebsocketConsumer):
             await self._state(msg)
         elif kind == "status":
             await self._status(msg.get("phase"))
+        elif kind == "pos":
+            await self._pos(msg)
         else:
             await self.send_json({"type": "error", "detail": f"Unknown message type {kind!r}"})
 
     # a message pushed to the room by anyone (views or other sockets)
     async def room_message(self, event):
         await self.send_json(event["payload"])
+
+    # ── live positions (kit 1.3 / world kit 0.4): relay only, no database ──
+    POS_KEYS = ("map", "x", "y", "facing", "moving", "look", "driving", "car", "in")
+    POS_MIN_INTERVAL = 0.04  # 25/s per socket is plenty; anything faster is dropped
+
+    async def _pos(self, msg):
+        import time
+        now = time.monotonic()
+        if now - getattr(self, "_last_pos", 0) < self.POS_MIN_INTERVAL:
+            return
+        self._last_pos = now
+        payload = {"type": "pos", "member": {"id": str(self.member_id), "name": self.member_name}}
+        for k in self.POS_KEYS:
+            if k in msg:
+                v = msg[k]
+                if isinstance(v, (str, int, float, bool)) or v is None or (k == "look" and isinstance(v, dict) and len(v) <= 8):
+                    payload[k] = v if not isinstance(v, str) else v[:60]
+        await self.channel_layer.group_send(self.group, {"type": "room.message", "payload": payload})
 
     # ── db helpers ───────────────────────────────────────────────────
 
@@ -91,6 +113,7 @@ class TeamConsumer(AsyncJsonWebsocketConsumer):
         if m.team.status == Team.Status.CLOSED:
             return False
         self.member_id = m.pk
+        self.member_name = m.name
         self.team_id = m.team_id
         self.assignment_id = m.team.assignment_id
         Member.objects.filter(pk=m.pk).update(connections=m.connections + 1, last_seen=timezone.now(), left_at=None)
