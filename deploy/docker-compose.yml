@@ -1,0 +1,53 @@
+# HSCT TechHub backend — the second stack on the Hetzner box, next to Cruz Stats.
+# Its own Postgres, Redis, API and Cloudflare Tunnel; nothing shared with /opt/cruzstats.
+# No ports are published: traffic arrives through the tunnel (api.hsct.tech → api:8000).
+name: hsct
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hsct
+      POSTGRES_USER: hsct
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hsct -d hsct"]
+      interval: 10s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "64mb", "--maxmemory-policy", "allkeys-lru"]
+
+  api:
+    build: ../backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://hsct:${POSTGRES_PASSWORD}@db:5432/hsct
+      REDIS_URL: redis://redis:6379/0
+      MEDIA_ROOT: /app/media
+    volumes:
+      - media:/app/media          # Python Arcade uploads (images/sounds); lesson files live in R2
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_started }
+    # Only reachable from inside the Docker network (the tunnel). Keep 'ports:' out:
+    # Docker-published ports bypass ufw.
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in .env}
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  media:

@@ -1,15 +1,30 @@
 import { useEffect, useRef, useState } from 'react';
 import SiteNav from './SiteNav.jsx';
 import SiteFooter from './SiteFooter.jsx';
-import { KINDS, findLesson, lessonHref, lessonSrc } from './lessons.js';
+import { KINDS, findLesson, lessonHref, lessonQuery, lessonSrc } from './lessons.js';
+import { HAS_API, api } from './api.js';
 import { useFonts } from './useFonts.js';
 import './site.css';
+
+/** Team assignments open for this lesson (api.hsct.tech). Empty when there's no backend. */
+function useOpenAssignments(slug) {
+  const [list, setList] = useState([]);
+  useEffect(() => {
+    if (!HAS_API || !slug) return;
+    let live = true;
+    api(`/assignments/open/?lesson=${encodeURIComponent(slug)}`).then((l) => { if (live) setList(Array.isArray(l) ? l : []); }).catch(() => {});
+    return () => { live = false; };
+  }, [slug]);
+  return list;
+}
 
 export default function LessonPage({ category: categorySlug, lesson: lessonSlug }) {
   useFonts();
   const hit = findLesson(categorySlug, lessonSlug);
   const frame = useRef(null);
   const [loaded, setLoaded] = useState(false);
+  const assignments = useOpenAssignments(hit?.lesson?.slug);
+  const query = lessonQuery();   // ?team=CODE / ?assignment=ID go through to the lesson (kit v1.2)
 
   useEffect(() => {
     document.title = hit ? `${hit.lesson.title} · ${hit.category.title} · HSCT TechHub` : 'Not found · HSCT TechHub';
@@ -28,7 +43,7 @@ export default function LessonPage({ category: categorySlug, lesson: lessonSlug 
   }
 
   const { category, topic, lesson, prev, next } = hit;
-  const src = lessonSrc(category, lesson);
+  const src = lessonSrc(category, lesson, query);
   const kind = KINDS[lesson.kind] || KINDS.reading;
   const others = topic.lessons.filter((l) => l.slug !== lesson.slug && l.file);
 
@@ -60,6 +75,20 @@ export default function LessonPage({ category: categorySlug, lesson: lessonSlug 
             <a className="btn btn-blue" href={src} target="_blank" rel="noreferrer">Open in a new tab</a>
           </div>
         </div>
+
+        {assignments.length > 0 && (
+          <div className="lesson-assign" role="status">
+            <span className="led led-green on" aria-hidden="true" />
+            <div>
+              <strong>{assignments.map((a) => a.title).join(' · ')}</strong>
+              {' '}is open for this lesson{assignments.some((a) => a.klass) ? ` (${assignments.map((a) => a.klass).filter(Boolean).join(', ')})` : ''}.
+              {assignments.some((a) => a.groupMode)
+                ? ' On the lesson\'s first screen, make a team or join one with your teammate\'s code — you\'ll all see the same screen, and the team turns in one result.'
+                : ' Join it on the lesson\'s first screen so your teacher can follow your progress.'}
+              {assignments.some((a) => a.dueAt) && <> Due {new Date(assignments.find((a) => a.dueAt).dueAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}.</>}
+            </div>
+          </div>
+        )}
 
         <div className="lesson-stage">
           <iframe

@@ -1,0 +1,930 @@
+/* ============================================================================
+   HSCT LESSON KIT  v1.2
+   Every lesson on HSCT TechHub inlines this block unchanged (between the
+   <!-- HSCT KIT START --> and <!-- HSCT KIT END --> markers). It gives a
+   lesson five things:
+
+     1. A clock.   HSCT.start(name) when the student begins. The kit records
+                   wall-clock time and "active" time (tab visible).
+     2. A log.     HSCT.log(type, data) for anything worth remembering —
+                   answers, hints, retries. Ends up inside the result file.
+     3. A result.  HSCT.endScreen(el, {...scores}) renders the standard result
+                   card: name, score, time taken, badge code, and a button
+                   that downloads the encrypted result file the student
+                   submits in Google Classroom.
+     4. Saves.     HSCT.saveable({ get, set }) tells the kit how to snapshot
+                   and restore the lesson's own state. The kit then offers
+                   save files (.hsctsave) and codes the student can bring
+                   back to the lesson, an optional autosave in this browser,
+                   and two ready-made cards: HSCT.resumeUI(el) for the intro
+                   screen and HSCT.saveUI(el) for the work screen.
+     5. Teams.     (v1.2) When the lesson is opened from hsct.tech and the
+                   teacher has posted it as an assignment, students can make
+                   or join a team with a code. Everyone in the team then sees
+                   the same lesson state live (the kit shares what `get()`
+                   returns and calls `set()` on the others), every HSCT.log
+                   is tagged with who did it and streamed to the server, a
+                   floating status board shows who's in, the team's progress
+                   and the class leaderboard, and the team turns in ONE result
+                   file that every member can download. Nothing changes for a
+                   student working alone: no code, no server, same .hsct file.
+                   The lesson needs no new calls; it can opt out with
+                   HSCT.lesson({ team: false }) or place the cards itself with
+                   HSCT.teamUI(el) (intro) and HSCT.boardUI(el) (work).
+
+   The result file is encrypted with the teacher's PUBLIC key below (RSA-OAEP
+   wrapping an AES-256-GCM key). It can only be opened with the matching
+   private key, on the site's /lessons/verify page. Students can't read or
+   edit it.
+
+   A save file is different: the lesson itself has to open it again, so its
+   AES key is wrapped twice — once with a key derived from the student's name
+   and the lesson id (the lesson can re-derive it) and once with the teacher's
+   public key (so saves open on /lessons/verify too, for partial credit).
+   Encryption keeps a save from being casually read or edited; it cannot stop
+   a determined student with the console, which is the same limit the result
+   file has.
+
+   `keep` (opt-in, per lesson): finish({ keep: {...} }) seals a second copy of
+   whatever the lesson passes — typically its own draft object — into the
+   result file, encrypted with the student-derived key, as a SEPARATE blob
+   with its own key. The student can get that part back with HSCT.open(file)
+   (so a lesson can accept its own .hsct as a draft); they still cannot read
+   or alter the graded payload, which stays wrapped to the teacher only. What makes a run checkable is the event log: the result file
+   records every resume (which save, when it was taken, how far along it
+   was), and the verify page shows them.
+
+   API (all on window.HSCT):
+     HSCT.lesson({ id, title, version, course, possible })   once, at load
+     HSCT.start(name)                                        when work begins
+     HSCT.log(type, data)                                    any time
+     HSCT.elapsed()   -> { seconds, activeSeconds }
+     HSCT.finish({ earned, possible, sections, tier, extra, keep }) -> Promise<result>
+     HSCT.endScreen(el, { earned, possible, sections, tier, extra, keep, note })
+                      -> Promise<result>   (calls finish, renders the card)
+     HSCT.download()  / HSCT.copyCode()                      after finish
+     HSCT.open(textOrEnvelope) -> Promise<{ keep, student, finished, badge }>
+                      opens the student-readable `keep` part of a result file
+
+     HSCT.saveable({ get, set, summary, autosave, shared, merge })   once, at load
+        get()        -> plain JSON-able object: the lesson's state
+        set(state)   -> restore it and show the work screen
+        summary()    -> optional { earned, possible, label } shown on verify
+        autosave     -> true: keep the latest save in this browser too
+        shared()     -> optional (teams): the part of the state to share live (default get())
+        merge(s)     -> optional (teams): take a teammate's shared part in (default set())
+     HSCT.save()          -> Promise<{ id, filename, text }>   seal a save
+     HSCT.downloadSave()  / HSCT.copySave()                    after save()
+     HSCT.restore(textOrEnvelope) -> Promise<info>   open a save, call set()
+     HSCT.localSave()     -> header of the save kept in this browser, or null
+     HSCT.resumeLocal()   -> Promise<info>
+     HSCT.resumeUI(el)    render the "pick up where you left off" card
+     HSCT.saveUI(el)      render the "save and continue later" card
+
+     HSCT.teamUI(el)      (v1.2) render the "work as a team" card (intro screen)
+     HSCT.boardUI(el)     (v1.2) render the team status board inline (work screen)
+     HSCT.team            (v1.2) -> null, or { code, name, members, you, assignment,
+                                             version, leaderboard, connected, submitted }
+     HSCT.joinTeam(code, name, role) / HSCT.createTeam(assignmentId, name, teamName, role)
+     HSCT.leaveTeam()
+
+   Team wire protocol: see backend/assignments/consumers.py.
+   ========================================================================== */
+(function () {
+  'use strict';
+  var KIT = '1.2';
+
+  /* Mr. Cruz's public key. Replace the whole object if the key pair is ever
+     regenerated on /lessons/verify — and keep the private key out of git. */
+  var PUBLIC_KEY = {"kty":"RSA","n":"rZUBRxn7dUikufJq7z2XVn-on4Of0IyQr_YaPSTgIUaGsYKcrZ4FNROL4A_ZM5JShLf6OVp2ZeAI7XN_7iX0tvd79RqAWRM9an6rx-s6bMYSW1wmtRxZyL-BX56vTtikVRLNO7uyzCb8kevJE71Fi6nlPhdXa-iS4vtIEm2Wjh4cLPinAKhMnkO3BpGHUhtFw7Hyus1w04EdLxowk4UcN7d0w4MQRnBV8ehXQVoLVQ0_QtfrtPTQOpScHuwyaw9nwnTA7h7BEOv1ZkbEyq2N4TFixSSCsneUsc3PlbZOndDzMGMmdMr00ulntRZBfyioFzRcsRUGGwAqpB9SuH7XGQ","e":"AQAB","alg":"RSA-OAEP-256","ext":true};
+
+  var VERIFY_URL = 'hsct.tech/lessons/verify';
+  var SAVE_SALT = 'hsct-techhub-save-v1';   // part of the student-side key derivation
+
+  /* The TechHub API (teams, assignments). Override with window.HSCT_API or ?api=
+     before the kit loads. Opened from a folder (file://) there is no API, and the
+     team features simply don't appear. */
+  var QS = {};
+  try { location.search.slice(1).split('&').forEach(function (p) { if (!p) return; var i = p.indexOf('='); QS[decodeURIComponent(p.slice(0, i < 0 ? p.length : i))] = i < 0 ? '' : decodeURIComponent(p.slice(i + 1).replace(/\+/g, ' ')); }); } catch (e) {}
+  var API = (window.HSCT_API || QS.api || (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? 'http://127.0.0.1:8000' : 'https://api.hsct.tech')).replace(/\/+$/, '');
+  var WS_API = API.replace(/^http/, 'ws');
+  var HAS_API = /^https?:/.test(location.protocol);
+
+  var cfg = null;      // lesson config
+  var ses = null;      // current session
+  var ticker = null;   // active-time interval
+  var result = null;   // { badge, filename, text, envelope, payload }
+  var saver = null;    // { get, set, summary, autosave } from HSCT.saveable
+  var lastSave = null; // { id, filename, text, envelope }
+  var autoTimer = null;
+  var team = null;     // { code, name, token, you, members, assignment, version, state, leaderboard, status, connected, submitted, startedAt, elapsedSeconds }
+
+  /* ---------- small helpers ---------- */
+  var enc = new TextEncoder();
+  var dec = new TextDecoder();
+  function b64(buf) {
+    var bytes = new Uint8Array(buf), s = '';
+    for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return btoa(s);
+  }
+  function b64d(s) { var bin = atob(String(s).replace(/-/g, '+').replace(/_/g, '/')), out = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out; }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function fmtDuration(sec) {
+    sec = Math.max(0, Math.round(sec || 0));
+    var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+    if (h) return h + ' h ' + pad(m) + ' min';
+    if (m) return m + ' min ' + pad(s) + ' s';
+    return s + ' s';
+  }
+  function fmtDate(iso) {
+    try { return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+    catch (e) { return iso; }
+  }
+  function slug(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'student'; }
+  function stamp(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes()); }
+  function normName(name) { return String(name || '').trim().replace(/\s+/g, ' '); }
+
+  /* Badge code: 8 characters from a SHA-256 of the result, shown on screen
+     so a screenshot can be matched to its file. Save ids use the same form. */
+  var ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ23456789';
+  function badgeFrom(hashBuf) {
+    var bytes = new Uint8Array(hashBuf), out = '';
+    for (var i = 0; i < 8; i++) out += ALPHABET[bytes[i] % ALPHABET.length];
+    return out.slice(0, 4) + '-' + out.slice(4);
+  }
+
+  function needSubtle() {
+    if (!(window.crypto && crypto.subtle)) {
+      throw new Error('Result files need a secure page (https). Open this lesson from the TechHub site and finish again.');
+    }
+  }
+
+  /* ---------- public API ---------- */
+  function lesson(c) {
+    if (!c || !c.id || !c.title) throw new Error('HSCT.lesson needs { id, title }');
+    cfg = { version: '1.0', course: '', possible: 100, team: true };
+    for (var k in c) cfg[k] = c[k];
+    teamBoot();
+    return HSCT;
+  }
+
+  function start(name) {
+    if (!cfg) throw new Error('Call HSCT.lesson({...}) before HSCT.start(name)');
+    name = normName(name);
+    if (name.length < 2) throw new Error('HSCT.start needs the student\'s name');
+    ses = { name: name, started: new Date().toISOString(), t0: Date.now(), active: 0, events: [], resumes: [], saves: 0 };
+    result = null; lastSave = null;
+    clearInterval(ticker);
+    ticker = setInterval(function () { if (document.visibilityState === 'visible') ses.active += 1; }, 1000);
+    if (team) teamStarted();   // the team's clock, the live connection, the shared state
+    log('start');
+    return HSCT;
+  }
+
+  function log(type, data) {
+    if (!ses) return HSCT;
+    var e = { t: Math.round((Date.now() - ses.t0) / 100) / 10, type: String(type) };
+    if (data && typeof data === 'object') for (var k in data) if (k !== 't' && k !== 'type') e[k] = data[k];
+    if (team && team.you) e.who = team.you.name;
+    if (ses.events.length < 800) ses.events.push(e);
+    scheduleAutosave();
+    teamLogged(e);
+    return HSCT;
+  }
+
+  function elapsed() {
+    if (!ses) return { seconds: 0, activeSeconds: 0 };
+    return { seconds: Math.round((Date.now() - ses.t0) / 1000), activeSeconds: ses.active };
+  }
+
+  /* Build, seal, and keep the result. Resolves to { badge, filename, text, payload }. */
+  async function finish(opts) {
+    if (!cfg || !ses) throw new Error('HSCT.start(name) was never called');
+    needSubtle();
+    opts = opts || {};
+    if (team && team.submitted && result) return result;   // a teammate already turned the team in: same file for everyone
+    clearInterval(ticker);
+    clearTimeout(autoTimer);
+    var finished = new Date();
+    var el = elapsed();
+    var earned = Number(opts.earned || 0), possible = Number(opts.possible || cfg.possible || 0);
+    var payload = {
+      kit: KIT,
+      lesson: { id: cfg.id, title: cfg.title, version: cfg.version, course: cfg.course },
+      student: { name: ses.name },
+      started: ses.started,
+      finished: finished.toISOString(),
+      seconds: el.seconds,
+      activeSeconds: el.activeSeconds,
+      score: { earned: earned, possible: possible, percent: possible ? Math.round(1000 * earned / possible) / 10 : null },
+      tier: opts.tier || null,
+      sections: (opts.sections || []).map(function (s) { return { id: s.id, title: s.title, earned: s.earned, possible: s.possible, status: s.status }; }),
+      extra: opts.extra || null,
+      events: ses.events,
+      resumes: ses.resumes,
+      team: team ? teamForFile() : null,
+      env: { tz: Intl.DateTimeFormat().resolvedOptions().timeZone, ua: navigator.userAgent, url: location.href.split('?')[0] },
+    };
+    var hash = await crypto.subtle.digest('SHA-256', enc.encode(JSON.stringify(payload)));
+    var badge = badgeFrom(hash);
+    payload.badge = badge;
+
+    /* header travels in the clear but is authenticated (AES-GCM additional data) */
+    var header = { hsct: 1, kit: KIT, lesson: cfg.id, title: cfg.title, student: ses.name, finished: payload.finished, badge: badge };
+    if (team) { header.team = team.code; header.teamName = team.name; }
+    var pub = await crypto.subtle.importKey('jwk', PUBLIC_KEY, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['wrapKey']);
+    var aes = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt']);
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    var data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv, additionalData: enc.encode(JSON.stringify(header)) }, aes, enc.encode(JSON.stringify(payload)));
+    var wrapped = await crypto.subtle.wrapKey('raw', aes, pub, { name: 'RSA-OAEP' });
+    var envelope = {};
+    for (var k in header) envelope[k] = header[k];
+    envelope.key = b64(wrapped); envelope.iv = b64(iv); envelope.data = b64(data);
+    if (opts.keep !== undefined && opts.keep !== null) {
+      /* a separate blob, separate key: the student can read this part back, nothing else */
+      var sk = await studentKey(ses.name);
+      var keepIv = crypto.getRandomValues(new Uint8Array(12));
+      var keepData = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: keepIv, additionalData: enc.encode(JSON.stringify(header)) }, sk, enc.encode(JSON.stringify(opts.keep)));
+      envelope.keep = b64(keepData); envelope.keepIv = b64(keepIv);
+    }
+
+    result = {
+      badge: badge,
+      filename: 'HSCT_' + cfg.id + '_' + (team ? 'TEAM-' + slug(team.name) : slug(ses.name)) + '_' + stamp(finished) + '.hsct',
+      text: JSON.stringify(envelope),
+      payload: payload,
+    };
+    clearLocalSave();   // the run is over; no resuming into a finished run
+    if (team) await teamSubmit(envelope, payload);
+    return result;
+  }
+
+  function downloadBlob(text, filename) {
+    var blob = new Blob([text], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+    return filename;
+  }
+  async function copyText(text) {
+    try { await navigator.clipboard.writeText(text); return true; }
+    catch (e) {
+      var ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      var ok = false; try { ok = document.execCommand('copy'); } catch (e2) {}
+      ta.remove(); return ok;
+    }
+  }
+  function download() {
+    if (!result) throw new Error('Nothing to download yet — call HSCT.finish first');
+    return downloadBlob(result.text, result.filename);
+  }
+  async function copyCode() {
+    if (!result) throw new Error('Nothing to copy yet — call HSCT.finish first');
+    return copyText(result.text);
+  }
+
+  /* ---------- saves ---------- */
+  function saveable(o) {
+    if (!o || typeof o.get !== 'function' || typeof o.set !== 'function') throw new Error('HSCT.saveable needs { get, set }');
+    saver = { get: o.get, set: o.set, summary: typeof o.summary === 'function' ? o.summary : null, autosave: !!o.autosave,
+      /* v1.2, optional: what to SHARE with a team (default: get()) and how to take a teammate's copy in
+         (default: set()). A walkable-world lesson shares the work but not the avatar's position, say. */
+      shared: typeof o.shared === 'function' ? o.shared : null, merge: typeof o.merge === 'function' ? o.merge : null };
+    return HSCT;
+  }
+  function localKey() { return 'hsct:save:' + (cfg ? cfg.id : ''); }
+  function clearLocalSave() { try { localStorage.removeItem(localKey()); } catch (e) {} }
+  function scheduleAutosave() {
+    if (!saver || !saver.autosave || !ses || result || team) return;   // in a team the shared state lives on the server
+    clearTimeout(autoTimer);
+    autoTimer = setTimeout(function () {
+      buildSave().then(function (s) { try { localStorage.setItem(localKey(), s.text); } catch (e) {} }).catch(function () {});
+    }, 1500);
+  }
+  /* The student-side wrapping key: derived from name + lesson id, so the lesson can re-derive it. */
+  async function studentKey(name) {
+    var base = await crypto.subtle.importKey('raw', enc.encode(normName(name).toLowerCase() + '|' + cfg.id + '|' + SAVE_SALT), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: enc.encode(SAVE_SALT + '|' + cfg.id), iterations: 50000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['wrapKey', 'unwrapKey', 'encrypt', 'decrypt']);
+  }
+  async function buildSave() {
+    if (!cfg || !ses) throw new Error('HSCT.start(name) was never called');
+    if (!saver) throw new Error('HSCT.saveable({ get, set }) was never called');
+    if (result) throw new Error('This run is finished — nothing left to save');
+    needSubtle();
+    var el = elapsed(), saved = new Date();
+    var payload = {
+      kit: KIT, kind: 'save',
+      lesson: { id: cfg.id, title: cfg.title, version: cfg.version, course: cfg.course },
+      student: { name: ses.name },
+      started: ses.started, saved: saved.toISOString(),
+      seconds: el.seconds, activeSeconds: el.activeSeconds,
+      n: ses.saves + 1,
+      summary: saver.summary ? (saver.summary() || null) : null,
+      state: JSON.parse(JSON.stringify(saver.get())),
+      events: ses.events,
+      resumes: ses.resumes,
+    };
+    var hash = await crypto.subtle.digest('SHA-256', enc.encode(JSON.stringify(payload)));
+    var id = badgeFrom(hash);
+    payload.id = id;
+    var header = { hsct: 1, kind: 'save', kit: KIT, lesson: cfg.id, title: cfg.title, student: ses.name, saved: payload.saved, id: id };
+    var aes = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt']);
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    var data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv, additionalData: enc.encode(JSON.stringify(header)) }, aes, enc.encode(JSON.stringify(payload)));
+    var sk = await studentKey(ses.name);
+    var kiv = crypto.getRandomValues(new Uint8Array(12));
+    var skey = await crypto.subtle.wrapKey('raw', aes, sk, { name: 'AES-GCM', iv: kiv });
+    var pub = await crypto.subtle.importKey('jwk', PUBLIC_KEY, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['wrapKey']);
+    var tkey = await crypto.subtle.wrapKey('raw', aes, pub, { name: 'RSA-OAEP' });
+    var envelope = {};
+    for (var k in header) envelope[k] = header[k];
+    envelope.key = b64(skey); envelope.kiv = b64(kiv); envelope.tkey = b64(tkey); envelope.iv = b64(iv); envelope.data = b64(data);
+    return { id: id, filename: 'HSCT-SAVE_' + cfg.id + '_' + slug(ses.name) + '_' + stamp(saved) + '.hsctsave', text: JSON.stringify(envelope), envelope: envelope, payload: payload };
+  }
+  async function save() {
+    var s = await buildSave();
+    ses.saves = s.payload.n;
+    lastSave = s;
+    log('save', { id: s.id });
+    if (saver.autosave) { try { localStorage.setItem(localKey(), s.text); } catch (e) {} }
+    return { id: s.id, filename: s.filename, text: s.text };
+  }
+  function downloadSave() { if (!lastSave) throw new Error('Nothing saved yet — call HSCT.save first'); return downloadBlob(lastSave.text, lastSave.filename); }
+  async function copySave() { if (!lastSave) throw new Error('Nothing saved yet — call HSCT.save first'); return copyText(lastSave.text); }
+
+  var CRYPTO_FIELDS = { key: 1, kiv: 1, tkey: 1, iv: 1, data: 1, keep: 1, keepIv: 1 };
+  function headerOf(env) { var h = {}; for (var k in env) if (!CRYPTO_FIELDS[k]) h[k] = env[k]; return h; }
+  /* Open the student-readable part of a finished result file (sealed with finish({ keep })). */
+  async function open(input) {
+    if (!cfg) throw new Error('Call HSCT.lesson({...}) first');
+    needSubtle();
+    var env = parseEnvelope(input);
+    if (!env || env.hsct !== 1 || !env.data) throw new Error('That is not a result file.');
+    if (env.kind === 'save') throw new Error('That is a save file, not a result.');
+    if (env.lesson !== cfg.id) throw new Error('That result is from a different lesson (' + esc(env.title || env.lesson) + ').');
+    if (!env.keep) throw new Error('That result file has no student copy inside it (it was made before this lesson kept one).');
+    try {
+      var sk = await studentKey(env.student);
+      var plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64d(env.keepIv), additionalData: enc.encode(JSON.stringify(headerOf(env))) }, sk, b64d(env.keep));
+      return { keep: JSON.parse(dec.decode(plain)), student: env.student, finished: env.finished, badge: env.badge };
+    } catch (e) {
+      throw new Error('Could not open that result file: it was changed after it was made.');
+    }
+  }
+  function parseEnvelope(input) {
+    if (input && typeof input === 'object') return input;
+    var t = String(input || '').trim();
+    var i = t.indexOf('{"hsct"'); if (i > 0) t = t.slice(i);
+    try { return JSON.parse(t); } catch (e) { throw new Error('That is not a save file or save code.'); }
+  }
+  /* Open a save made by this lesson and hand its state to the lesson. */
+  async function restore(input) {
+    if (!cfg) throw new Error('Call HSCT.lesson({...}) first');
+    if (!saver) throw new Error('HSCT.saveable({ get, set }) was never called');
+    needSubtle();
+    var env = parseEnvelope(input);
+    if (!env || env.hsct !== 1 || !env.data) throw new Error('That is not a save file or save code.');
+    if (env.kind !== 'save') throw new Error('That is a finished result file, not a save. Results can\'t be resumed.');
+    if (env.lesson !== cfg.id) throw new Error('That save is from a different lesson (' + esc(env.title || env.lesson) + ').');
+    var header = headerOf(env);
+    var payload;
+    try {
+      var sk = await studentKey(env.student);
+      var aes = await crypto.subtle.unwrapKey('raw', b64d(env.key), sk, { name: 'AES-GCM', iv: b64d(env.kiv) }, { name: 'AES-GCM' }, false, ['decrypt']);
+      var plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64d(env.iv), additionalData: enc.encode(JSON.stringify(header)) }, aes, b64d(env.data));
+      payload = JSON.parse(dec.decode(plain));
+    } catch (e) {
+      throw new Error('Could not open that save. It was changed after it was made, or it belongs to a different lesson.');
+    }
+    if (payload.id !== env.id) throw new Error('Could not open that save: its id does not match its contents.');
+    /* rebuild the session so the clock keeps counting from where it stopped */
+    var now = Date.now();
+    ses = {
+      name: payload.student.name, started: payload.started,
+      t0: now - Number(payload.seconds || 0) * 1000, active: Number(payload.activeSeconds || 0),
+      events: Array.isArray(payload.events) ? payload.events : [],
+      resumes: (Array.isArray(payload.resumes) ? payload.resumes : []).concat([{ id: payload.id, savedAt: payload.saved, savedSeconds: payload.seconds, savedEvents: (payload.events || []).length, n: payload.n, version: payload.lesson && payload.lesson.version, resumedAt: new Date(now).toISOString() }]),
+      saves: Number(payload.n || 0),
+    };
+    result = null; lastSave = null;
+    clearInterval(ticker);
+    ticker = setInterval(function () { if (document.visibilityState === 'visible') ses.active += 1; }, 1000);
+    log('resume', { id: payload.id, savedAt: payload.saved });
+    saver.set(payload.state);
+    return { id: payload.id, name: ses.name, savedAt: payload.saved, seconds: payload.seconds, summary: payload.summary || null, resumes: ses.resumes.length };
+  }
+  function localSave() {
+    if (!cfg) return null;
+    try {
+      var t = localStorage.getItem(localKey()); if (!t) return null;
+      var env = JSON.parse(t);
+      if (!env || env.kind !== 'save' || env.lesson !== cfg.id) return null;
+      return { id: env.id, student: env.student, savedAt: env.saved, text: t };
+    } catch (e) { return null; }
+  }
+  function resumeLocal() { var l = localSave(); if (!l) return Promise.reject(new Error('No save in this browser.')); return restore(l.text); }
+
+  /* ======================================================================
+     TEAMS (v1.2)
+     A team is a room on the TechHub API with a join code. Joining happens on
+     the intro screen (REST); once the student presses Start the kit opens a
+     websocket to the room and from then on:
+       - every HSCT.log is also sent to the room (tagged with the member)
+       - after any log, the lesson's get() state is shared (debounced); when a
+         teammate's state arrives, set() is called here, so every screen shows
+         the same thing. Last write wins; a write based on an old version
+         gets the current state back instead.
+       - presence, the team's progress (summary()) and the class leaderboard
+         feed the status board
+       - finish() seals ONE file for the team, posts it, and every member's
+         kit receives it and can download it
+     ====================================================================== */
+  var SOCK = null, sockTimer = null, sockTries = 0, heartTimer = null, stateTimer = null, pollTimer = null, applying = false, lastShared = '';
+  var feed = [];            // last few events from the room, for the board
+  var openAssignments = null;  // for this lesson, from the API (null = not asked yet)
+  var boardEls = [];        // every element showing the board (inline + floating)
+  var teamCardEl = null;
+
+  function teamKey() { return 'hsct:team:' + (cfg ? cfg.id : ''); }
+  function teamOn() { return !!(cfg && cfg.team !== false && HAS_API); }
+  function api(path, opts) {
+    opts = opts || {};
+    var init = { method: opts.method || 'GET', headers: { 'Accept': 'application/json' }, credentials: 'omit', mode: 'cors' };
+    if (opts.body !== undefined) { init.headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(opts.body); }
+    return fetch(API + '/api' + path, init).then(function (r) {
+      return r.text().then(function (t) {
+        var j = null; try { j = t ? JSON.parse(t) : null; } catch (e) {}
+        if (!r.ok) { var msg = (j && (j.detail || j.non_field_errors || firstError(j))) || ('Request failed (' + r.status + ')'); var err = new Error(Array.isArray(msg) ? msg[0] : msg); err.status = r.status; throw err; }
+        return j;
+      });
+    });
+  }
+  function firstError(j) { if (!j || typeof j !== 'object') return null; for (var k in j) { var v = j[k]; return (Array.isArray(v) ? v[0] : v); } return null; }
+
+  function setTeam(data) {
+    var t = data.team || {};
+    team = {
+      code: t.code, name: t.name, token: data.token, you: data.member, members: t.members || [],
+      assignment: data.assignment || null, version: t.version || 0, state: t.state === undefined ? null : t.state,
+      leaderboard: data.leaderboard || null, status: t.status, progress: t.progress || null,
+      startedAt: t.startedAt, elapsedSeconds: t.elapsedSeconds || 0, connected: false, submitted: t.status === 'submitted',
+    };
+    try { sessionStorage.setItem(teamKey(), JSON.stringify({ code: team.code, token: team.token, name: team.you && team.you.name })); } catch (e) {}
+    renderTeamCard(); renderBoards();
+    return team;
+  }
+  function forgetTeam() {
+    try { sessionStorage.removeItem(teamKey()); } catch (e) {}
+    closeSocket();
+    team = null; feed = [];
+    renderTeamCard(); renderBoards();
+  }
+
+  /* On load: a code in the URL, or a team this browser joined earlier (a refresh). */
+  function teamBoot() {
+    if (!teamOn()) return;
+    var saved = null;
+    try { saved = JSON.parse(sessionStorage.getItem(teamKey()) || 'null'); } catch (e) {}
+    if (saved && saved.code && saved.token) {
+      api('/teams/' + saved.code + '/?token=' + encodeURIComponent(saved.token)).then(function (d) {
+        setTeam(d);
+        if (ses) teamStarted();   // already started (hot reload of the kit) — unlikely, harmless
+      }).catch(function () { try { sessionStorage.removeItem(teamKey()); } catch (e) {} renderTeamCard(); });
+    }
+    api('/assignments/open/?lesson=' + encodeURIComponent(cfg.id)).then(function (list) {
+      openAssignments = Array.isArray(list) ? list : [];
+      renderTeamCard();
+    }).catch(function () { openAssignments = []; renderTeamCard(); });
+  }
+
+  function createTeam(assignmentId, name, teamName, role) {
+    return api('/teams/', { method: 'POST', body: { assignment: assignmentId, name: name, team: teamName || '', role: role || '' } }).then(setTeam);
+  }
+  function joinTeam(code, name, role) {
+    var saved = null; try { saved = JSON.parse(sessionStorage.getItem(teamKey()) || 'null'); } catch (e) {}
+    var body = { code: code, name: name, role: role || '' };
+    if (saved && saved.token) body.token = saved.token;
+    return api('/teams/join/', { method: 'POST', body: body }).then(setTeam);
+  }
+  function leaveTeam() {
+    if (!team) return Promise.resolve();
+    var t = team;
+    forgetTeam();
+    return api('/teams/' + t.code + '/leave/', { method: 'POST', body: { token: t.token } }).catch(function () {});
+  }
+
+  /* Start pressed while in a team: use the team clock, connect, apply the shared state. */
+  function teamStarted() {
+    if (!team || !ses) return;
+    if (team.you && normName(team.you.name).toLowerCase() !== ses.name.toLowerCase()) {
+      ses.events.push({ t: 0, type: 'name-mismatch', typed: ses.name, member: team.you.name });
+      ses.name = team.you.name;   // the file is the team's; the member name is what the room knows
+    }
+    ses.t0 = Date.now() - Number(team.elapsedSeconds || 0) * 1000;
+    ses.started = team.startedAt || ses.started;
+    openSocket();
+    if (team.state != null && saver) {
+      var s = team.state;
+      setTimeout(function () { applyState(s); }, 0);   // after the lesson's own Start handler has rendered
+    }
+  }
+
+  function applyState(state) {
+    if (!saver) return;
+    applying = true;
+    try { lastShared = JSON.stringify(state); (saver.merge || saver.set)(JSON.parse(lastShared)); } catch (e) { console.warn('HSCT team: could not apply shared state', e); }
+    applying = false;
+    renderBoards();
+  }
+
+  function openSocket() {
+    if (!team || SOCK) return;
+    var url = WS_API + '/ws/team/' + team.code + '/?token=' + encodeURIComponent(team.token);
+    var ws;
+    try { ws = new WebSocket(url); } catch (e) { return; }
+    SOCK = ws;
+    ws.onopen = function () {
+      sockTries = 0; team.connected = true; sendStatus(ses ? 'work' : 'intro'); renderBoards();
+      clearInterval(heartTimer); heartTimer = setInterval(function () { send({ type: 'heartbeat', activeSeconds: ses ? ses.active : 0 }); }, 15000);
+      /* changes a lesson makes without logging (a "Next" button, a slider) still reach the team */
+      clearInterval(pollTimer); pollTimer = setInterval(function () { if (!applying && !stateTimer) shareState(true); }, 2500);
+    };
+    ws.onmessage = function (ev) { var m; try { m = JSON.parse(ev.data); } catch (e) { return; } onRoom(m); };
+    ws.onclose = function (ev) {
+      if (SOCK === ws) SOCK = null;
+      clearInterval(heartTimer);
+      if (team) team.connected = false;
+      renderBoards();
+      if (!team || ev.code === 4401 || ev.code === 4403 || ev.code === 4404) return;
+      var wait = Math.min(15000, 1000 * Math.pow(2, sockTries++));
+      clearTimeout(sockTimer); sockTimer = setTimeout(openSocket, wait);
+    };
+    ws.onerror = function () {};
+  }
+  function closeSocket() { clearTimeout(sockTimer); clearInterval(heartTimer); clearInterval(pollTimer); clearTimeout(stateTimer); stateTimer = null; if (SOCK) { var s = SOCK; SOCK = null; try { s.close(); } catch (e) {} } }
+  function send(m) { if (SOCK && SOCK.readyState === 1) { try { SOCK.send(JSON.stringify(m)); return true; } catch (e) {} } return false; }
+  function sendStatus(phase) { send({ type: 'status', phase: phase }); }
+
+  function onRoom(m) {
+    if (!team) return;
+    switch (m.type) {
+      case 'hello':
+        team.members = m.members || team.members; team.leaderboard = m.leaderboard || team.leaderboard;
+        if (m.team) { team.name = m.team.name || team.name; team.status = m.team.status; team.progress = m.team.progress || team.progress; }
+        if (m.version > team.version && m.state != null) { team.version = m.version; team.state = m.state; if (ses) applyState(m.state); }
+        else team.version = Math.max(team.version, m.version || 0);
+        break;
+      case 'presence':
+        team.members = m.members || team.members; if (m.status) team.status = m.status;
+        break;
+      case 'event':
+        if (!(m.member && team.you && m.member.id === team.you.id)) pushFeed(m);
+        break;
+      case 'state':
+        if (m.by && team.you && m.by.id === team.you.id && !m.stale) { team.version = m.version; team.progress = m.summary || team.progress; break; }
+        team.version = m.version; team.state = m.state; team.progress = m.summary || team.progress;
+        if (ses && m.state != null) applyState(m.state);
+        if (m.stale) pushFeed({ member: { name: 'Team' }, kind: 'synced', data: null, at: new Date().toISOString() });
+        break;
+      case 'leaderboard': team.leaderboard = m.teams; break;
+      case 'submitted': onTeamSubmitted(m); break;
+      case 'closed': pushFeed({ member: { name: 'Teacher' }, kind: 'closed', data: { reason: m.reason } }); team.status = 'closed'; closeSocket(); break;
+      case 'error': console.warn('HSCT team:', m.detail); break;
+    }
+    renderBoards();
+  }
+  function pushFeed(m) { feed.push({ who: m.member ? m.member.name : '', kind: m.kind, data: m.data, at: m.at || new Date().toISOString() }); if (feed.length > 8) feed.shift(); }
+
+  /* Called by log(): stream the event, then share the state a moment later. */
+  function teamLogged(e) {
+    if (!team || !ses || applying) return;
+    send({ type: 'event', t: e.t, kind: e.type, data: eventData(e), activeSeconds: ses.active });
+    if (e.type === 'start') sendStatus('work');
+    scheduleShare();
+  }
+  function eventData(e) { var d = {}; for (var k in e) if (k !== 't' && k !== 'type' && k !== 'who') d[k] = e[k]; return d; }
+  function scheduleShare() {
+    if (!team || !saver || !ses || result || team.submitted) return;
+    clearTimeout(stateTimer);
+    stateTimer = setTimeout(function () { stateTimer = null; shareState(); }, 400);
+  }
+  function shareState(onlyIfChanged) {
+    if (!team || !saver || !ses || applying || result || team.submitted) return;
+    var json; try { json = JSON.stringify((saver.shared || saver.get)()); } catch (e) { return; }
+    if (json === undefined || (onlyIfChanged && json === lastShared)) return;
+    lastShared = json;
+    var state = JSON.parse(json);
+    var summary = null; try { summary = saver.summary ? saver.summary() : null; } catch (e) {}
+    team.state = state; if (summary) team.progress = summary;
+    send({ type: 'state', version: team.version, state: state, summary: summary });
+  }
+
+  function teamForFile() {
+    return {
+      code: team.code, name: team.name, assignment: team.assignment ? { id: team.assignment.id, title: team.assignment.title } : null,
+      submittedBy: team.you ? team.you.name : null, version: team.version,
+      members: (team.members || []).map(function (m) { return { name: m.name, role: m.role || null, joinedAt: m.joinedAt, leftAt: m.leftAt || null, events: m.events, activeSeconds: m.activeSeconds }; }),
+    };
+  }
+  async function teamSubmit(envelope, payload) {
+    if (!team) return;
+    var summary = { earned: payload.score.earned, possible: payload.score.possible, percent: payload.score.percent, tier: payload.tier, seconds: payload.seconds, activeSeconds: payload.activeSeconds };
+    try {
+      await api('/teams/' + team.code + '/submit/', { method: 'POST', body: { token: team.token, envelope: envelope, summary: summary } });
+      team.submitted = true; team.status = 'submitted';
+    } catch (e) {
+      /* the file is still good; the student submits it by hand */
+      ses.events.push({ t: 0, type: 'team-submit-failed', error: String(e.message || e) });
+      throw new Error('Your result file is ready, but it could not be sent to your team\'s room (' + (e.message || e) + '). Download it and submit it in Google Classroom.');
+    }
+    sendStatus('end');
+    renderBoards();
+  }
+  /* A teammate finished: everyone gets the same file. */
+  function onTeamSubmitted(m) {
+    team.submitted = true; team.status = 'submitted';
+    pushFeed({ member: m.by, kind: 'submitted', data: { badge: m.badge }, at: m.at });
+    if (!result && m.envelope) {
+      var env = m.envelope;
+      result = { badge: env.badge, filename: 'HSCT_' + env.lesson + '_TEAM-' + slug(env.teamName || team.name) + '_' + stamp(new Date(env.finished || Date.now())) + '.hsct', text: JSON.stringify(env), payload: null, byTeammate: m.by ? m.by.name : null };
+      clearInterval(ticker); clearTimeout(autoTimer); clearLocalSave();
+    }
+  }
+
+  /* ---------- team UI: the intro card ---------- */
+  function nameField() { return document.querySelector('#name, input[name="name"], input[name="student"], #student-name, #fullname'); }
+  function roleOptions(sel) { return ['', 'Programmer', 'Presenter', 'Project Manager'].map(function (r) { return '<option value="' + esc(r) + '"' + (r === sel ? ' selected' : '') + '>' + (r || 'Role (optional)') + '</option>'; }).join(''); }
+
+  function teamUI(el) {
+    el = elOf(el, 'HSCT.teamUI');
+    teamCardEl = el;
+    renderTeamCard();
+    return HSCT;
+  }
+  function renderTeamCard() {
+    var el = teamCardEl;
+    if (!el || !teamOn()) { if (el) el.innerHTML = ''; return; }
+    injectCss();
+    var hasAssignments = openAssignments && openAssignments.length > 0;
+    var urlCode = (QS.team || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (urlCode.length === 6) urlCode = urlCode.slice(0, 3) + '-' + urlCode.slice(3);
+    var wantsTeam = !!(team || urlCode || QS.assignment || hasAssignments);
+    if (!wantsTeam) { el.innerHTML = ''; return; }   // nothing posted for this lesson: stay out of the way
+    var nf = nameField(), typed = nf ? normName(nf.value) : '';
+    if (team) {
+      var mem = (team.members || []).filter(function (m) { return !m.leftAt; });
+      el.innerHTML = '<div class="hsct-card hsct-team">'
+        + '<h3>Your team: ' + esc(team.name) + '</h3>'
+        + '<p class="hsct-sub">' + (team.assignment ? esc(team.assignment.title) + ' · ' : '') + 'Team code <code class="hsct-code">' + esc(team.code) + '</code> <button type="button" class="hsct-btn hsct-alt hsct-sm hsct-team-copy">Copy code</button></p>'
+        + '<div class="hsct-members">' + mem.map(function (m) { return '<span class="hsct-member' + (m.online ? ' on' : '') + (team.you && m.id === team.you.id ? ' me' : '') + '"><i></i>' + esc(m.name) + (m.role ? ' <small>' + esc(m.role) + '</small>' : '') + '</span>'; }).join('') + '</div>'
+        + '<p class="hsct-sub">' + (team.submitted ? 'This team has already turned in its result.' : 'Share the code with your teammates. When everyone is in, press <b>Start</b>: you all see the same lesson, live. You can also start now and they can join as you go.') + '</p>'
+        + '<div class="hsct-actions"><button type="button" class="hsct-btn hsct-alt hsct-sm hsct-team-leave">Leave this team</button></div>'
+        + '<p class="hsct-status" aria-live="polite"></p></div>';
+      el.querySelector('.hsct-team-copy').onclick = function () { copyText(team.code).then(function (ok) { var s = el.querySelector('.hsct-status'); s.className = 'hsct-status ' + (ok ? 'ok' : 'bad'); s.textContent = ok ? 'Code copied.' : 'Copy failed — read it out: ' + team.code; }); };
+      el.querySelector('.hsct-team-leave').onclick = function () { if (ses) { if (!confirm('Leave the team? Your teammates keep going without you.')) return; } leaveTeam(); };
+      if (nf && team.you && !typed) nf.value = team.you.name;
+      return;
+    }
+    var pick = '';
+    if (hasAssignments) {
+      var pre = QS.assignment || '';
+      pick = openAssignments.length === 1
+        ? '<input type="hidden" class="hsct-team-asg" value="' + esc(openAssignments[0].id) + '">'
+        : '<select class="hsct-team-asg" aria-label="Assignment">' + openAssignments.map(function (a) { return '<option value="' + esc(a.id) + '"' + (a.id === pre ? ' selected' : '') + '>' + esc(a.title) + (a.klass ? ' — ' + esc(a.klass) : '') + '</option>'; }).join('') + '</select>';
+    }
+    var single = hasAssignments && openAssignments.every(function (a) { return !a.groupMode; });
+    el.innerHTML = '<div class="hsct-card hsct-team">'
+      + '<h3>' + (single ? 'Join the assignment' : 'Work as a team') + '</h3>'
+      + '<p class="hsct-sub">' + (hasAssignments ? esc(openAssignments[0].title) + (openAssignments.length > 1 ? ' and ' + (openAssignments.length - 1) + ' more' : '') + ' is open for this lesson. ' : '') + (single ? 'Your teacher will see your progress live.' : 'One of you makes the team and shares the code; the others join with it. Everyone sees the same screen, and the team turns in one result.') + '</p>'
+      + '<div class="hsct-resume-row"><input type="text" class="hsct-team-name" placeholder="Your full name" value="' + esc(typed) + '" aria-label="Your full name" autocomplete="off"><select class="hsct-team-role" aria-label="Role">' + roleOptions('') + '</select></div>'
+      + (single ? '' : '<div class="hsct-resume-row"><input type="text" class="hsct-team-code" placeholder="Team code, like K7P-3QX" value="' + esc(urlCode) + '" maxlength="7" aria-label="Team code" autocomplete="off" spellcheck="false"><button type="button" class="hsct-btn hsct-sm hsct-team-join">Join team</button></div>')
+      + (hasAssignments ? '<div class="hsct-resume-row">' + pick + (single ? '' : '<input type="text" class="hsct-team-team" placeholder="Team name (optional)" maxlength="60" aria-label="Team name">') + '<button type="button" class="hsct-btn hsct-alt hsct-sm hsct-team-create">' + (single ? 'Join' : 'Create a team') + '</button></div>' : '<p class="hsct-sub">No team assignment is posted for this lesson right now; you can still join a team with a code.</p>')
+      + '<p class="hsct-status" aria-live="polite"></p></div>';
+    var status = el.querySelector('.hsct-status');
+    var nameIn = el.querySelector('.hsct-team-name'), roleIn = el.querySelector('.hsct-team-role');
+    function myName() { var n = normName(nameIn.value); if (n.length < 2) { status.className = 'hsct-status bad'; status.textContent = 'Type your full name first.'; nameIn.focus(); return null; } if (nf) nf.value = n; return n; }
+    function fail(e) { status.className = 'hsct-status bad'; status.textContent = e && e.message ? e.message : String(e); }
+    var jb = el.querySelector('.hsct-team-join');
+    if (jb) jb.onclick = function () { var n = myName(); if (!n) return; var c = el.querySelector('.hsct-team-code').value; if (!c.trim()) { fail(new Error('Enter the team code your teammate shared.')); return; } status.className = 'hsct-status'; status.textContent = 'Joining…'; joinTeam(c, n, roleIn.value).then(function () { renderTeamCard(); }).catch(fail); };
+    var cb = el.querySelector('.hsct-team-create');
+    if (cb) cb.onclick = function () { var n = myName(); if (!n) return; var a = el.querySelector('.hsct-team-asg').value; var tn = el.querySelector('.hsct-team-team'); status.className = 'hsct-status'; status.textContent = 'Making your team…'; createTeam(a, n, tn ? tn.value : '', roleIn.value).then(function () { renderTeamCard(); }).catch(fail); };
+    if (nf) nf.addEventListener('input', function () { if (!team) nameIn.value = nf.value; });
+    if (urlCode && jb && typed) jb.focus();
+  }
+
+  /* ---------- team UI: the status board ---------- */
+  function boardUI(el) {
+    el = elOf(el, 'HSCT.boardUI');
+    if (boardEls.indexOf(el) < 0) boardEls.push(el);
+    renderBoards();
+    return HSCT;
+  }
+  function fmtEvent(f) {
+    var bits = [];
+    if (f.data && typeof f.data === 'object') for (var k in f.data) { var v = f.data[k]; if (v == null || typeof v === 'object') continue; bits.push(k + ' ' + String(v).slice(0, 18)); if (bits.length >= 3) break; }
+    return esc(f.who ? f.who + ' · ' : '') + '<b>' + esc(f.kind) + '</b>' + (bits.length ? ' <span>' + esc(bits.join(', ')) + '</span>' : '');
+  }
+  function boardHtml() {
+    if (!team) return '';
+    var p = team.progress || {}, pct = p.possible ? Math.round(100 * (p.earned || 0) / p.possible) : null;
+    var mem = (team.members || []).filter(function (m) { return !m.leftAt; });
+    var lb = team.leaderboard;
+    var html = '<div class="hsct-board-head"><span><b>' + esc(team.name) + '</b> <code>' + esc(team.code) + '</code></span><span class="hsct-conn ' + (team.connected ? 'on' : '') + '">' + (team.submitted ? 'Submitted' : team.connected ? 'Live' : 'Reconnecting…') + '</span></div>'
+      + '<div class="hsct-members">' + mem.map(function (m) { return '<span class="hsct-member' + (m.online ? ' on' : '') + (team.you && m.id === team.you.id ? ' me' : '') + '" title="' + esc(m.events) + ' actions"><i></i>' + esc(m.name.split(' ')[0]) + (m.role ? ' <small>' + esc(m.role) + '</small>' : '') + '<em>' + esc(m.events) + '</em></span>'; }).join('') + '</div>';
+    if (pct != null || p.label) html += '<div class="hsct-prog"><div class="hsct-prog-bar"><i style="width:' + (pct || 0) + '%"></i></div><span>' + (pct != null ? esc(p.earned) + ' / ' + esc(p.possible) + ' (' + pct + '%)' : '') + (p.label ? ' · ' + esc(p.label) : '') + '</span></div>';
+    if (lb && lb.length) {
+      html += '<table class="hsct-lb"><thead><tr><th>#</th><th>Team</th><th>Progress</th><th></th></tr></thead><tbody>' + lb.slice(0, 10).map(function (r, i) {
+        var mine = r.name === team.name;
+        return '<tr' + (mine ? ' class="me"' : '') + '><td>' + (i + 1) + '</td><td>' + esc(r.name) + ' <small>' + esc(r.online) + '/' + esc(r.members) + ' on</small></td><td>' + (r.percent != null ? esc(r.percent) + '%' : '—') + (r.label ? ' <small>' + esc(r.label) + '</small>' : '') + '</td><td>' + (r.status === 'submitted' ? '✓ done' : r.status === 'working' ? 'working' : '') + '</td></tr>';
+      }).join('') + '</tbody></table>';
+    }
+    if (feed.length) html += '<ul class="hsct-feed">' + feed.slice().reverse().map(function (f) { return '<li>' + fmtEvent(f) + '</li>'; }).join('') + '</ul>';
+    if (team.submitted && result) html += '<div class="hsct-actions"><button type="button" class="hsct-btn hsct-sm hsct-board-dl">Download the team\'s result file</button></div><p class="hsct-sub">' + (result.byTeammate ? esc(result.byTeammate) + ' turned the team in. ' : '') + 'Code <code>' + esc(result.badge) + '</code>. Submit it in Google Classroom (every member can submit the same file).</p>';
+    return html;
+  }
+  function renderBoards() {
+    var html = boardHtml();
+    boardEls.forEach(function (el) {
+      if (!document.body.contains(el)) return;
+      el.innerHTML = html ? '<div class="hsct-card hsct-board">' + html + '</div>' : '';
+      var b = el.querySelector('.hsct-board-dl'); if (b) b.onclick = function () { download(); };
+    });
+    renderFloat(html);
+  }
+  var floatEl = null, floatOpen = true;
+  function renderFloat(html) {
+    if (!html || !ses) { if (floatEl) floatEl.style.display = 'none'; return; }
+    if (!floatEl) {
+      injectCss();
+      floatEl = document.createElement('div'); floatEl.className = 'hsct-float'; floatEl.setAttribute('aria-live', 'polite');
+      document.body.appendChild(floatEl);
+    }
+    floatEl.style.display = '';
+    var pct = team && team.progress && team.progress.possible ? Math.round(100 * (team.progress.earned || 0) / team.progress.possible) : null;
+    var online = (team.members || []).filter(function (m) { return m.online && !m.leftAt; }).length;
+    floatEl.innerHTML = '<button type="button" class="hsct-float-tab"><i class="' + (team.connected ? 'on' : '') + '"></i>Team · ' + online + ' online' + (pct != null ? ' · ' + pct + '%' : '') + (team.submitted ? ' · submitted' : '') + '<span>' + (floatOpen ? '▾' : '▴') + '</span></button>'
+      + '<div class="hsct-float-body"' + (floatOpen ? '' : ' hidden') + '><div class="hsct-card hsct-board">' + html + '</div></div>';
+    floatEl.querySelector('.hsct-float-tab').onclick = function () { floatOpen = !floatOpen; renderFloat(html); };
+    var b = floatEl.querySelector('.hsct-board-dl'); if (b) b.onclick = function () { download(); };
+  }
+
+  /* ---------- the standard end screen ---------- */
+  var CSS = '.hsct-card{--hsct-ink:#101a3f;--hsct-mute:#5b6485;--hsct-line:#d3d9ee;--hsct-accent:var(--hsct-color,#1f3fae);--hsct-ok:#1f7a3d;--hsct-bad:#b3261e;'
+    + 'font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;color:var(--hsct-ink);background:#fff;border:1px solid var(--hsct-line);border-left:6px solid var(--hsct-accent);border-radius:12px;padding:20px 22px;margin:20px 0;line-height:1.45}'
+    + '.hsct-card *{box-sizing:border-box}.hsct-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--hsct-mute)}.hsct-head b{color:var(--hsct-accent)}'
+    + '.hsct-name{font-size:22px;font-weight:700;margin:6px 0 2px}.hsct-score{font-size:15px;margin:0 0 12px}.hsct-score b{font-size:28px;font-weight:700}.hsct-score .hsct-tier{display:inline-block;margin-left:8px;padding:2px 10px;border-radius:999px;background:var(--hsct-accent);color:#fff;font-size:13px;font-weight:600;vertical-align:middle}'
+    + '.hsct-facts{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0 0 14px;font-size:14px}.hsct-facts dt{color:var(--hsct-mute)}.hsct-facts dd{margin:0}.hsct-facts code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;letter-spacing:.08em;font-weight:600}'
+    + '.hsct-secs{width:100%;border-collapse:collapse;font-size:14px;margin:0 0 14px}.hsct-secs td{padding:5px 0;border-top:1px solid var(--hsct-line)}.hsct-secs td:last-child{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}'
+    + '.hsct-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.hsct-btn{font:600 15px "IBM Plex Sans","Segoe UI",system-ui,sans-serif;padding:11px 18px;border-radius:8px;border:2px solid var(--hsct-accent);background:var(--hsct-accent);color:#fff;cursor:pointer}.hsct-btn:hover{filter:brightness(.92)}.hsct-btn.hsct-alt{background:transparent;color:var(--hsct-accent)}.hsct-btn:focus-visible{outline:3px solid #a9b7ea;outline-offset:2px}.hsct-btn:disabled{opacity:.55;cursor:wait}'
+    + '.hsct-note{margin:12px 0 0;font-size:13.5px;color:var(--hsct-mute)}.hsct-status{margin:8px 0 0;font-size:14px;min-height:1.4em}.hsct-status.ok{color:var(--hsct-ok)}.hsct-status.bad{color:var(--hsct-bad)}'
+    /* save / resume cards */
+    + '.hsct-card.hsct-save{border-left-color:var(--hsct-mute)}.hsct-card h3{margin:0 0 4px;font-size:17px}.hsct-card .hsct-sub{margin:0 0 10px;font-size:13.5px;color:var(--hsct-mute)}'
+    + '.hsct-resume-local{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--hsct-line);border-radius:8px;margin:0 0 10px;font-size:14px}'
+    + '.hsct-resume-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}.hsct-resume-row input[type=file]{font-size:13px;max-width:100%}.hsct-resume-row textarea{flex:1;min-width:200px;min-height:40px;font:13px ui-monospace,Menlo,Consolas,monospace;padding:6px 8px;border:1px solid var(--hsct-line);border-radius:6px;resize:vertical}'
+    + '.hsct-btn.hsct-sm{font-size:13.5px;padding:7px 12px}'
+    /* teams (v1.2) */
+    + '.hsct-card.hsct-team{border-left-color:var(--hsct-accent)}.hsct-code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:17px;font-weight:700;letter-spacing:.12em;padding:2px 8px;border:1px dashed var(--hsct-line);border-radius:6px}'
+    + '.hsct-resume-row input[type=text],.hsct-resume-row select{font:14px "IBM Plex Sans","Segoe UI",system-ui,sans-serif;padding:8px 10px;border:1px solid var(--hsct-line);border-radius:6px;min-width:0}.hsct-resume-row input[type=text]{flex:1;min-width:140px}.hsct-team-code{text-transform:uppercase;letter-spacing:.1em;font-family:ui-monospace,Menlo,Consolas,monospace;max-width:170px}'
+    + '.hsct-members{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.hsct-member{display:inline-flex;align-items:center;gap:6px;padding:4px 10px 4px 8px;border:1px solid var(--hsct-line);border-radius:999px;font-size:13.5px;background:#fff}.hsct-member i{width:8px;height:8px;border-radius:50%;background:#c3c9dd}.hsct-member.on i{background:var(--hsct-ok);box-shadow:0 0 0 3px rgba(31,122,61,.15)}.hsct-member.me{border-color:var(--hsct-accent)}.hsct-member small{color:var(--hsct-mute)}.hsct-member em{font-style:normal;font-size:11px;color:var(--hsct-mute);background:var(--hsct-line);border-radius:999px;padding:0 6px}'
+    + '.hsct-board{font-size:14px;padding:14px 16px;margin:0}.hsct-board-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.hsct-board-head code{font-size:12px;letter-spacing:.08em;color:var(--hsct-mute)}.hsct-conn{font-size:12px;color:var(--hsct-mute)}.hsct-conn.on{color:var(--hsct-ok)}'
+    + '.hsct-prog{display:flex;align-items:center;gap:10px;margin:6px 0 8px;font-size:13px}.hsct-prog-bar{flex:1;height:8px;background:var(--hsct-line);border-radius:999px;overflow:hidden}.hsct-prog-bar i{display:block;height:100%;background:var(--hsct-accent);transition:width .4s}'
+    + '.hsct-lb{width:100%;border-collapse:collapse;font-size:13px;margin:4px 0 8px}.hsct-lb th{text-align:left;font-weight:600;color:var(--hsct-mute);padding:2px 4px;border-bottom:1px solid var(--hsct-line)}.hsct-lb td{padding:3px 4px;border-bottom:1px solid var(--hsct-line)}.hsct-lb tr.me td{background:rgba(31,63,174,.06);font-weight:600}.hsct-lb small{color:var(--hsct-mute);font-weight:400}'
+    + '.hsct-feed{list-style:none;margin:4px 0 0;padding:0;font-size:12.5px;color:var(--hsct-mute);max-height:120px;overflow:auto}.hsct-feed li{padding:2px 0;border-top:1px dotted var(--hsct-line)}.hsct-feed b{color:var(--hsct-ink);font-weight:600}'
+    + '.hsct-float{position:fixed;right:12px;bottom:12px;z-index:9999;width:min(360px,calc(100vw - 24px));font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;color:#101a3f}.hsct-float-tab{width:100%;display:flex;align-items:center;gap:8px;font:600 13.5px "IBM Plex Sans","Segoe UI",system-ui,sans-serif;padding:9px 12px;border:1px solid #d3d9ee;border-radius:10px 10px 0 0;background:var(--hsct-color,#1f3fae);color:#fff;cursor:pointer}.hsct-float-tab i{width:8px;height:8px;border-radius:50%;background:#f3b43d}.hsct-float-tab i.on{background:#5ee08a}.hsct-float-tab span{margin-left:auto}.hsct-float-body{background:#fff;border:1px solid #d3d9ee;border-top:0;border-radius:0 0 10px 10px;max-height:min(60vh,520px);overflow:auto;box-shadow:0 14px 40px rgba(16,26,63,.18)}.hsct-float-body .hsct-board{border:0;border-radius:0}'
+    + '@media (max-width:480px){.hsct-float{right:6px;bottom:6px}}'
+    + '@media print{.hsct-actions,.hsct-note,.hsct-status,.hsct-save,.hsct-float{display:none}}';
+  function injectCss() {
+    if (document.getElementById('hsct-kit-css')) return;
+    var s = document.createElement('style'); s.id = 'hsct-kit-css'; s.textContent = CSS; document.head.appendChild(s);
+  }
+  function elOf(el, what) { if (typeof el === 'string') el = document.querySelector(el); if (!el) throw new Error(what + ' needs an element'); return el; }
+
+  /* Renders the card into `el` and seals the result. Resolves with the result. */
+  async function endScreen(el, opts) {
+    el = elOf(el, 'HSCT.endScreen');
+    injectCss();
+    opts = opts || {};
+    var elp = elapsed();
+    var possible = Number(opts.possible || cfg.possible || 0), earned = Number(opts.earned || 0);
+    var pct = possible ? Math.round(100 * earned / possible) : null;
+    var secs = (opts.sections || []).map(function (s) {
+      var right = s.status != null ? esc(s.status) : (s.possible != null ? esc(s.earned) + ' / ' + esc(s.possible) : esc(s.earned));
+      return '<tr><td>' + esc(s.title) + '</td><td>' + right + '</td></tr>';
+    }).join('');
+    var resumed = ses && ses.resumes.length ? '<dt>Resumed</dt><dd>' + ses.resumes.length + ' time' + (ses.resumes.length === 1 ? '' : 's') + ' from a save</dd>' : '';
+    var teamLine = team ? '<dt>Team</dt><dd>' + esc(team.name) + ' <code>' + esc(team.code) + '</code> — ' + esc((team.members || []).filter(function (m) { return !m.leftAt; }).map(function (m) { return m.name; }).join(', ')) + '</dd>' : '';
+    var note = opts.note || (team ? 'This is the team\'s result: one file, every member can download it. Submit it in Google Classroom. The file is encrypted: only your teacher can open it.' : 'Submit the file in Google Classroom. If downloads are blocked, copy the code and paste it instead. The file is encrypted: only your teacher can open it.');
+    el.innerHTML = '<div class="hsct-card">'
+      + '<div class="hsct-head"><span><b>HSCT TechHub</b> result</span><span>' + esc(cfg.title) + '</span></div>'
+      + '<div class="hsct-name">' + esc(team ? team.name : (ses ? ses.name : '')) + '</div>'
+      + '<div class="hsct-score"><b>' + esc(earned) + '</b> / ' + esc(possible) + (pct != null ? ' <span>(' + pct + '%)</span>' : '') + (opts.tier ? '<span class="hsct-tier">' + esc(opts.tier) + '</span>' : '') + '</div>'
+      + '<dl class="hsct-facts"><dt>Finished</dt><dd>' + esc(fmtDate(new Date().toISOString())) + '</dd>'
+      + '<dt>Time taken</dt><dd>' + esc(fmtDuration(elp.seconds)) + (elp.activeSeconds < elp.seconds - 60 ? ' <span style="color:var(--hsct-mute)">(' + esc(fmtDuration(elp.activeSeconds)) + ' with the tab open)</span>' : '') + '</dd>'
+      + resumed + teamLine
+      + '<dt>Code</dt><dd><code class="hsct-badge">........</code></dd></dl>'
+      + (secs ? '<table class="hsct-secs"><tbody>' + secs + '</tbody></table>' : '')
+      + '<div class="hsct-actions"><button type="button" class="hsct-btn hsct-dl" disabled>Download your result file</button><button type="button" class="hsct-btn hsct-alt hsct-copy" disabled>Copy result code</button></div>'
+      + '<p class="hsct-note">' + esc(note) + '</p>'
+      + '<p class="hsct-status" aria-live="polite">Preparing your result file…</p>'
+      + '</div>';
+    var status = el.querySelector('.hsct-status'), dl = el.querySelector('.hsct-dl'), cp = el.querySelector('.hsct-copy');
+    try {
+      var r = await finish(opts);
+      el.querySelector('.hsct-badge').textContent = r.badge;
+      status.textContent = (r.byTeammate ? r.byTeammate + ' turned the team in. ' : '') + 'Ready: ' + r.filename;
+      if (team) sendStatus('end');
+      dl.disabled = false; cp.disabled = false;
+      dl.onclick = function () { try { download(); status.className = 'hsct-status ok'; status.textContent = 'Downloaded ' + r.filename + ' — now submit it.'; } catch (e) { status.className = 'hsct-status bad'; status.textContent = e.message; } };
+      cp.onclick = async function () { var ok = await copyCode(); status.className = 'hsct-status ' + (ok ? 'ok' : 'bad'); status.textContent = ok ? 'Code copied — paste it into your submission.' : 'Copy failed. Use the download instead.'; };
+      return r;
+    } catch (e) {
+      status.className = 'hsct-status bad';
+      status.textContent = e.message || String(e);
+      throw e;
+    }
+  }
+
+  /* ---------- the standard resume card (intro screen) ---------- */
+  /* opts.onResume(info) runs after a successful restore (the lesson's set() has already run). */
+  function resumeUI(el, opts) {
+    el = elOf(el, 'HSCT.resumeUI');
+    injectCss();
+    opts = opts || {};
+    var local = localSave();
+    el.innerHTML = '<div class="hsct-card hsct-save">'
+      + '<h3>Pick up where you left off</h3>'
+      + '<p class="hsct-sub">Saved earlier? Open your save file, paste your save code' + (local ? ', or continue the save kept in this browser' : '') + '. The clock continues from where it stopped.</p>'
+      + (local ? '<div class="hsct-resume-local"><span><b>' + esc(local.student) + '</b> · saved ' + esc(fmtDate(local.savedAt)) + ' · <code>' + esc(local.id) + '</code></span><span><button type="button" class="hsct-btn hsct-sm hsct-res-local">Continue</button> <button type="button" class="hsct-btn hsct-alt hsct-sm hsct-res-forget">Forget it</button></span></div>' : '')
+      + '<div class="hsct-resume-row"><input type="file" class="hsct-res-file" accept=".hsctsave,.json,.txt" aria-label="Save file"></div>'
+      + '<div class="hsct-resume-row"><textarea class="hsct-res-code" placeholder="…or paste a save code here" aria-label="Save code"></textarea><button type="button" class="hsct-btn hsct-alt hsct-sm hsct-res-paste">Open code</button></div>'
+      + '<p class="hsct-status" aria-live="polite"></p>'
+      + '</div>';
+    var status = el.querySelector('.hsct-status');
+    function go(text) {
+      status.className = 'hsct-status'; status.textContent = 'Opening…';
+      return restore(text).then(function (info) {
+        status.className = 'hsct-status ok'; status.textContent = 'Welcome back, ' + info.name + '. Continuing from ' + fmtDate(info.savedAt) + '.';
+        if (opts.onResume) opts.onResume(info);
+      }).catch(function (e) { status.className = 'hsct-status bad'; status.textContent = e.message || String(e); });
+    }
+    var f = el.querySelector('.hsct-res-file');
+    f.onchange = function () { var file = f.files && f.files[0]; if (!file) return; file.text().then(go); f.value = ''; };
+    el.querySelector('.hsct-res-paste').onclick = function () { var t = el.querySelector('.hsct-res-code').value.trim(); if (t) go(t); };
+    if (local) {
+      el.querySelector('.hsct-res-local').onclick = function () { go(local.text); };
+      el.querySelector('.hsct-res-forget').onclick = function () { clearLocalSave(); resumeUI(el, opts); };
+    }
+    /* v1.2: the team card lives right under the resume card unless the lesson placed it itself */
+    if (teamOn() && !teamCardEl) {
+      var tc = document.getElementById('hsct-team');
+      if (!tc) { tc = document.createElement('div'); tc.id = 'hsct-team'; el.insertAdjacentElement('afterend', tc); }
+      teamCardEl = tc;
+      renderTeamCard();
+    }
+    return HSCT;
+  }
+
+  /* ---------- the standard save card (work screen) ---------- */
+  function saveUI(el) {
+    el = elOf(el, 'HSCT.saveUI');
+    injectCss();
+    if (team) {   // v1.2: a team's progress lives on the server and on every member's screen; nothing to save
+      el.innerHTML = '<div class="hsct-card hsct-save"><h3>Team mode</h3><p class="hsct-sub">You\'re working as <b>' + esc(team.name) + '</b>. Everything you do here shows up on your teammates\' screens and is kept on the server, so there is nothing to save: close the tab and come back to the lesson, join with the same code, and you\'re where the team is.</p></div>';
+      return HSCT;
+    }
+    var auto = saver && saver.autosave;
+    el.innerHTML = '<div class="hsct-card hsct-save">'
+      + '<h3>Save and continue later</h3>'
+      + '<p class="hsct-sub">' + (auto ? 'Your progress is also kept in this browser automatically. To continue on another device, ' : 'To continue later, ') + 'download a save file or copy a save code, then open it from the lesson\'s start screen. Saves are encrypted; every resume is recorded in your result file.</p>'
+      + '<div class="hsct-actions"><button type="button" class="hsct-btn hsct-sm hsct-sv-dl">Download save file</button><button type="button" class="hsct-btn hsct-alt hsct-sm hsct-sv-copy">Copy save code</button></div>'
+      + '<p class="hsct-status" aria-live="polite">' + (ses && ses.saves ? 'Last save: #' + ses.saves : '') + '</p>'
+      + '</div>';
+    var status = el.querySelector('.hsct-status');
+    el.querySelector('.hsct-sv-dl').onclick = function () {
+      save().then(function (s) { downloadSave(); status.className = 'hsct-status ok'; status.textContent = 'Saved: ' + s.filename + ' (' + s.id + '). Keep that file.'; })
+        .catch(function (e) { status.className = 'hsct-status bad'; status.textContent = e.message || String(e); });
+    };
+    el.querySelector('.hsct-sv-copy').onclick = function () {
+      save().then(function (s) { return copySave().then(function (ok) { status.className = 'hsct-status ' + (ok ? 'ok' : 'bad'); status.textContent = ok ? 'Save code copied (' + s.id + '). Paste it somewhere you can find it — a doc, an email to yourself.' : 'Copy failed. Use the download instead.'; }); })
+        .catch(function (e) { status.className = 'hsct-status bad'; status.textContent = e.message || String(e); });
+    };
+    return HSCT;
+  }
+
+  var HSCT = {
+    kit: KIT, verifyUrl: VERIFY_URL,
+    lesson: lesson, start: start, log: log, elapsed: elapsed,
+    finish: finish, download: download, copyCode: copyCode, endScreen: endScreen, open: open,
+    saveable: saveable, save: save, downloadSave: downloadSave, copySave: copySave, restore: restore,
+    localSave: localSave, resumeLocal: resumeLocal, clearLocalSave: clearLocalSave, resumeUI: resumeUI, saveUI: saveUI,
+    teamUI: teamUI, boardUI: boardUI, joinTeam: joinTeam, createTeam: createTeam, leaveTeam: leaveTeam, api: API,
+    get team() { return team ? { code: team.code, name: team.name, members: team.members, you: team.you, assignment: team.assignment, version: team.version, leaderboard: team.leaderboard, connected: team.connected, submitted: team.submitted } : null; },
+    get result() { return result; },
+    get session() { return ses ? { name: ses.name, started: ses.started, resumes: ses.resumes.length, saves: ses.saves, team: team ? team.code : null } : null; },
+    fmtDuration: fmtDuration,
+  };
+  window.HSCT = HSCT;
+})();

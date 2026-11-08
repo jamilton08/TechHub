@@ -1,4 +1,46 @@
-# Python Arcade — Django backend
+# TechHub backend — api.hsct.tech
+
+Django 5 + Channels (daphne), Postgres, Redis, lesson files in Cloudflare R2.
+Deployed as a Docker Compose stack next to Cruz Stats on the Hetzner box —
+**see `deploy/DEPLOY.md`** for the one-time setup.
+
+```
+backend/
+  config/         settings (all from env vars), asgi (websockets), urls
+  core/           teacher sign-in (Django session), healthz
+  lessons/        the catalog (Course → Topic → Lesson) + the lesson HTML files in storage
+                  GET /api/lessons/   POST /api/lessons/upload/ (teacher)
+                  manage.py import_lessons  (one-time move from lessons.js + public/lesson-files)
+  assignments/    assignments, teams (join codes), members, events, submissions
+                  REST in views.py, websockets in consumers.py (the wire protocol is documented there)
+  arcade/         Python Arcade projects (below — unchanged)
+  Dockerfile, entrypoint.sh
+```
+
+## Try it locally
+
+```bash
+cd backend
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py test                 # ~50 tests, including a two-student websocket room
+python manage.py runserver 127.0.0.1:8000     # daphne: HTTP + websockets
+```
+
+No env vars needed in dev: sqlite, an in-memory channel layer, lesson files under
+`media/lesson-files/` served by Django at `/lesson-files/…`, CORS open to the Vite
+dev server (`127.0.0.1:5173`). In the frontend, `VITE_API_BASE` defaults to
+`http://127.0.0.1:8000/api` on localhost, so `npm run dev` just works. Open
+`/teach`, sign in, upload `lesson-template/lesson-starter.html`, post it as an
+assignment, then open the lesson in two windows and team up.
+
+Teams, end to end, with the lesson kit: `lesson-template/README.md` → "Teams".
+
+---
+
+# Python Arcade — Django app
 
 `arcade/` is a Django app that stores Python Arcade projects for signed-in
 students. It speaks exactly the JSON the `/play` page already uses

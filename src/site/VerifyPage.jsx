@@ -4,9 +4,12 @@ import SiteFooter from './SiteFooter.jsx';
 import { useFonts } from './useFonts.js';
 import { downloadText, fmtDuration, generateKeyPair, hasCrypto, importPrivateKey, isSave, openResult, parseEnvelopes, toCsv } from './hsctVerify.js';
 import { makeZip, downloadBlob } from '../arcade/lib/zip.js';
+import { HAS_API, useAuth } from './api.js';
+import { TeamLog } from './TeachPage.jsx';
 import './site.css';
 
 const KEY_STORE = 'hsct:verify-private-key';
+const HANDOFF_KEY = 'hsct:verify-handoff';   // files /teach hands over ("Open all on /lessons/verify")
 const fmtDate = (iso) => { try { return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch { return iso; } };
 const slugName = (n) => String(n || 'Student').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
@@ -86,6 +89,32 @@ function StudentWork({ report }) {
   );
 }
 
+/**
+ * A team's result (kit v1.2): the members from the file, each member's share of
+ * the logged events (`who` on every event), and — when signed in on /teach —
+ * the server's own per-member timeline for the same team.
+ */
+function TeamPanel({ team, events, teacher }) {
+  const [showLog, setShowLog] = useState(false);
+  const counts = {};
+  (events || []).forEach((e) => { if (e.who) counts[e.who] = (counts[e.who] || 0) + 1; });
+  const members = Array.isArray(team.members) ? team.members : [];
+  return (
+    <div className="vf-work vf-team">
+      <h3>Team: {team.name || team.code} <code>{team.code}</code>{team.assignment?.title && <small> · {team.assignment.title}</small>}</h3>
+      <table className="syl-table vf-work-table"><thead><tr><th>Member</th><th>Role</th><th>Joined</th><th>Actions in file</th><th>Active time</th></tr></thead><tbody>
+        {members.map((m, i) => (
+          <tr key={i}><td>{m.name}{team.submittedBy === m.name && <span className="pill muted" style={{ marginLeft: 6 }}>turned it in</span>}</td><td>{m.role || '—'}</td><td>{fmtDate(m.joinedAt)}{m.leftAt ? ` → left ${fmtDate(m.leftAt)}` : ''}</td><td>{counts[m.name] ?? m.events ?? '—'}</td><td>{m.activeSeconds != null ? fmtDuration(m.activeSeconds) : '—'}</td></tr>
+        ))}
+      </tbody></table>
+      {teacher
+        ? <p><button type="button" className="vf-copy" onClick={() => setShowLog((v) => !v)}>{showLog ? 'Hide the server log' : 'Who did what — server log'}</button> <small>every action with the member who did it, timed by the server</small></p>
+        : <p><small>Sign in on <a href="/teach">/teach</a> to see the server's per-member timeline for this team here.</small></p>}
+      {showLog && teacher && <TeamLog code={team.code} compact />}
+    </div>
+  );
+}
+
 export default function VerifyPage() {
   useFonts();
   useEffect(() => { document.title = 'Verify result files · HSCT TechHub'; }, []);
@@ -103,6 +132,7 @@ export default function VerifyPage() {
   }, [keyText]);
   const saveKey = (t) => { setKeyText(t); try { if (t.trim()) localStorage.setItem(KEY_STORE, t); else localStorage.removeItem(KEY_STORE); } catch { /* private mode */ } };
 
+  const auth = useAuth();   // signed-in teachers can pull a team's server-side log next to the file
   const [fresh, setFresh] = useState(null);
   const makePair = async () => {
     const pair = await generateKeyPair();
@@ -142,6 +172,7 @@ export default function VerifyPage() {
         percent: p ? (save ? (sum && sum.possible ? Math.round(1000 * sum.earned / sum.possible) / 10 : null) : p.score.percent) : null,
         tier: p ? (save ? (sum && sum.label) || 'in progress' : p.tier) : null,
         resumes: p && Array.isArray(p.resumes) ? p.resumes.length : 0,
+        team: (p && p.team) || (envelope.team ? { code: envelope.team, name: envelope.teamName } : null),
         badge: save ? envelope.id : envelope.badge,
         status: r.ok ? (save ? 'SAVE — not finished' : 'OK') : `FAILED — ${r.error}`,
         ok: r.ok,
@@ -155,6 +186,14 @@ export default function VerifyPage() {
     });
     setBusy(false);
   };
+
+  /* files handed over from /teach (Submissions → "Open all on /lessons/verify") */
+  useEffect(() => {
+    if (!key) return;
+    let items = null;
+    try { items = JSON.parse(sessionStorage.getItem(HANDOFF_KEY) || 'null'); sessionStorage.removeItem(HANDOFF_KEY); } catch { /* ignore */ }
+    if (Array.isArray(items) && items.length) addEnvelopes(items.map((it) => ({ envelope: it.envelope, file: it.file || 'from /teach' })));
+  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onFiles = async (list) => {
     const items = [];
@@ -282,7 +321,7 @@ export default function VerifyPage() {
                       {sorted.map((r) => (
                         <Fragment key={r.id}>
                           <tr className={`${r.ok ? '' : 'is-bad'}${open === r.id ? ' is-open' : ''}`} onClick={() => setOpen(open === r.id ? null : r.id)}>
-                            <td>{r.student}{r.ok && dupNames.get(`${r.student}|${r.lesson}`) > 1 && <span className="pill muted" title="More than one file for this student and lesson">×{dupNames.get(`${r.student}|${r.lesson}`)}</span>}</td>
+                            <td>{r.team ? <><strong>{r.team.name || `Team ${r.team.code}`}</strong> <span className="pill" title={`Team ${r.team.code} — turned in by ${r.team.submittedBy || r.student}`}>team</span><br /><small>{Array.isArray(r.team.members) ? r.team.members.map((m) => m.name).join(', ') : r.student}</small></> : r.student}{r.ok && !r.team && dupNames.get(`${r.student}|${r.lesson}`) > 1 && <span className="pill muted" title="More than one file for this student and lesson">×{dupNames.get(`${r.student}|${r.lesson}`)}</span>}</td>
                             <td>{r.title || r.lesson}</td>
                             <td>{r.finished ? fmtDate(r.finished) : '—'}{r.save && <span className="pill muted" title="A save file: the lesson was not finished">save</span>}{r.resumes > 0 && <span className="pill muted" title="This run was resumed from a save">resumed ×{r.resumes}</span>}</td>
                             <td>{r.seconds != null ? fmtDuration(r.seconds) : '—'}{r.activeSeconds != null && r.activeSeconds < r.seconds - 60 ? <small> ({fmtDuration(r.activeSeconds)} active)</small> : null}</td>
@@ -316,6 +355,7 @@ export default function VerifyPage() {
                                     </details>
                                   )}
                                 </div>
+                                {r.payload?.team && <TeamPanel team={r.payload.team} events={r.payload.events} teacher={HAS_API && auth.isTeacher} />}
                                 {Array.isArray(r.payload?.extra?.report) && <StudentWork report={r.payload.extra.report} />}
                               </td>
                             </tr>

@@ -30,7 +30,7 @@ const lessonsEntry = () => {
         items: CATEGORIES.map((c) => {
           const n = countLessons(c);
           return { label: c.title, sub: n ? `${n} lesson${n === 1 ? '' : 's'}` : undefined, href: `/lessons/${c.slug}`, soon: n === 0 };
-        }).concat([{ label: 'Verify result files', sub: 'teachers', href: '/lessons/verify' }]),
+        }).concat([{ label: 'Verify result files', sub: 'teachers', href: '/lessons/verify' }, { label: 'Teach', sub: 'assignments & live teams', href: '/teach' }]),
       },
       ...(newest.length ? [{
         label: 'Newest lessons',
