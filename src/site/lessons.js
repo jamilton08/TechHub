@@ -4,13 +4,18 @@
  *   topic     → a section on the category page  (#<topic id>)
  *   lesson    → /lessons/<category>/<lesson>    (renders one HTML file)
  *
- * Each lesson is a self-contained HTML file. Put the file in
- * public/lesson-files/<category>/ and set `file` to its name — it is served
- * as-is, exactly like /hsct-logo.png. `file` can also be a full URL to a
- * page hosted elsewhere. A lesson with an empty `file` shows as "coming
- * soon"; a topic with no lessons shows an empty state. Nothing else to
- * wire: the nav, the directory, the cards and the lesson page all read
- * from here.
+ * Since Nov 2026 the catalog lives in the backend (api.hsct.tech/api/lessons/)
+ * and lesson files in object storage (lessons.hsct.tech), so a new lesson is an
+ * upload on /teach, not a deploy. `loadCatalog()` in main.jsx fetches it before
+ * the pages render and swaps it into CATEGORIES in place (the last good copy is
+ * kept in this browser, so the site paints instantly on later visits). The list
+ * below is the FALLBACK: what shows if the API can't be reached and nothing is
+ * cached, and the seed for `scripts/export-catalog.mjs` → `import_lessons`.
+ *
+ * Each lesson is a self-contained HTML file. In the fallback, `file` is a name
+ * under public/lesson-files/<category>/ (served as-is, like /hsct-logo.png) or
+ * a full URL; from the API it is always a full URL. A lesson with an empty
+ * `file` shows as "coming soon"; a topic with no lessons shows an empty state.
  *
  * `kind` decides the label and the button verb (see KINDS).
  * `minutes` is a rough time-to-finish shown on the card.
@@ -25,7 +30,7 @@ export const KINDS = {
   quiz:    { label: 'Quiz',    verb: 'Take the quiz' },
 };
 
-export const CATEGORIES = [
+export const CATEGORIES = [   // fallback + seed; replaced in place by loadCatalog()
   {
     slug: 'it-network',
     title: 'IT Network',
@@ -449,15 +454,60 @@ export const CATEGORIES = [
   },
 ];
 
+/* ── the live catalog ─────────────────────────────────────────────── */
+
+const CACHE_KEY = 'hsct:catalog:v1';
+let source = 'fallback';   // 'fallback' | 'cache' | 'api'
+export const catalogSource = () => source;
+
+/** Replace the catalog's contents in place, so every module that imported CATEGORIES sees the new one. */
+export function setCatalog(categories, from = 'api') {
+  if (!Array.isArray(categories) || !categories.length) return false;
+  CATEGORIES.splice(0, CATEGORIES.length, ...categories);
+  source = from;
+  return true;
+}
+
+/**
+ * Load the catalog from the API. Returns when the catalog is settled: the cached
+ * copy applied at once and refreshed in the background, or the API awaited (up to
+ * `timeout` ms) when nothing is cached. Never throws.
+ */
+export async function loadCatalog({ apiBase, timeout = 1800 } = {}) {
+  if (!apiBase) return source;
+  let cached = null;
+  try { cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); } catch { /* private mode */ }
+  if (cached && setCatalog(cached, 'cache')) { refresh(apiBase); return source; }
+  await Promise.race([refresh(apiBase), new Promise((r) => setTimeout(r, timeout))]);
+  return source;
+}
+/** Fetch the catalog again now (after an upload on /teach, say). Resolves to the source in effect. */
+export async function reloadCatalog(apiBase) { await refresh(apiBase); return source; }
+async function refresh(apiBase) {
+  try {
+    const r = await fetch(`${apiBase}/lessons/`, { credentials: 'include', headers: { Accept: 'application/json' } });
+    if (!r.ok) return;
+    const data = await r.json();
+    if (setCatalog(data.categories, 'api')) { try { localStorage.setItem(CACHE_KEY, JSON.stringify(data.categories)); } catch { /* full or private */ } }
+  } catch { /* offline, or no backend yet: the fallback or the cache stands */ }
+}
+
 /* ── helpers ──────────────────────────────────────────────────────── */
 
 export const getCategory = (slug) => CATEGORIES.find((c) => c.slug === slug) || null;
 
 /** The URL the iframe loads. A bare file name lives under /lesson-files/<category>/. */
-export const lessonSrc = (category, lesson) => {
+export const lessonSrc = (category, lesson, query = '') => {
   if (!lesson.file) return '';
-  if (/^(https?:)?\/\//.test(lesson.file) || lesson.file.startsWith('/')) return lesson.file;
-  return `/lesson-files/${category.slug}/${lesson.file}`;
+  const base = /^(https?:)?\/\//.test(lesson.file) || lesson.file.startsWith('/') ? lesson.file : `/lesson-files/${category.slug}/${lesson.file}`;
+  return query ? `${base}${base.includes('?') ? '&' : '?'}${query}` : base;
+};
+
+/** The part of the page's query string a lesson should see: ?team=CODE or ?assignment=ID (teams, kit v1.2). */
+export const lessonQuery = (search = typeof location !== 'undefined' ? location.search : '') => {
+  const q = new URLSearchParams(search), out = new URLSearchParams();
+  for (const k of ['team', 'assignment']) if (q.get(k)) out.set(k, q.get(k));
+  return out.toString();
 };
 
 export const lessonHref = (category, lesson) => `/lessons/${category.slug}/${lesson.slug}`;

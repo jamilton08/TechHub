@@ -120,9 +120,15 @@ export function fmtDuration(sec) {
 }
 
 export function toCsv(rows) {
-  const cols = ['student', 'lesson', 'title', 'kind', 'finished', 'seconds', 'activeSeconds', 'earned', 'possible', 'percent', 'tier', 'resumes', 'badge', 'status', 'file'];
+  const cols = ['student', 'team', 'teamCode', 'members', 'lesson', 'title', 'kind', 'finished', 'seconds', 'activeSeconds', 'earned', 'possible', 'percent', 'tier', 'resumes', 'badge', 'status', 'file'];
   const q = (v) => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
-  return [cols.join(','), ...rows.map((r) => cols.map((c) => q(r[c])).join(','))].join('\r\n');
+  const cell = (r, c) => {
+    if (c === 'team') return r.team ? (r.team.name || '') : '';
+    if (c === 'teamCode') return r.team ? r.team.code : '';
+    if (c === 'members') return r.team && Array.isArray(r.team.members) ? r.team.members.map((m) => m.name).join('; ') : '';
+    return r[c];
+  };
+  return [cols.join(','), ...rows.map((r) => cols.map((c) => q(cell(r, c))).join(','))].join('\r\n');
 }
 
 export const downloadText = (name, text, type = 'text/plain') => {
