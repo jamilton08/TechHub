@@ -1,6 +1,6 @@
-# HSCT World Kit v0.3
+# HSCT World Kit v0.4
 
-Turns a lesson's work screen into a walkable top-down world. Pairs with HSCT Lesson Kit v1.1.
+Turns a lesson's work screen into a walkable top-down world. Pairs with HSCT Lesson Kit v1.3.
 
 Files
 - lesson-template/hsct-world.js          the kit (inline it after hsct-lesson.js, between <!-- HSCT WORLD START/END -->)
@@ -44,6 +44,23 @@ New in v0.3 — the drive module
 - A lesson can gate a task on the car ("the boxes are in the trunk"): check world.carAt('nena') against
   the driveway tiles, and L.world.driving.
 Everything in v0.2 works unchanged; the Boss lesson's inlined v0.2 block can be replaced by v0.3 as is.
+
+New in v0.4 — teammates in the world (multiplayer)
+- Nothing to configure. When the student is in a team (lesson kit 1.3, `HSCT.team`), every teammate on
+  the same map is drawn as a live sprite with their own look and a name tag, walking tile to tile as
+  they move; cars too. A teammate sitting at a desk/board shows ✎ on the tag. Teammates on other maps
+  are listed in the HUD: "With you: Hal · Elsewhere: Gia — Team Hall". Teammates are not solid, so
+  nobody can block a doorway. `cfg.peers: false` turns the drawing off.
+- Positions travel over the team websocket as `pos` messages and are never stored on the server.
+- The kit registers its state with the lesson kit (`HSCT.registerWorld`), so team sharing leaves
+  `map, x, y, facing, look, visited, steps, cars, driving` alone and merges everything else
+  (picked items, opened panels, and the lesson's own fields) additively: coins, parts and answers are
+  the team's; nobody gets teleported or re-dressed. A lesson that keeps its own HUD (an XP counter)
+  re-renders on `document`'s `hsct:merged` event — the world starter does
+  `document.addEventListener('hsct:merged', renderXp)`.
+- A panel that is open when a teammate's work arrives keeps showing what it showed; its ✓/★ marker on
+  the map updates. Use `rebuild: true` on panels that should always show the team's latest.
+Everything in v0.3 works unchanged. `node scripts/update-kit.mjs` swaps both kits into every lesson.
 
 Minimal use
   world = HSCTWorld.create({ mount: '#world', state: () => L.world, start: {...}, maps: {...}, panels: {...} });

@@ -486,7 +486,7 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.4rem}
 <!-- HSCT KIT START — do not edit; copy the whole block from lesson-template/hsct-lesson.js -->
 <script>
 /* ============================================================================
-   HSCT LESSON KIT  v1.2
+   HSCT LESSON KIT  v1.3
    Every lesson on HSCT TechHub inlines this block unchanged (between the
    <!-- HSCT KIT START --> and <!-- HSCT KIT END --> markers). It gives a
    lesson five things:
@@ -575,11 +575,30 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.4rem}
      HSCT.joinTeam(code, name, role) / HSCT.createTeam(assignmentId, name, teamName, role)
      HSCT.leaveTeam()
 
+     (v1.3) live presence for worlds and other "see each other" lessons:
+     HSCT.sendPos(data)   send where this student's character is (coalesced, ~12/s max);
+                          relayed to teammates as-is, never stored
+     HSCT.onPeer(cb)      cb(member, data) on every teammate position; cb(member, null) when
+                          one goes offline. Returns an unsubscribe function.
+     HSCT.peers           -> { memberId: { member, data, at } } for teammates currently placed
+     HSCT.registerWorld({ state, refresh, privateKeys })
+                          a world kit tells the lesson kit which object is the world's state,
+                          so team sharing leaves the player's position/look alone (see below)
+     HSCT.mergeInto(target, incoming)   the additive merge used for team state
+
+   Team state in a world (v1.3): with a world registered and no `shared`/`merge` of
+   its own on HSCT.saveable, the kit shares get() MINUS the world's private keys
+   (map, x, y, facing, look, visited, steps, cars, driving) and merges a teammate's
+   copy INTO the local state additively (objects recurse, arrays fill element by
+   element, picked/flags union; incoming wins where both have a value), then calls
+   the world's refresh() and dispatches a `hsct:merged` event on document. Nobody
+   gets teleported; coins, parts and answers are the team's.
+
    Team wire protocol: see backend/assignments/consumers.py.
    ========================================================================== */
 (function () {
   'use strict';
-  var KIT = '1.2';
+  var KIT = '1.3';
 
   /* Mr. Cruz's public key. Replace the whole object if the key pair is ever
      regenerated on /lessons/verify — and keep the private key out of git. */
@@ -605,6 +624,10 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.4rem}
   var lastSave = null; // { id, filename, text, envelope }
   var autoTimer = null;
   var team = null;     // { code, name, token, you, members, assignment, version, state, leaderboard, status, connected, submitted, startedAt, elapsedSeconds }
+  var peers = {};      // v1.3: memberId -> { member, data, at }
+  var peerCbs = [];
+  var worldReg = null; // v1.3: { state: () => S, refresh, privateKeys }
+  var posPending = null, posTimer = null, lastPos = null, posKeepTimer = null;
 
   /* ---------- small helpers ---------- */
   var enc = new TextEncoder();
@@ -967,6 +990,7 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.4rem}
     try { sessionStorage.removeItem(teamKey()); } catch (e) {}
     closeSocket();
     team = null; feed = [];
+    Object.keys(peers).forEach(function (id) { var pm = peers[id].member; delete peers[id]; firePeer(pm, null); });
     renderTeamCard(); renderBoards();
   }
 
@@ -1022,7 +1046,13 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.4rem}
   function applyState(state) {
     if (!saver) return;
     applying = true;
-    try { lastShared = JSON.stringify(state); (saver.merge || saver.set)(JSON.parse(lastShared)); } catch (e) { console.warn('HSCT team: could not apply shared state', e); }
+    try {
+      lastShared = JSON.stringify(state);
+      var incoming = JSON.parse(lastShared);
+      if (saver.merge) saver.merge(incoming);
+      else if (worldReg) { mergeInto(saver.get(), incoming); if (worldReg.refresh) worldReg.refresh(); try { document.dispatchEvent(new CustomEvent('hsct:merged', { detail: incoming })); } catch (e2) {} }
+      else saver.set(incoming);
+    } catch (e) { console.warn('HSCT team: could not apply shared state', e); }
     applying = false;
     renderBoards();
   }
@@ -1038,6 +1068,9 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.4rem}
       clearInterval(heartTimer); heartTimer = setInterval(function () { send({ type: 'heartbeat', activeSeconds: ses ? ses.active : 0 }); }, 15000);
       /* changes a lesson makes without logging (a "Next" button, a slider) still reach the team */
       clearInterval(pollTimer); pollTimer = setInterval(function () { if (!applying && !stateTimer) shareState(true); }, 2500);
+      /* v1.3: my position again every few seconds, so a teammate who reconnects sees me */
+      clearInterval(posKeepTimer); posKeepTimer = setInterval(function () { if (lastPos) sendPosNow(lastPos); expirePeers(); }, 4000);
+      if (lastPos) sendPosNow(lastPos);
     };
     ws.onmessage = function (ev) { var m; try { m = JSON.parse(ev.data); } catch (e) { return; } onRoom(m); };
     ws.onclose = function (ev) {
@@ -1051,7 +1084,7 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.4rem}
     };
     ws.onerror = function () {};
   }
-  function closeSocket() { clearTimeout(sockTimer); clearInterval(heartTimer); clearInterval(pollTimer); clearTimeout(stateTimer); stateTimer = null; if (SOCK) { var s = SOCK; SOCK = null; try { s.close(); } catch (e) {} } }
+  function closeSocket() { clearTimeout(sockTimer); clearInterval(heartTimer); clearInterval(pollTimer); clearInterval(posKeepTimer); clearTimeout(stateTimer); clearTimeout(posTimer); stateTimer = null; posTimer = null; if (SOCK) { var s = SOCK; SOCK = null; try { s.close(); } catch (e) {} } }
   function send(m) { if (SOCK && SOCK.readyState === 1) { try { SOCK.send(JSON.stringify(m)); return true; } catch (e) {} } return false; }
   function sendStatus(phase) { send({ type: 'status', phase: phase }); }
 
@@ -1066,7 +1099,16 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.4rem}
         break;
       case 'presence':
         team.members = m.members || team.members; if (m.status) team.status = m.status;
+        (team.members || []).forEach(function (mem) { if ((!mem.online || mem.leftAt) && peers[mem.id]) { delete peers[mem.id]; firePeer(mem, null); } });
+        if (lastPos) sendPosNow(lastPos);   // a newcomer needs to see where I am
         break;
+      case 'pos':
+        if (m.member && team.you && m.member.id !== team.you.id) {
+          var pd = {}; for (var pk in m) if (pk !== 'type' && pk !== 'member') pd[pk] = m[pk];
+          peers[m.member.id] = { member: m.member, data: pd, at: Date.now() };
+          firePeer(m.member, pd);
+        }
+        return;   // positions don't redraw the board
       case 'event':
         if (!(m.member && team.you && m.member.id === team.you.id)) pushFeed(m);
         break;
@@ -1100,7 +1142,7 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.4rem}
   }
   function shareState(onlyIfChanged) {
     if (!team || !saver || !ses || applying || result || team.submitted) return;
-    var json; try { json = JSON.stringify((saver.shared || saver.get)()); } catch (e) { return; }
+    var json; try { json = JSON.stringify(saver.shared ? saver.shared() : worldReg ? stripWorld(saver.get()) : saver.get()); } catch (e) { return; }
     if (json === undefined || (onlyIfChanged && json === lastShared)) return;
     lastShared = json;
     var state = JSON.parse(json);
@@ -1139,6 +1181,68 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.4rem}
       result = { badge: env.badge, filename: 'HSCT_' + env.lesson + '_TEAM-' + slug(env.teamName || team.name) + '_' + stamp(new Date(env.finished || Date.now())) + '.hsct', text: JSON.stringify(env), payload: null, byTeammate: m.by ? m.by.name : null };
       clearInterval(ticker); clearTimeout(autoTimer); clearLocalSave();
     }
+  }
+
+  /* ---------- v1.3: peers (live positions) ---------- */
+  function firePeer(member, data) { peerCbs.forEach(function (cb) { try { cb(member, data); } catch (e) { console.warn('HSCT onPeer callback failed', e); } }); }
+  function expirePeers() {
+    var now = Date.now();
+    Object.keys(peers).forEach(function (id) { if (now - peers[id].at > 15000) { var pm = peers[id].member; delete peers[id]; firePeer(pm, null); } });
+  }
+  function sendPosNow(data) { lastPos = data; var m = { type: 'pos' }; for (var k in data) m[k] = data[k]; send(m); }
+  /* coalesced: the last position in any 80 ms window is the one that goes out */
+  function sendPos(data) {
+    if (!team || !data) return HSCT;
+    posPending = data;
+    if (!posTimer) posTimer = setTimeout(function () { posTimer = null; var d = posPending; posPending = null; if (d) sendPosNow(d); }, 80);
+    return HSCT;
+  }
+  function onPeer(cb) {
+    if (typeof cb !== 'function') return function () {};
+    peerCbs.push(cb);
+    Object.keys(peers).forEach(function (id) { cb(peers[id].member, peers[id].data); });   // catch up
+    return function () { var i = peerCbs.indexOf(cb); if (i >= 0) peerCbs.splice(i, 1); };
+  }
+  var WORLD_PRIVATE = ['map', 'x', 'y', 'facing', 'look', 'visited', 'steps', 'cars', 'driving'];
+  function registerWorld(o) {
+    if (!o || typeof o.state !== 'function') return HSCT;
+    worldReg = { state: o.state, refresh: o.refresh || null, privateKeys: o.privateKeys || WORLD_PRIVATE };
+    return HSCT;
+  }
+  /* a deep copy of the lesson state with the world's private keys left out */
+  function stripWorld(full) {
+    var ws = worldReg && worldReg.state();
+    var priv = (worldReg && worldReg.privateKeys) || WORLD_PRIVATE;
+    function copy(v) {
+      if (v === null || typeof v !== 'object') return v;
+      if (Array.isArray(v)) return v.map(copy);
+      var out = {};
+      for (var k in v) { if (v === ws && priv.indexOf(k) >= 0) continue; out[k] = copy(v[k]); }
+      return out;
+    }
+    return copy(full);
+  }
+  /* Merge `incoming` into `target` in place. Objects recurse; arrays fill element by element;
+     a value in incoming replaces the local one, but a missing/null incoming value never erases
+     a local one. Returns target. Used for team state so two students' work adds up. */
+  function mergeInto(target, incoming) {
+    if (target === null || typeof target !== 'object' || incoming === null || typeof incoming !== 'object') return target;
+    if (Array.isArray(target) && Array.isArray(incoming)) {
+      for (var i = 0; i < incoming.length; i++) {
+        var iv = incoming[i];
+        if (iv == null) continue;
+        if (typeof iv === 'object' && target[i] && typeof target[i] === 'object') mergeInto(target[i], iv);
+        else target[i] = iv;
+      }
+      return target;
+    }
+    for (var k in incoming) {
+      var v = incoming[k];
+      if (v == null) { if (!(k in target)) target[k] = v; continue; }
+      if (typeof v === 'object' && target[k] && typeof target[k] === 'object' && Array.isArray(v) === Array.isArray(target[k])) mergeInto(target[k], v);
+      else target[k] = (typeof v === 'object') ? JSON.parse(JSON.stringify(v)) : v;
+    }
+    return target;
   }
 
   /* ---------- team UI: the intro card ---------- */
@@ -1408,6 +1512,8 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.4rem}
     saveable: saveable, save: save, downloadSave: downloadSave, copySave: copySave, restore: restore,
     localSave: localSave, resumeLocal: resumeLocal, clearLocalSave: clearLocalSave, resumeUI: resumeUI, saveUI: saveUI,
     teamUI: teamUI, boardUI: boardUI, joinTeam: joinTeam, createTeam: createTeam, leaveTeam: leaveTeam, api: API,
+    sendPos: sendPos, onPeer: onPeer, registerWorld: registerWorld, mergeInto: mergeInto,
+    get peers() { return peers; },
     get team() { return team ? { code: team.code, name: team.name, members: team.members, you: team.you, assignment: team.assignment, version: team.version, leaderboard: team.leaderboard, connected: team.connected, submitted: team.submitted } : null; },
     get result() { return result; },
     get session() { return ses ? { name: ses.name, started: ses.started, resumes: ses.resumes.length, saves: ses.saves, team: team ? team.code : null } : null; },

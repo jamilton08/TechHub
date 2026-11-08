@@ -1,5 +1,5 @@
 /* ============================================================================
-   HSCT WORLD KIT  v0.3  (goes with HSCT LESSON KIT v1.1)
+   HSCT WORLD KIT  v0.4  (goes with HSCT LESSON KIT v1.3)
    A lesson's work screen as a small top-down world: the student makes a
    character, walks a tile map Pokémon-style, talks to NPCs, reads signs,
    enters buildings, and sits down at a desk, whiteboard or computer to do a
@@ -92,6 +92,20 @@
             cars are scenery (solid, "Not your car."); `locked: (ctx) => 'why'` refuses.
      cfg.onDrive(driving, carId)   called on get in / get out
      world.driving → the car id or null · world.carAt(id) → { map, x, y }
+
+   NEW IN v0.4 — teammates in the world (needs lesson kit 1.3 and a team):
+     Nothing to configure. When the student is in a team (HSCT.team), every
+     teammate on the same map is drawn as a live sprite with their own look and
+     a name tag, walking tile to tile as they move (cars too); a teammate at a
+     desk shows ✎ on the tag; teammates on other maps are listed in the HUD
+     ("With you: Hal · Elsewhere: Gia — Team Hall"). Teammates are not solid.
+     Positions travel over the team websocket and are never stored.
+     The kit registers its state with the lesson kit (HSCT.registerWorld), so
+     team sharing leaves map/x/y/facing/look/visited/steps/cars/driving alone and
+     merges the rest (picked items, opened panels, the lesson's own fields)
+     additively — see the lesson kit header. A lesson that wants to react to a
+     merge (re-render an XP counter) listens to `document` for `hsct:merged`.
+     cfg.peers: false  turns the drawing off for a lesson.
    ========================================================================== */
 (function () {
   'use strict';
@@ -247,9 +261,12 @@
     function driving() { return S.driving ? carById(S.driving) : null; }
     function stepMs() { return driving() ? DRIVE_MS : STEP_MS; }
     var VW = VIEW_W, VH = VIEW_H;   // tiles on screen; smaller on phones so the sprites stay big
+    /* v0.4: teammates. id -> { member, data, prev:{x,y}, cur:{x,y}, t0, tag } */
+    var peers = {}, unsubPeer = null, lastSig = '';
+    var HS = window.HSCT || null;
 
     mount.innerHTML = '<div class="hw-stage" tabindex="0" aria-label="The map. Arrow keys or WASD walk, Space or Enter talks and uses things.">'
-      + '<div class="hw-hud"><span class="hw-map"></span><span class="hw-obj"></span><span class="hw-extra"></span><button type="button" class="hw-tasks-btn">Tasks</button></div>'
+      + '<div class="hw-hud"><span class="hw-map"></span><span class="hw-obj"></span><span class="hw-extra"></span><span class="hw-peers"></span><button type="button" class="hw-tasks-btn">Tasks</button></div>'
       + '<div class="hw-view"><canvas class="hw-cv" width="' + (VW * T) + '" height="' + (VH * T) + '"></canvas><div class="hw-labels"></div><div class="hw-fade"></div><div class="hw-toast" hidden></div>'
       + '<div class="hw-dialog" hidden><div class="hw-dname"></div><div class="hw-dtext"></div><div class="hw-dmore">▼</div></div>'
       + '<div class="hw-prompt" hidden></div>'
@@ -263,7 +280,7 @@
     var dlg = mount.querySelector('.hw-dialog'), dname = mount.querySelector('.hw-dname'), dtext = mount.querySelector('.hw-dtext'), dmore = mount.querySelector('.hw-dmore');
     var promptEl = mount.querySelector('.hw-prompt');
     var panelEl = mount.querySelector('.hw-panel'), panelBody = mount.querySelector('.hw-panel-body'), panelTitle = mount.querySelector('.hw-panel-title');
-    var hudMap = mount.querySelector('.hw-map'), hudObj = mount.querySelector('.hw-obj'), hudExtra = mount.querySelector('.hw-extra'), toastEl = mount.querySelector('.hw-toast');
+    var hudMap = mount.querySelector('.hw-map'), hudObj = mount.querySelector('.hw-obj'), hudExtra = mount.querySelector('.hw-extra'), hudPeers = mount.querySelector('.hw-peers'), toastEl = mount.querySelector('.hw-toast');
     var tasksEl = mount.querySelector('.hw-tasks');
     ctx.imageSmoothingEnabled = false;
     var panelNodes = {};
@@ -355,6 +372,7 @@
       map.objs.forEach(function (o) { if (o.type === 'building' && o.label) { var d = document.createElement('div'); d.className = 'hw-label'; d.textContent = o.label; d._o = o; labels.appendChild(d); } });
       if (cfg.onEnterMap) cfg.onEnterMap(id);
       renderTasks();
+      renderPeersHud();
     }
     function paintBuilding(c, o) {
       var x0 = o.x * T, y0 = o.y * T, w = o.w * T, h = o.h * T, roofH = Math.max(T, Math.round(h * 0.42));
@@ -541,6 +559,7 @@
       panelBody.appendChild(node);
       stage.hidden = true; panelEl.hidden = false;
       promptEl.hidden = true;
+      announce();   // v0.4: teammates see ✎ on my tag
       window.scrollTo(0, Math.max(0, mount.getBoundingClientRect().top + window.scrollY - 10));
       if (cfg.onPanelOpen) cfg.onPanelOpen(id);
       var first = node.querySelector('input,button,textarea,select,[tabindex]'); if (first) try { first.focus({ preventScroll: true }); } catch (e) {}
@@ -577,9 +596,64 @@
     mount.querySelector('.hw-tasks-btn').onclick = function () { tasksEl.hidden = false; renderTasks(); };
     mount.querySelector('.hw-tasks-close').onclick = function () { tasksEl.hidden = true; focus(); };
 
+    /* ---- v0.4: teammates ---- */
+    function peersOn() { return cfg.peers !== false && HS && HS.team; }
+    function onPeerUpdate(member, data) {
+      var id = member && member.id; if (!id) return;
+      if (!data) { if (peers[id]) { if (peers[id].tag) peers[id].tag.remove(); delete peers[id]; } renderPeersHud(); return; }
+      var p = peers[id];
+      if (!p) { p = peers[id] = { member: member, data: data, prev: { x: data.x, y: data.y }, cur: { x: data.x, y: data.y }, t0: -9999, tag: null }; }
+      else {
+        if (p.data.map === data.map && (p.cur.x !== data.x || p.cur.y !== data.y)) { p.prev = { x: p.cur.x, y: p.cur.y }; p.cur = { x: data.x, y: data.y }; p.t0 = frameClock; }
+        else if (p.data.map !== data.map) { p.prev = { x: data.x, y: data.y }; p.cur = { x: data.x, y: data.y }; p.t0 = -9999; }
+        p.data = data; p.member = member;
+      }
+      renderPeersHud();
+    }
+    function renderPeersHud() {
+      if (!hudPeers) return;
+      var here = [], away = [];
+      Object.keys(peers).forEach(function (id) { var p = peers[id], nm = (p.member.name || '').split(' ')[0]; if (p.data.map === mapId) here.push(nm + (p.data['in'] ? ' ✎' : '')); else { var mt = cfg.maps[p.data.map] && cfg.maps[p.data.map].title; away.push(nm + (mt ? ' — ' + mt : '')); } });
+      hudPeers.textContent = (here.length ? 'With you: ' + here.join(', ') : '') + (here.length && away.length ? ' · ' : '') + (away.length ? 'Elsewhere: ' + away.join(', ') : '');
+      hudPeers.hidden = !here.length && !away.length;
+    }
+    /* my own position: whenever it changes, tell the team (the lesson kit coalesces) */
+    function announce() {
+      if (!peersOn() || !S || !mapId) return;
+      var tx = player.moving ? player.moving.tx : player.x, ty = player.moving ? player.moving.ty : player.y;
+      var car = driving();
+      var sig = [mapId, tx, ty, player.facing, !!player.moving, S.driving || '', panelOpen ? panelOpen.id : ''].join('|');
+      if (sig === lastSig) return;
+      lastSig = sig;
+      HS.sendPos({ map: mapId, x: tx, y: ty, facing: player.facing, moving: !!player.moving, look: S.look, driving: S.driving || null, car: car ? (car.color || '#b3261e') : null, 'in': panelOpen ? panelOpen.id : null });
+    }
+    function drawPeers(ox, oy, drawables) {
+      Object.keys(peers).forEach(function (id) {
+        var p = peers[id]; if (p.data.map !== mapId) { if (p.tag) p.tag.hidden = true; return; }
+        var dur = p.data.driving ? DRIVE_MS : STEP_MS, e = Math.min(1, (frameClock - p.t0) / dur);
+        var x = (p.prev.x + (p.cur.x - p.prev.x) * e) * T, y = (p.prev.y + (p.cur.y - p.prev.y) * e) * T;
+        var walking = e < 1 || p.data.moving;
+        drawables.push({ y: y - 0.5, f: function () {
+          if (p.data.driving) { ctx.drawImage(carSprite(p.data.car || '#b3261e', p.data.facing || 'down'), Math.round(x - ox), Math.round(y - oy)); return; }
+          var look = Object.assign({}, DEFAULT_LOOK, p.data.look || {});
+          drawSprite(ctx, look, p.data.facing || 'down', walking ? Math.floor(frameClock / 120) % 2 : 0, x - ox, y - oy);
+          if (tileAt(p.cur.x, p.cur.y).grass && e > 0.5) { ctx.save(); ctx.translate(p.cur.x * T - ox, p.cur.y * T - oy); paintGrassOver(ctx, p.cur.x, p.cur.y); ctx.restore(); }
+        } });
+        if (!p.tag) { p.tag = document.createElement('div'); p.tag.className = 'hw-peer-tag'; labels.appendChild(p.tag); }
+        p.tag.hidden = false;
+        var txt = (p.member.name || '').split(' ')[0] + (p.data['in'] ? ' ✎' : '');
+        if (p.tag.textContent !== txt) p.tag.textContent = txt;
+        var scale = view.clientWidth / cv.width;
+        p.tag.style.left = (x + T / 2 - ox) * scale + 'px'; p.tag.style.top = (y - oy - 8) * scale + 'px';
+      });
+    }
+    if (HS && HS.onPeer) unsubPeer = HS.onPeer(onPeerUpdate);
+    if (HS && HS.registerWorld) HS.registerWorld({ state: function () { return S; }, refresh: function () { refresh(); } });
+
     /* ---- render loop ---- */
     function draw(dt) {
       frameClock += dt;
+      announce();
       if (player.moving) {
         player.moving.t += dt / stepMs();
         if (player.moving.t >= 1) arrive();
@@ -608,6 +682,8 @@
       });
       /* v0.3: parked cars on this map */
       cars.forEach(function (o) { if (evalProp(o.hidden) || S.driving === o.id) return; var p = carPos(o); if (p.map !== mapId) return; drawables.push({ y: p.y * T, f: function () { ctx.drawImage(carSprite(o.color || '#b3261e', o.facing || 'down'), p.x * T - ox, p.y * T - oy); } }); });
+      /* v0.4: teammates on this map */
+      if (peersOn()) drawPeers(ox, oy, drawables);
       drawables.push({ y: py, f: function () {
         var car = driving();
         if (car) { var bump = player.moving ? (Math.floor(frameClock / 90) % 2) : 0; ctx.drawImage(carSprite(car.color || '#b3261e', player.facing), Math.round(px - ox), Math.round(py - oy - bump)); return; }
@@ -628,7 +704,7 @@
       }
       /* labels follow the camera */
       var scale = view.clientWidth / cv.width;
-      for (var i = 0; i < labels.children.length; i++) { var L = labels.children[i], o = L._o; L.style.left = ((o.x + o.w / 2) * T - ox) * scale + 'px'; L.style.top = (o.y * T - oy - 4) * scale + 'px'; }
+      for (var i = 0; i < labels.children.length; i++) { var L = labels.children[i], o = L._o; if (!o) continue; /* v0.4: teammate tags position themselves */ L.style.left = ((o.x + o.w / 2) * T - ox) * scale + 'px'; L.style.top = (o.y * T - oy - 4) * scale + 'px'; }
     }
     function portalPanelOf(b) { var p = map.objs.filter(function (o) { return o.type === 'portal' && o.x === b.door.x && o.y === b.door.y; })[0]; return p && p.to && p.to.panel ? p.to.panel : null; }
     function drawMarker(o, x, y) { var pid = o.panel || (o.to && o.to.panel); if (pid) drawMarkerFor(pid, o, x, y - 10); }
@@ -682,7 +758,8 @@
       setLook: function (look) { S.look = Object.assign({}, DEFAULT_LOOK, look || {}); },
       pause: function () { paused = true; held = {}; }, resume: function () { paused = false; },
       get map() { return mapId; }, get player() { return { x: player.x, y: player.y, facing: player.facing }; }, get state() { return S; },
-      destroy: function () { cancelAnimationFrame(api._raf); mount.innerHTML = ''; },
+      destroy: function () { cancelAnimationFrame(api._raf); if (unsubPeer) unsubPeer(); mount.innerHTML = ''; },
+      get peers() { return peers; },
     };
     fitView();
     sync();
@@ -728,6 +805,8 @@
     + '.hw-toast{position:absolute;left:50%;top:16%;transform:translateX(-50%);background:#ffd84d;color:#101a3f;border:2px solid #101a3f;font:700 14px "IBM Plex Sans",system-ui,sans-serif;padding:7px 14px;border-radius:999px;pointer-events:none;white-space:nowrap;max-width:92%;overflow:hidden;text-overflow:ellipsis;box-shadow:0 6px 18px -8px rgba(0,0,0,.6);animation:hwpop .18s ease-out}'
     + '@keyframes hwpop{from{transform:translateX(-50%) scale(.85);opacity:0}}.hw-hud .hw-extra{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:13px;white-space:nowrap}'
     + '@media (max-width:560px){.hw-hud .hw-obj{flex-basis:100%;order:5;font-size:13px}}'
+    + '.hw-hud .hw-peers{font-size:12.5px;color:#1f3fae;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46%}.hw-hud .hw-peers[hidden]{display:none}'
+    + '.hw-peer-tag{position:absolute;transform:translate(-50%,-100%);font:600 11px "IBM Plex Sans",system-ui,sans-serif;color:#fff;background:rgba(31,63,174,.88);padding:1px 6px;border-radius:5px;white-space:nowrap;pointer-events:none;transition:left .12s linear,top .12s linear}.hw-peer-tag[hidden]{display:none}'
     + '.hw-dialog{position:absolute;left:3%;right:3%;bottom:4%;background:rgba(255,255,255,.96);color:#101a3f;border:3px solid #101a3f;border-radius:10px;padding:10px 40px 10px 14px;font:16px "IBM Plex Sans",system-ui,sans-serif;line-height:1.4;min-height:3.6em;cursor:pointer;box-shadow:0 6px 18px -8px rgba(0,0,0,.6)}'
     + '.hw-dname{font-weight:700;color:#1f3fae;font-size:13px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:2px}.hw-dmore{position:absolute;right:12px;bottom:8px;font-size:13px;color:#1f3fae;animation:hwbob 1s infinite}'
     + '@keyframes hwbob{50%{transform:translateY(2px)}}'
@@ -743,5 +822,5 @@
     + '.hw-swatches{display:grid;gap:8px;flex:1;min-width:220px}.hw-row{display:grid;grid-template-columns:52px 1fr;gap:8px;align-items:center;font-size:14px}.hw-row>div{display:flex;flex-wrap:wrap;gap:5px}.hw-sw{width:26px;height:26px;border-radius:50%;border:2px solid rgba(0,0,0,.15);cursor:pointer;padding:0}.hw-sw.none{background:repeating-linear-gradient(45deg,#ddd 0 3px,#fff 3px 6px) !important}.hw-sw.on{border-color:#101a3f;box-shadow:0 0 0 2px #fff,0 0 0 4px #1f3fae}.hw-rand{justify-self:start;font:600 13px inherit;padding:6px 11px;border-radius:999px;border:1.5px solid var(--line,#d3d9ee);background:#fff;cursor:pointer}';
   function injectCss() { if (document.getElementById('hsct-world-css')) return; var s = document.createElement('style'); s.id = 'hsct-world-css'; s.textContent = CSS; document.head.appendChild(s); }
 
-  window.HSCTWorld = { create: create, characterPicker: characterPicker, randomLook: randomLook, DEFAULT_LOOK: DEFAULT_LOOK, LOOKS: { skins: SKINS, hairs: HAIRS, shirts: SHIRTS, pants: PANTS, hats: HATS }, sprite: sprite, icons: ICON_PAINT, carSprite: carSprite, version: '0.3' };
+  window.HSCTWorld = { create: create, characterPicker: characterPicker, randomLook: randomLook, DEFAULT_LOOK: DEFAULT_LOOK, LOOKS: { skins: SKINS, hairs: HAIRS, shirts: SHIRTS, pants: PANTS, hats: HATS }, sprite: sprite, icons: ICON_PAINT, carSprite: carSprite, version: '0.4' };
 })();

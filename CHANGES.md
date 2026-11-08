@@ -1,5 +1,10 @@
 # TechHub backend + teams — what's in this drop
 
+> Nov 8 follow-up: lesson kit **1.3** + world kit **0.4** — multiplayer worlds. Teammates are drawn as live
+> sprites with name tags (positions relayed over the websocket, never stored); team state in a world
+> shares the work and merges it additively, never the player's position/look. Backend: one relay-only
+> `pos` message in `assignments/consumers.py`. All 30 lessons re-swapped by `scripts/update-kit.mjs`.
+
 Unzip over the repo root. Every path below is new or replaced; nothing else in the
 repo is touched (the Arcade, the Studio, the landing page, teachers.js, pages.js
 are as they were).
