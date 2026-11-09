@@ -15,7 +15,7 @@ backend/media/
 backend/staticfiles/
 backend/.venv/
 deploy/.env
-catalog.json
+/catalog.json
 
 # the private key opens every result file — never in git
 lesson-template/teacher-private-key.jwk
