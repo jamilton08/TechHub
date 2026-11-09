@@ -126,7 +126,7 @@ Two starters in `lesson-template/`:
 | Starter | Use it for | What's inside |
 |---|---|---|
 | `lesson-starter.html` | screens: quiz, lab, sim, reading | lesson kit 1.3 |
-| `lesson-world-starter.html` | a walkable world: maps, buildings, NPCs, desks (panels), items, cars | lesson kit 1.3 + world kit 0.4 |
+| `lesson-world-starter.html` | a walkable world: maps, buildings, NPCs, desks (panels), items, cars, ships | lesson kit 1.3 + world kit 0.6 |
 
 Every lesson inlines the kit block(s) between `<!-- HSCT KIT START -->…END -->` (and
 `<!-- HSCT WORLD START -->…END -->`). Never edit the block inside a lesson; edit
@@ -150,6 +150,7 @@ before teams existed usually did this already because saves use the same path.
   that talk, signs, hotspots that open **panels** (your actual work screens), items to pick up, grass
   that hides coins, cars to drive, an objective line, a task list, a HUD slot, a character creator
 - **full screen** (0.5): the ⛶ button in the HUD or the **F** key — the map fills the screen, wider view, HUD and desks inside it, Esc leaves
+- **your own tiles and ships** (0.6): `cfg.legend` / `cfg.paint` add map letters (open space, decks, hull), a `car` with `sprite: 'ship'` flies; a lesson can make one vehicle the team's (the Spaceverse does)
 - **multiplayer** (0.4): teammates drawn as live sprites with name tags, not solid, with a
   "With you / Elsewhere" HUD line. Positions go over the websocket and are never stored.
 - **team state that makes sense in a world**: the kit registers itself, so the team shares the *work*
@@ -161,7 +162,8 @@ before teams existed usually did this already because saves use the same path.
 
 ### Creating a world lesson (the short version)
 1. Copy `lesson-world-starter.html`, change `HSCT.lesson({ id, title, version, course, possible })`.
-2. Draw maps as rows of letters (`G` grass, `P` path, `W` wall, `_` floor, `~` water, …) and place
+2. Draw maps as rows of letters (`.` grass, `=` path, `W` wall, `_` floor, `~` water, …; add your own with
+   `cfg.legend` + `cfg.paint`) and place
    objects: `building` (with `door`), `portal`, `npc`, `sign`, `hotspot` (→ panel), `item`, `car`.
 3. Write the panels: `build(el, ctx)` renders the work into the panel; `done()` returns 0–1 or a boolean
    for the ✓/★ marker on the map; log with `HSCT.log` inside them.

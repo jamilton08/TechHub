@@ -1,4 +1,4 @@
-# HSCT World Kit v0.5
+# HSCT World Kit v0.6
 
 Turns a lesson's work screen into a walkable top-down world. Pairs with HSCT Lesson Kit v1.3.
 
@@ -44,6 +44,23 @@ New in v0.3 — the drive module
 - A lesson can gate a task on the car ("the boxes are in the trunk"): check world.carAt('nena') against
   the driveway tiles, and L.world.driving.
 Everything in v0.2 works unchanged; the Boss lesson's inlined v0.2 block can be replaced by v0.3 as is.
+
+New in v0.6 — your own tiles, ships, and a kinder prompt
+- `cfg.legend = { '*': { k: 'space', drive: true, vehicleOnly: true }, 'M': { k: 'deck' } }` adds map
+  letters. Flags: `solid` (nobody), `drive` (a vehicle may enter), `vehicleOnly` (on foot it is solid:
+  open space, deep water), `grass` (rolls finds like tall grass).
+- `cfg.paint = { space: (c, x, y) => {...} }` draws each new kind on a 16×16 canvas; `HSCTWorld.hash(x, y, seed)`
+  gives stable per-tile noise so stars and rocks don't flicker.
+- A `car` object can be a ship: `{ type: 'car', id: 'ship', sprite: 'ship', ... }` — cockpit and engine
+  glow instead of wheels; everything in the drive module is unchanged (flies on drive tiles, parks, can't
+  enter a building). A car a teammate is driving right now is drawn as their sprite, not as parked.
+- Sharing the ship: the kit keeps `cars` private by default (each player's own parking). A lesson with
+  one vehicle per team re-registers after `create`:
+  `HSCT.registerWorld({ state: () => L.world, refresh: () => world.refresh(), privateKeys: ['map','x','y','facing','look','visited','steps','driving'] })`
+  — then where the ship is parked is the team's. (The Spaceverse lesson does this.)
+- The action prompt names the key that works: **E** on a keyboard (A is WASD-left), the **A** button on touch.
+- "Nowhere to get out here" now says to park beside a path or a pad.
+Everything in v0.5 works unchanged.
 
 New in v0.5 — full screen
 - The ⛶ button in the HUD (or the **F** key on the map) puts the world on the whole screen: the view

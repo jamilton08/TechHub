@@ -85,7 +85,7 @@ class TeamConsumer(AsyncJsonWebsocketConsumer):
         await self.send_json(event["payload"])
 
     # ── live positions (kit 1.3 / world kit 0.4): relay only, no database ──
-    POS_KEYS = ("map", "x", "y", "facing", "moving", "look", "driving", "car", "in")
+    POS_KEYS = ("map", "x", "y", "facing", "moving", "look", "driving", "car", "vehicle", "in")
     POS_MIN_INTERVAL = 0.04  # 25/s per socket is plenty; anything faster is dropped
 
     async def _pos(self, msg):

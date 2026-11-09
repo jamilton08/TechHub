@@ -431,6 +431,16 @@ export const CATEGORIES = [   // fallback + seed; replaced in place by loadCatal
             added: '2026-11-02',
             tags: ['boss', 'SniperSpawn', 'Python', 'while', 'infinite loop', 'JSON', 'types', 'string', 'number', 'boolean', 'null', 'array', 'SQL', 'SELECT', 'WHERE', 'ORDER BY', 'rows', 'dict', 'for', 'if', 'elif', 'else', 'state', 'copy', 'deepcopy', 'references', 'delta time', 'dt', 'fps', 'game AI', 'game design', 'character', 'walk', 'world', 'hints', 'coins', 'review', 'Data Vault', 'Stat Check', 'Smart Moves', 'Save Point', 'Frame Rate Lab', 'Think it then code it'],
           },
+          {
+            slug: 'spaceverse-distract-the-ogre',
+            title: 'HSCT Spaceverse: distract the Space Ogre',
+            description: 'A team world. The Space Ogre is bored, and a bored ogre eats airlocks — so your Black Box team builds the game it planned, in space, one part per station: objects and state in the Cargo Bay, win/lose on the Bridge, the black box (every change through change(), replay(start, LOG) rebuilds the ending) in the Vault, saves on the Cryo Deck, three log questions plus SQL in the Observatory, the enemy brain in the Drone Lab, the design doc and demo at the Comms Tower. One ship per team, a transporter to beam to it, Mr. Cruz and Mr. O at every station, star credits in the nebula dust for hints. Load the game at the Arcade Dock and let the Ogre play: if the log explains everything, he is distracted.',
+            file: 'spaceverse-distract-the-ogre.html',
+            kind: 'game',
+            minutes: 120,
+            added: '2026-11-09',
+            tags: ['Black Box', 'team', 'teams', 'multiplayer', 'Python', 'dict', 'list', 'table', 'columns', 'state', 'rules', 'win', 'lose', 'log', 'black box', 'replay', 'change', 'JSON', 'json.dumps', 'json.loads', 'deepcopy', 'copy', 'SQL', 'SELECT', 'WHERE', 'ORDER BY', 'enemy', 'AI', 'sense think act', 'design doc', 'demo', 'game design', 'space', 'ship', 'world', 'hints', 'Mr. O', 'Space Ogre', 'project'],
+          },
         ],
         
       },

@@ -3625,7 +3625,7 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.3rem}
 <!-- HSCT WORLD START — do not edit; copy the whole block from lesson-template/hsct-world.js (v0.2) -->
 <script>
 /* ============================================================================
-   HSCT WORLD KIT  v0.5  (goes with HSCT LESSON KIT v1.3)
+   HSCT WORLD KIT  v0.6  (goes with HSCT LESSON KIT v1.3)
    A lesson's work screen as a small top-down world: the student makes a
    character, walks a tile map Pokémon-style, talks to NPCs, reads signs,
    enters buildings, and sits down at a desk, whiteboard or computer to do a
@@ -3733,6 +3733,19 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.3rem}
      merge (re-render an XP counter) listens to `document` for `hsct:merged`.
      cfg.peers: false  turns the drawing off for a lesson.
 
+   NEW IN v0.6 — a lesson can add tiles, and vehicles can be ships:
+     cfg.legend = { '*': { k: 'space', drive: true, vehicleOnly: true }, 'M': { k: 'deck' } }
+         extra map letters. Flags: solid (nobody), drive (a vehicle may enter),
+         vehicleOnly (on foot it's solid: open space, deep water), grass (hides
+         finds like tall grass).
+     cfg.paint = { space: function (c, x, y) {...}, deck: function (c) {...} }
+         how to draw each new kind on a 16×16 canvas (see TILE_PAINT below for
+         the style; hash(x, y, seed) gives stable per-tile noise).
+     car objects take sprite: 'ship' (or 'car', the default): a ship is drawn
+         with a cockpit and engine glow instead of wheels. Everything else in
+         the drive module is unchanged: a ship flies on drive tiles, parks on a
+         lot, and can't enter a building.
+
    NEW IN v0.5 — full screen:
      The ⛶ button in the HUD (or the F key on the map) puts the world on the
      whole screen: the view widens to the screen's shape (more tiles across),
@@ -3745,6 +3758,8 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.3rem}
   var T = 16;                 // tile size in sprite pixels
   var VIEW_W = 20, VIEW_H = 12;   // tiles on screen
   var STEP_MS = 150;          // one tile of walking
+  /* the prompt names the key that works here: E on a keyboard (A is WASD-left), the A button on touch */
+  var KEY_LABEL = (typeof matchMedia === 'function' && matchMedia('(hover:hover) and (pointer:fine)').matches) ? 'E' : 'A';
   var LEGEND = {
     '.': { k: 'grass' }, ',': { k: 'flowers' }, '=': { k: 'path' }, '~': { k: 'water', solid: true },
     'T': { k: 'tree', solid: true }, '#': { k: 'wall', solid: true }, 'f': { k: 'fence', solid: true },
@@ -3806,6 +3821,34 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.3rem}
     carCache[key] = cv;
     return cv;
   }
+  /* v0.6: a small ship, same footprint as the car */
+  function shipSprite(color, dir) {
+    var key = 'ship|' + color + '|' + dir;
+    if (carCache[key]) return carCache[key];
+    var cv = document.createElement('canvas'); cv.width = 16; cv.height = 16;
+    var c = cv.getContext('2d'); c.imageSmoothingEnabled = false;
+    var dark = 'rgba(0,0,0,.35)', glass = '#9fe8ff', glow = '#ffb347', glow2 = '#ff5c3a', fin = '#d9dde8';
+    if (dir === 'up' || dir === 'down') {
+      var nose = dir === 'up';
+      c.fillStyle = fin; c.fillRect(1, nose ? 9 : 3, 3, 5); c.fillRect(12, nose ? 9 : 3, 3, 5);
+      c.fillStyle = color; c.fillRect(5, 1, 6, 14); c.fillRect(4, nose ? 4 : 2, 8, 10);
+      c.fillStyle = dark; c.fillRect(4, nose ? 4 : 2, 1, 10); c.fillRect(11, nose ? 4 : 2, 1, 10);
+      c.fillStyle = glass; if (nose) c.fillRect(6, 3, 4, 3); else c.fillRect(6, 10, 4, 3);
+      c.fillStyle = glow; if (nose) { c.fillRect(5, 15, 2, 1); c.fillRect(9, 15, 2, 1); } else { c.fillRect(5, 0, 2, 1); c.fillRect(9, 0, 2, 1); }
+      c.fillStyle = glow2; if (nose) c.fillRect(7, 15, 2, 1); else c.fillRect(7, 0, 2, 1);
+    } else {
+      var m = dir === 'left';
+      c.fillStyle = fin; c.fillRect(m ? 9 : 3, 1, 5, 3); c.fillRect(m ? 9 : 3, 12, 5, 3);
+      c.fillStyle = color; c.fillRect(1, 5, 14, 6); c.fillRect(m ? 4 : 2, 4, 10, 8);
+      c.fillStyle = dark; c.fillRect(m ? 4 : 2, 4, 10, 1); c.fillRect(m ? 4 : 2, 11, 10, 1);
+      c.fillStyle = glass; c.fillRect(m ? 3 : 10, 6, 3, 4);
+      c.fillStyle = glow; c.fillRect(m ? 15 : 0, 5, 1, 2); c.fillRect(m ? 15 : 0, 9, 1, 2);
+      c.fillStyle = glow2; c.fillRect(m ? 15 : 0, 7, 1, 2);
+    }
+    carCache[key] = cv;
+    return cv;
+  }
+  function vehicleSprite(o, color, dir) { return (o && o.sprite === 'ship') ? shipSprite(color, dir) : carSprite(color, dir); }
   /* the top of the grass, drawn over the player's legs when they stand in it */
   function paintGrassOver(c, x, y) { c.fillStyle = '#3f8f35'; c.fillRect(0, 10, T, 6); c.fillStyle = '#2f7a2a'; for (var i = 0; i < 6; i++) { var px = Math.floor(hash(x, y, 60 + i) * 14), py = 3 + Math.floor(hash(y, x, 70 + i) * 10); if (py + 4 > 10) c.fillRect(px, Math.max(10, py), 2, py + 4 - Math.max(10, py)); } }
   var ICON_PAINT = {
@@ -3896,7 +3939,12 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.3rem}
     var VW = VIEW_W, VH = VIEW_H;   // tiles on screen; smaller on phones so the sprites stay big
     /* v0.4: teammates. id -> { member, data, prev:{x,y}, cur:{x,y}, t0, tag } */
     var peers = {}, unsubPeer = null, lastSig = '';
+    /* v0.6: a car a teammate is driving right now is drawn as their sprite, not parked */
+    function peerDriving(carId) { for (var k in peers) { var d = peers[k].data; if (d && d.driving === carId && d.map === mapId) return true; } return false; }
     var HS = window.HSCT || null;
+    /* v0.6: lesson-defined tiles */
+    if (cfg.legend) for (var lk in cfg.legend) LEGEND[lk] = cfg.legend[lk];
+    if (cfg.paint) for (var pk in cfg.paint) TILE_PAINT[pk] = cfg.paint[pk];
 
     mount.innerHTML = '<div class="hw-stage" tabindex="0" aria-label="The map. Arrow keys or WASD walk, Space or Enter talks and uses things.">'
       + '<div class="hw-hud"><span class="hw-map"></span><span class="hw-obj"></span><span class="hw-extra"></span><span class="hw-peers"></span><button type="button" class="hw-fs-btn" title="Full screen (F)" aria-label="Full screen">⛶</button><button type="button" class="hw-tasks-btn">Tasks</button></div>'
@@ -3906,7 +3954,7 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.3rem}
       + '<div class="hw-pad"><button type="button" data-d="up" aria-label="Walk up">▲</button><button type="button" data-d="left" aria-label="Walk left">◀</button><button type="button" data-d="right" aria-label="Walk right">▶</button><button type="button" data-d="down" aria-label="Walk down">▼</button></div>'
       + '<button type="button" class="hw-a" aria-label="Talk or use (A)">A</button>'
       + '<div class="hw-tasks" hidden><div class="hw-tasks-in"><h4>Where to go</h4><ul></ul><button type="button" class="hw-tasks-close">Close</button></div></div>'
-      + '</div><p class="hw-help">Arrows / WASD walk · click a spot to walk there · <b>Space</b>, <b>Enter</b> or <b>A</b> talks, reads and sits down · <b>Esc</b> closes</p></div>'
+      + '</div><p class="hw-help">Arrows / WASD walk · click a spot to walk there · <b>Space</b>, <b>Enter</b> or <b>E</b> talks, reads and sits down (the <b>A</b> button on a phone) · <b>Esc</b> closes</p></div>'
       + '<div class="hw-panel" hidden><div class="hw-panel-bar"><button type="button" class="hw-back">← Back to the map</button><div class="hw-panel-title"></div></div><div class="hw-panel-body"></div></div>';
     var stage = mount.querySelector('.hw-stage'), view = mount.querySelector('.hw-view'), cv = mount.querySelector('.hw-cv'), ctx = cv.getContext('2d');
     var labels = mount.querySelector('.hw-labels'), fade = mount.querySelector('.hw-fade');
@@ -3966,6 +4014,7 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.3rem}
       var t = tileAt(x, y);
       if (t.solid) return true;
       if (S.driving && !t.drive) return true;   /* v0.3: a car stays on the road */
+      if (!S.driving && t.vehicleOnly) return true;   /* v0.6: open space, deep water */
       var os = objectsAt(x, y);
       for (var i = 0; i < os.length; i++) {
         var o = os[i];
@@ -3975,7 +4024,7 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.3rem}
       return false;
     }
     /* walkable on foot, regardless of the car */
-    function footFree(x, y) { var t = tileAt(x, y); if (t.solid) return false; var os = objectsAt(x, y); for (var i = 0; i < os.length; i++) { var o = os[i]; if (o.type === 'building' ? !(o.door && o.door.x === x && o.door.y === y) : (o.type === 'npc' || o.type === 'sign' || o.type === 'hotspot' || o.type === 'car')) return false; } return !portalAt(x, y); }
+    function footFree(x, y) { var t = tileAt(x, y); if (t.solid || t.vehicleOnly) return false; var os = objectsAt(x, y); for (var i = 0; i < os.length; i++) { var o = os[i]; if (o.type === 'building' ? !(o.door && o.door.x === x && o.door.y === y) : (o.type === 'npc' || o.type === 'sign' || o.type === 'hotspot' || o.type === 'car')) return false; } return !portalAt(x, y); }
     function portalAt(x, y) { return objectsAt(x, y).filter(function (o) { return o.type === 'portal'; })[0] || null; }
     function interactableAt(x, y) { return objectsAt(x, y).filter(function (o) { return o.type === 'npc' || o.type === 'sign' || o.type === 'hotspot' || o.type === 'car'; })[0] || null; }
     /* v0.3: get in / get out */
@@ -4004,7 +4053,7 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.3rem}
           return;
         }
       }
-      toast('Nowhere to get out here. Pull over first.');
+      toast('Nowhere to get out here. Park beside a path or a pad first.');
     }
 
     function loadMap(id) {
@@ -4165,12 +4214,12 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.3rem}
       if (o.type === 'hotspot') { var why = evalProp(o.locked); if (why) { say(null, typeof why === 'string' ? why : 'Locked for now.'); return; } openPanel(o.panel); }
     }
     function updatePrompt() {
-      if (S.driving && !dialog && !panelOpen) { promptEl.innerHTML = '<kbd>A</kbd> Get out'; promptEl.hidden = false; prompt = null; return; }
+      if (S.driving && !dialog && !panelOpen) { promptEl.innerHTML = '<kbd>' + KEY_LABEL + '</kbd> Get out'; promptEl.hidden = false; prompt = null; return; }
       var f = facingTile(), o = interactableAt(f.x, f.y);
       if (!o || dialog || panelOpen) { promptEl.hidden = true; prompt = null; return; }
       prompt = o;
       var verb = o.type === 'npc' ? 'Talk to ' + (o.name || 'them') : o.type === 'sign' ? 'Read the sign' : o.type === 'car' ? (o.parked ? 'Look at ' + (o.label || 'the car') : 'Get in ' + (o.label || 'the car')) : (evalProp(o.locked) ? '🔒 ' : '') + (o.label || 'Use');
-      promptEl.innerHTML = '<kbd>A</kbd> ' + esc(verb);
+      promptEl.innerHTML = '<kbd>' + KEY_LABEL + '</kbd> ' + esc(verb);
       promptEl.hidden = false;
     }
 
@@ -4280,7 +4329,7 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.3rem}
       var sig = [mapId, tx, ty, player.facing, !!player.moving, S.driving || '', panelOpen ? panelOpen.id : ''].join('|');
       if (sig === lastSig) return;
       lastSig = sig;
-      HS.sendPos({ map: mapId, x: tx, y: ty, facing: player.facing, moving: !!player.moving, look: S.look, driving: S.driving || null, car: car ? (car.color || '#b3261e') : null, 'in': panelOpen ? panelOpen.id : null });
+      HS.sendPos({ map: mapId, x: tx, y: ty, facing: player.facing, moving: !!player.moving, look: S.look, driving: S.driving || null, car: car ? (car.color || '#b3261e') : null, vehicle: car ? (car.sprite || 'car') : null, 'in': panelOpen ? panelOpen.id : null });
     }
     function drawPeers(ox, oy, drawables) {
       Object.keys(peers).forEach(function (id) {
@@ -4289,7 +4338,7 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.3rem}
         var x = (p.prev.x + (p.cur.x - p.prev.x) * e) * T, y = (p.prev.y + (p.cur.y - p.prev.y) * e) * T;
         var walking = e < 1 || p.data.moving;
         drawables.push({ y: y - 0.5, f: function () {
-          if (p.data.driving) { ctx.drawImage(carSprite(p.data.car || '#b3261e', p.data.facing || 'down'), Math.round(x - ox), Math.round(y - oy)); return; }
+          if (p.data.driving) { ctx.drawImage(vehicleSprite({ sprite: p.data.vehicle }, p.data.car || '#b3261e', p.data.facing || 'down'), Math.round(x - ox), Math.round(y - oy)); return; }
           var look = Object.assign({}, DEFAULT_LOOK, p.data.look || {});
           drawSprite(ctx, look, p.data.facing || 'down', walking ? Math.floor(frameClock / 120) % 2 : 0, x - ox, y - oy);
           if (tileAt(p.cur.x, p.cur.y).grass && e > 0.5) { ctx.save(); ctx.translate(p.cur.x * T - ox, p.cur.y * T - oy); paintGrassOver(ctx, p.cur.x, p.cur.y); ctx.restore(); }
@@ -4336,12 +4385,12 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.3rem}
         if (o.type === 'building' && o.door) { var pid = portalPanelOf(o); if (pid) drawables.push({ y: 0, f: function () { drawMarkerFor(pid, o, (o.x + o.w / 2) * T - T / 2 - ox, o.y * T - oy - 2); } }); }
       });
       /* v0.3: parked cars on this map */
-      cars.forEach(function (o) { if (evalProp(o.hidden) || S.driving === o.id) return; var p = carPos(o); if (p.map !== mapId) return; drawables.push({ y: p.y * T, f: function () { ctx.drawImage(carSprite(o.color || '#b3261e', o.facing || 'down'), p.x * T - ox, p.y * T - oy); } }); });
+      cars.forEach(function (o) { if (evalProp(o.hidden) || S.driving === o.id || peerDriving(o.id)) return; var p = carPos(o); if (p.map !== mapId) return; drawables.push({ y: p.y * T, f: function () { ctx.drawImage(vehicleSprite(o, o.color || '#b3261e', o.facing || 'down'), p.x * T - ox, p.y * T - oy); } }); });
       /* v0.4: teammates on this map */
       if (peersOn()) drawPeers(ox, oy, drawables);
       drawables.push({ y: py, f: function () {
         var car = driving();
-        if (car) { var bump = player.moving ? (Math.floor(frameClock / 90) % 2) : 0; ctx.drawImage(carSprite(car.color || '#b3261e', player.facing), Math.round(px - ox), Math.round(py - oy - bump)); return; }
+        if (car) { var bump = player.moving ? (Math.floor(frameClock / 90) % 2) : 0; ctx.drawImage(vehicleSprite(car, car.color || '#b3261e', player.facing), Math.round(px - ox), Math.round(py - oy - bump)); return; }
         var frame = player.moving ? Math.floor(frameClock / 120) % 2 : 0;
         drawSprite(ctx, S.look, player.facing, frame, px - ox, py - oy);
         /* v0.2: in tall grass the player's legs are hidden by the blades */
@@ -4489,7 +4538,7 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.3rem}
     + '.hw-swatches{display:grid;gap:8px;flex:1;min-width:220px}.hw-row{display:grid;grid-template-columns:52px 1fr;gap:8px;align-items:center;font-size:14px}.hw-row>div{display:flex;flex-wrap:wrap;gap:5px}.hw-sw{width:26px;height:26px;border-radius:50%;border:2px solid rgba(0,0,0,.15);cursor:pointer;padding:0}.hw-sw.none{background:repeating-linear-gradient(45deg,#ddd 0 3px,#fff 3px 6px) !important}.hw-sw.on{border-color:#101a3f;box-shadow:0 0 0 2px #fff,0 0 0 4px #1f3fae}.hw-rand{justify-self:start;font:600 13px inherit;padding:6px 11px;border-radius:999px;border:1.5px solid var(--line,#d3d9ee);background:#fff;cursor:pointer}';
   function injectCss() { if (document.getElementById('hsct-world-css')) return; var s = document.createElement('style'); s.id = 'hsct-world-css'; s.textContent = CSS; document.head.appendChild(s); }
 
-  window.HSCTWorld = { create: create, characterPicker: characterPicker, randomLook: randomLook, DEFAULT_LOOK: DEFAULT_LOOK, LOOKS: { skins: SKINS, hairs: HAIRS, shirts: SHIRTS, pants: PANTS, hats: HATS }, sprite: sprite, icons: ICON_PAINT, carSprite: carSprite, version: '0.5' };
+  window.HSCTWorld = { create: create, characterPicker: characterPicker, randomLook: randomLook, DEFAULT_LOOK: DEFAULT_LOOK, LOOKS: { skins: SKINS, hairs: HAIRS, shirts: SHIRTS, pants: PANTS, hats: HATS }, sprite: sprite, icons: ICON_PAINT, carSprite: carSprite, shipSprite: shipSprite, hash: hash, version: '0.6' };
 })();
 </script>
 <!-- HSCT WORLD END -->
