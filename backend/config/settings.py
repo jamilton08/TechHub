@@ -31,7 +31,8 @@ def env_list(name, default=""):
 
 SECRET_KEY = env("DJANGO_SECRET_KEY", "dev-only-not-secret")
 DEBUG = env_bool("DJANGO_DEBUG", True)
-ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
+# localhost/127.0.0.1 are always allowed: the container's own health check curls localhost:8000
+ALLOWED_HOSTS = list(dict.fromkeys(env_list("DJANGO_ALLOWED_HOSTS", "") + ["localhost", "127.0.0.1"]))
 
 INSTALLED_APPS = [
     "daphne",  # must come before staticfiles so `runserver` speaks ASGI (websockets in dev)
