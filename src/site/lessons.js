@@ -151,6 +151,16 @@ export const CATEGORIES = [   // fallback + seed; replaced in place by loadCatal
             added: '2026-11-02',
             tags: ['home network', 'security', 'port forward', 'UPnP', 'remote admin', 'firewall', 'default password', 'brute force', 'evil twin', 'BSSID', 'WPA3', 'WPS', 'VLAN', 'tagged', 'trunk', 'PoE', 'managed switch', 'cameras', 'NVR', 'firmware', 'backup', '3-2-1', 'SHA-256', 'hash', 'ransomware', 'isolation', 'segmentation', '192.168.20.1', 'DHCP', 'gateway', 'drive', 'car', 'shopping', 'budget', 'Manolo', 'Nena', 'Junior', 'Packet Run', 'Packet Trail', 'Seized Drive', 'simulation', 'character', 'walk'],
           },
+          {
+            slug: 'spaceverse-station-network',
+            title: 'OG Manolo in the Spaceverse: bring the station back online',
+            description: 'Part 5, in orbit, and a team lesson. Nena is the HSCT Spaceverse\'s network admin and she is a week away on Earth; the Space Ogre chewed through the fiber run to the Cargo Bay and Junior "helped" — a freezer on a manual address inside the DHCP pool, a loop in the Crew Quarters, a port forward to life support, guest isolation off. Read the evidence around the station and name the five problems in Nena\'s binder. Fly one of the team\'s four ships to Byte Orbital for a PoE managed switch, 200 m of multimode fiber and cables under $400. Cable the core rack (relay modem → router WAN → core switch → fiber to every module), fix the router (pool and a reservation, the Science VLAN, the firewall, WPA3 with guest isolation), cable the Observatory\'s sensor array and set up its switch, get the freezer out of the pool, kill Junior\'s loop. Then five service calls: 169.254, DNS, a wrong gateway, a dead WAN, a tablet too old for WPA3.',
+            file: 'spaceverse-station-network.html',
+            kind: 'game',
+            minutes: 90,
+            added: '2026-11-09',
+            tags: ['team', 'teams', 'multiplayer', 'troubleshooting', 'service call', 'ipconfig', '169.254', 'APIPA', 'DHCP', 'DHCP pool', 'reservation', 'static IP', 'IP conflict', 'default gateway', 'DNS', 'ping', 'tracert', 'WAN', 'modem', 'router', 'core switch', 'fiber', 'multimode', 'OM3', 'LC', '100 m', 'copper', 'Cat 6', 'PoE', 'managed switch', 'VLAN', 'trunk', 'tagged', 'loop', 'broadcast storm', 'loop protection', 'port forward', 'UPnP', 'remote admin', 'firewall', 'isolation', 'WPA3', 'WPA2/WPA3', 'WPS', 'guest network', 'guest isolation', '10.42.10.1', 'Manolo', 'Nena', 'Junior', 'Space Ogre', 'ship', 'space', 'simulation', 'character', 'walk'],
+          },
 
         ],
       },
@@ -434,7 +444,7 @@ export const CATEGORIES = [   // fallback + seed; replaced in place by loadCatal
           {
             slug: 'spaceverse-distract-the-ogre',
             title: 'HSCT Spaceverse: distract the Space Ogre',
-            description: 'A team world. The Space Ogre is bored, and a bored ogre eats airlocks — so your Black Box team builds the game it planned, in space, one part per station: objects and state in the Cargo Bay, win/lose on the Bridge, the black box (every change through change(), replay(start, LOG) rebuilds the ending) in the Vault, saves on the Cryo Deck, three log questions plus SQL in the Observatory, the enemy brain in the Drone Lab, the design doc and demo at the Comms Tower. One ship per team, a transporter to beam to it, Mr. Cruz and Mr. O at every station, star credits in the nebula dust for hints. Load the game at the Arcade Dock and let the Ogre play: if the log explains everything, he is distracted.',
+            description: 'A team world. The Space Ogre is bored, and a bored ogre eats airlocks — so your Black Box team builds the game it planned, in space, one part per station: objects and state in the Cargo Bay, win/lose on the Bridge, the black box (every change through change(), replay(start, LOG) rebuilds the ending) in the Vault, saves on the Cryo Deck, three log questions plus SQL in the Observatory, the enemy brain in the Drone Lab, the design doc and demo at the Comms Tower. Four ships per team, transporters to beam between them, Mr. Cruz and Mr. O at every station, star credits in the nebula dust for hints. Load the game at the Arcade Dock and let the Ogre play: if the log explains everything, he is distracted.',
             file: 'spaceverse-distract-the-ogre.html',
             kind: 'game',
             minutes: 120,

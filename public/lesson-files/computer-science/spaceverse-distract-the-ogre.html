@@ -18,7 +18,7 @@
   Scripts after the kit, in order: MiniPy (the in-page Python interpreter shared with Final Boss, Data Vault, Save Point and
   Frame Rate Lab), the HSCT WORLD KIT, the code editor (same as Frame Rate Lab), then the lesson.
   Everything the team does lives in `L` (plain JSON): L.world is the world kit's, the rest is ours. In a team, the kit
-  shares everything but each player's position/look; the ship's parking spot IS shared (one ship per team).
+  shares everything but each player's position/look; the ship's parking spot IS shared (four ships per team).
   Self-contained: inline CSS and JS, Google Fonts only.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -149,6 +149,9 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.3rem}
 .code.num{counter-reset:ln}
 .code.num .ln::before{counter-increment:ln;content:counter(ln);display:inline-block;width:2.4em;margin-right:12px;text-align:right;color:#4d5780;user-select:none}
 .t-kw{color:#ff9bd2}.t-str{color:#b5f0a8}.t-num{color:#ffc27a}.t-com{color:#7d88b3;font-style:italic}.t-fn{color:#8fd0ff}.t-bi{color:#c9b3ff}.t-st{color:#ffe08a}
+.ships{display:grid;gap:8px;margin:10px 0}
+.ships .ship{display:flex;justify-content:space-between;align-items:center;gap:10px;border:1.5px solid var(--line);border-radius:10px;padding:8px 12px;background:var(--paper);font-size:15px}
+.ships .ship i{display:inline-block;width:14px;height:14px;border-radius:4px;margin-right:8px;vertical-align:-2px}
 </style>
 </head>
 <body>
@@ -173,7 +176,7 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.3rem}
         <ul class="rules">
           <li><b>100 XP, one result per team</b> — the same seven parts and points as your Black Box plan: objects &amp; state (15), win and lose (15), the black box (25), saves (15), three questions from the log (15), the enemy brain (10), the design doc and demo (5).</li>
           <li>Every part is a console at a station. Your code runs for real, and the checks tell you exactly what is wrong. The <b>Mission computer</b> in mission control loads your <code>black-box-plan.json</code> so your objects, state keys and win/lose rules are already filled in.</li>
-          <li>Your team has <b>one ship</b>. Whoever is at the pad flies it (walk up to it and press <kbd>A</kbd>); everyone else can <b>beam</b> to wherever it is from any transporter. Space is for ships; stations are for feet.</li>
+          <li>Your team has <b>four ships</b> on the Docking Ring pad. Walk up to a free one and press <kbd>E</kbd> to fly it; any <b>transporter</b> by a hatch beams you to any ship. Space is for ships; stations are for feet.</li>
           <li><b>Star credits</b> hide in nebula dust — fly through it. Spend them at a <b>hint console</b> (1, 2 or 3 credits for a bigger hint). Mr. Cruz and Mr. O explain for free at every station. Every hint you buy is written in your result.</li>
           <li>Walk with the arrow keys or WASD, or click where you want to go. <kbd>Space</kbd>, <kbd>Enter</kbd> or the <b>A</b> button talks, reads and sits down. <kbd>F</kbd> puts the Spaceverse on the whole screen.</li>
           <li>Two classes. Your team's progress is kept on the server: close the tab, come back, join with the same code and name, and you are where the team is. One person per console at a time — if two of you type in the same console, the last one wins.</li>
@@ -5554,27 +5557,32 @@ function buildKiosk(host, api, id) {
 /* ---------------------------------------------------------------------
    PANEL: the transporter (beam to wherever the team's ship is)
    --------------------------------------------------------------------- */
+/* the fleet: four ships, parking shared by the team */
+const SHIPS = [{ id: 'ship1', name: 'Ship 1 · Colibrí', color: '#39b6c6' }, { id: 'ship2', name: 'Ship 2 · Guagua', color: '#ffd84d' }, { id: 'ship3', name: 'Ship 3 · Tito', color: '#ff7bd5' }, { id: 'ship4', name: 'Ship 4 · Novela', color: '#9cff8a' }];
+const shipName = (id) => (SHIPS.find((s) => s.id === id) || { name: id }).name;
+function shipPos(id) { return world ? world.carAt(id) : null; }
 function shipWhere(pos) {
+  if (!pos) return 'on the Docking Ring pad';
   const t = (SPACE_ROWS[pos.y] || '')[pos.x];
-  if (t === 'P') { const st = Object.values(STATIONS).find((s) => Math.abs(s.pad.x - pos.x) <= 1 && Math.abs(s.pad.y - pos.y) <= 1); return st ? `docked on the pad at the ${st.title}` : 'docked on a pad'; }
+  if (t === 'P') { const st = Object.values(STATIONS).find((s) => Math.abs(s.pad.x - pos.x) <= 3 && Math.abs(s.pad.y - pos.y) <= 1); return st ? `docked at the ${st.title}` : 'docked on a pad'; }
   return `out in open space at (${pos.x}, ${pos.y})`;
 }
 function buildTransporter(host, api) {
-  const pos = world ? world.carAt('ship') : null;
-  const here = world && pos && pos.map === world.map && Math.abs(pos.x - world.player.x) + Math.abs(pos.y - world.player.y) <= 3;
-  host.innerHTML = `<p>The team has one ship. Whoever walks up to it flies it; everyone else can <b>beam</b> to it from any transporter.</p>
-    <p class="muted small">The ship is ${pos ? shipWhere(pos) : 'on the pad outside the Docking Ring'}${here ? ' — right here.' : '.'}</p>
-    <div class="row"><button type="button" class="btn teal" id="beam" ${!pos || here ? 'disabled' : ''}>Beam to the ship</button><button type="button" class="btn small ghost" id="beam-back">Back</button></div>`;
-  host.querySelector('#beam').onclick = () => {
-    if (!pos) return;
-    HSCT.log('beam', { to: [pos.x, pos.y] });
+  const peers = world ? world.peers : {};
+  const flying = (id) => Object.values(peers).find((p) => p.data && p.data.driving === id);
+  host.innerHTML = `<p>Four ships, one team. Whoever walks up to a ship flies it; anyone else can <b>beam</b> to any ship from any transporter.</p>
+    <div class="ships">${SHIPS.map((s) => { const pos = shipPos(s.id), f = flying(s.id), here = world && pos && pos.map === world.map && Math.abs(pos.x - world.player.x) + Math.abs(pos.y - world.player.y) <= 3; return `<div class="ship"><span><i style="background:${s.color}"></i>${esc(s.name)} <span class="muted small">· ${f ? 'flown by ' + esc(f.member.name) + ' right now' : shipWhere(pos)}</span></span><button type="button" class="btn small" data-beam="${s.id}" ${here || f ? 'disabled' : ''}>${here ? 'Right here' : f ? 'In flight' : 'Beam'}</button></div>`; }).join('')}</div>
+    <div class="row"><button type="button" class="btn small ghost" id="beam-back">Back</button></div>`;
+  host.querySelectorAll('[data-beam]').forEach((b) => { b.onclick = () => {
+    const id = b.dataset.beam, pos = shipPos(id) || { x: STATIONS.hub.pad.x, y: STATIONS.hub.pad.y };
+    HSCT.log('beam', { ship: id, to: [pos.x, pos.y] });
     api.close();
-    const spots = [[0, 1], [1, 0], [-1, 0], [0, -1]];
+    const spots = [[0, 1], [1, 0], [-1, 0], [0, -1], [0, 2], [-1, 1], [1, 1]];
     let landed = false;
-    for (const [dx, dy] of spots) { const t = SPACE_ROWS[pos.y + dy] && SPACE_ROWS[pos.y + dy][pos.x + dx]; if (t === 'P' || t === 'M') { world.teleport('space', pos.x + dx, pos.y + dy, dy === 1 ? 'up' : dy === -1 ? 'down' : dx === 1 ? 'left' : 'right'); landed = true; break; } }
+    for (const [dx, dy] of spots) { const t = SPACE_ROWS[pos.y + dy] && SPACE_ROWS[pos.y + dy][pos.x + dx]; if (t === 'P' || t === 'M') { const taken = SHIPS.some((s) => { const q = shipPos(s.id); return q && q.map === 'space' && q.x === pos.x + dx && q.y === pos.y + dy; }); if (taken) continue; world.teleport('space', pos.x + dx, pos.y + dy, dy > 0 ? 'up' : dy < 0 ? 'down' : dx > 0 ? 'left' : 'right'); landed = true; break; } }
     if (!landed) world.teleport('space', pos.x, pos.y + 1, 'up');
-    world.toast('Beamed to the ship.');
-  };
+    world.toast('Beamed to ' + shipName(id) + '.');
+  }; });
   host.querySelector('#beam-back').onclick = api.close;
 }
 
@@ -5738,7 +5746,7 @@ const REDUCE = (() => { try { return window.matchMedia('(prefers-reduced-motion:
 const SPACE_W = 56, SPACE_H = 34;
 /* stations: hull block (w×h) on the space map, hatch at the bottom middle, a deck apron under it, a pad to the right */
 const STATIONS = {
-  hub: { x: 24, y: 13, w: 8, h: 5, title: 'Docking Ring', interior: 'control' },
+  hub: { x: 24, y: 13, w: 8, h: 5, title: 'Docking Ring', interior: 'control', fleet: true },
   cargo: { x: 5, y: 3, w: 6, h: 4, title: 'Cargo Bay', interior: 'cargo' },
   bridge: { x: 20, y: 2, w: 6, h: 4, title: 'The Bridge', interior: 'bridge' },
   vault: { x: 38, y: 3, w: 6, h: 4, title: 'Black Box Vault', interior: 'vault' },
@@ -5760,7 +5768,8 @@ const SPACE_ROWS = (() => {
     g[hy][hx] = 'D';                                  // the hatch
     for (let i = -1; i <= 1; i++) g[hy + 1][hx + i] = 'M';   // the apron
     g[hy + 2][hx] = 'M';
-    g[hy + 2][hx + 1] = 'P'; g[hy + 2][hx + 2] = 'P'; g[hy + 3][hx + 1] = 'P'; g[hy + 3][hx + 2] = 'P';   // the pad
+    const pw = s.fleet ? 4 : 2;                       // the pad (four ships wide at the Docking Ring)
+    for (let i = 1; i <= pw; i++) { g[hy + 2][hx + i] = 'P'; g[hy + 3][hx + i] = 'P'; }
     s.hatch = { x: hx, y: hy }; s.apron = { x: hx, y: hy + 1 }; s.pad = { x: hx + 1, y: hy + 2 }; s.beam = { x: hx - 1, y: hy + 1 };
   });
   return g.map((r) => r.join(''));
@@ -5850,14 +5859,14 @@ function stationObjects() {
     const to = { map: S.interior, x: id === 'hub' ? 7 : id === 'arcade' ? 5 : 5, y: 6, facing: 'up' };
     const locked = id === 'hub' ? false : id === 'arcade' ? (() => allBuilt() ? false : `The Arcade Dock reads: "NO UNFINISHED GAMES." ${builtCount()} of 7 parts built.`) : (() => lockMsg(id));
     objs.push({ type: 'portal', x: S.hatch.x, y: S.hatch.y, to, locked });
-    objs.push({ type: 'sign', x: S.hatch.x + 1, y: S.hatch.y + 1, text: [S.title.toUpperCase(), id === 'hub' ? 'Mission control inside. Your ship is on the pad.' : id === 'arcade' ? 'Launch the whole game. The Ogre is waiting.' : `${PARTS[id].title} · ${PARTS[id].xp} XP`] });
+    objs.push({ type: 'sign', x: S.hatch.x + 1, y: S.hatch.y + 1, text: [S.title.toUpperCase(), id === 'hub' ? 'Mission control inside. The fleet is on the pad.' : id === 'arcade' ? 'Launch the whole game. The Ogre is waiting.' : `${PARTS[id].title} · ${PARTS[id].xp} XP`] });
     objs.push({ type: 'hotspot', x: S.beam.x, y: S.beam.y, panel: 'transporter', label: 'Transporter', icon: 'flag' });
   });
   const hub = STATIONS.hub;
-  objs.push({ type: 'car', id: 'ship', sprite: 'ship', x: hub.pad.x, y: hub.pad.y, color: '#39b6c6', facing: 'up', label: 'the team ship' });
+  SHIPS.forEach((s, k) => objs.push({ type: 'car', id: s.id, sprite: 'ship', x: hub.pad.x + k, y: hub.pad.y, color: s.color, facing: 'up', label: s.name }));
   const arc = STATIONS.arcade;
   objs.push({ type: 'npc', x: arc.apron.x, y: arc.apron.y + 2, name: OGRE, facing: 'up', fixed: true, look: LOOKS.ogre, say: () => { talk('ogre'); return [ogreLine()]; } });
-  objs.push({ type: 'npc', x: hub.apron.x, y: hub.apron.y + 2, name: 'Nova', facing: 'up', look: LOOKS.nova, say: () => { talk('nova'); return ['Star credits hide in the purple nebula dust. Fly through it and watch for a sparkle.', 'One ship per team. If your pilot left without you, the transporter next to any hatch beams you to the ship.']; } });
+  objs.push({ type: 'npc', x: hub.apron.x, y: hub.apron.y + 2, name: 'Nova', facing: 'up', look: LOOKS.nova, say: () => { talk('nova'); return ['Star credits hide in the purple nebula dust. Fly through it and watch for a sparkle.', 'Four ships on the pad, one team. Walk up to a free one, E to fly. Left behind? The transporter next to any hatch beams you to any ship.']; } });
   /* loose credits on the aprons and a dropped data chip */
   objs.push({ type: 'item', x: STATIONS.cargo.apron.x - 1, y: STATIONS.cargo.apron.y, icon: 'coin', onPick: () => { addCoins(1, 'apron'); return 'A star credit on the apron. +1'; } });
   objs.push({ type: 'item', x: STATIONS.observatory.apron.x + 1, y: STATIONS.observatory.apron.y, icon: 'coin', onPick: () => { addCoins(1, 'apron'); return 'A star credit by the hatch. +1'; } });
@@ -5898,8 +5907,8 @@ function ensureWorld() {
           { type: 'portal', x: 7, y: 7, to: { map: 'space', x: STATIONS.hub.apron.x, y: STATIONS.hub.apron.y, facing: 'down' }, quiet: true },
           { type: 'hotspot', x: 7, y: 1, panel: 'mission', label: 'Mission computer: load your plan', icon: 'pc' },
           { type: 'hotspot', x: 13, y: 5, panel: 'transporter', label: 'Transporter', icon: 'flag' },
-          { type: 'npc', x: 3, y: 3, name: 'Mr. Cruz', facing: 'right', look: LOOKS.cruz, say: () => { const n = talk('cruz'); if (!L.plan && n === 1) return ['The Ogre is bored, and a bored ogre eats airlocks. We need a game he hasn\'t played — yours.', 'Load your team\'s plan at the Mission computer so the Cargo Bay starts from your objects, not mine. Then take the ship: Cargo Bay is top-left.', 'Seven stations, in order. Each hatch opens when the one before is done.']; if (!allBuilt()) return [`${builtCount()} of 7 built. Next: ${PARTS[nextPart()].zone}.`, 'One console, one person at a time. Everyone sees it, but the last keystroke wins.', 'Mr. O and I are at every station. We explain for free; the hint consoles charge credits.']; return ['Everything is built. The Arcade Dock is bottom-left. Launch it, and let him play.']; } },
-          { type: 'npc', x: 12, y: 3, name: 'Mr. O', facing: 'left', look: LOOKS.o, say: () => { const n = talk('o'); return n === 1 ? ['Julian Ocansey — Mr. O. I run the Cargo Bay, the Cryo Deck, the Observatory and the Comms Tower today.', 'Your ship is on the pad outside. Space is for ships; stations are for feet. Nebula dust pays.'] : ['Same rule as every project this year: state plus rules. The new part is the log. Make the log honest and the rest follows.', 'If two of you type in the same console, the second one wins. Split up the stations.']; } },
+          { type: 'npc', x: 3, y: 3, name: 'Mr. Cruz', facing: 'right', look: LOOKS.cruz, say: () => { const n = talk('cruz'); if (!L.plan && n === 1) return ['The Ogre is bored, and a bored ogre eats airlocks. We need a game he hasn\'t played — yours.', 'Load your team\'s plan at the Mission computer so the Cargo Bay starts from your objects, not mine. Then take a ship: Cargo Bay is top-left.', 'Seven stations, in order. Each hatch opens when the one before is done.']; if (!allBuilt()) return [`${builtCount()} of 7 built. Next: ${PARTS[nextPart()].zone}.`, 'One console, one person at a time. Everyone sees it, but the last keystroke wins.', 'Mr. O and I are at every station. We explain for free; the hint consoles charge credits.']; return ['Everything is built. The Arcade Dock is bottom-left. Launch it, and let him play.']; } },
+          { type: 'npc', x: 12, y: 3, name: 'Mr. O', facing: 'left', look: LOOKS.o, say: () => { const n = talk('o'); return n === 1 ? ['Julian Ocansey — Mr. O. I run the Cargo Bay, the Cryo Deck, the Observatory and the Comms Tower today.', 'The ships are on the pad outside — four of them, so nobody waits. Space is for ships; stations are for feet. Nebula dust pays.'] : ['Same rule as every project this year: state plus rules. The new part is the log. Make the log honest and the rest follows.', 'If two of you type in the same console, the second one wins. Split up the stations.']; } },
           { type: 'npc', x: 9, y: 5, name: 'Commander Vega', facing: 'down', look: LOOKS.vega, say: () => { talk('vega'); return ['Welcome to the Spaceverse. The Docking Ring is the hub; the stations are a flight away.', 'Arrows walk. E or Space talks, reads signs and uses consoles — the A button on a phone. F is full screen, Esc leaves it.']; } },
           { type: 'sign', x: 5, y: 1, text: ['MISSION CONTROL', 'Cargo Bay (NW) → Bridge (N) → Vault (NE) → Cryo (E) → Observatory (SE) → Drone Lab (S) → Comms (SW) → Arcade Dock (W)'] },
           { type: 'item', x: 2, y: 6, icon: 'coin', onPick: () => { addCoins(1, 'control'); return 'A star credit under the desk. +1'; } },
@@ -5926,7 +5935,7 @@ function ensureWorld() {
       {},
       ...PART_ORDER.map((id) => ({ [id]: { title: PARTS[id].title, subtitle: `${PARTS[id].zone} · ${PARTS[id].xp} XP`, build: (host, api) => buildPuzzle(host, api, id), rebuild: true, done: () => partDone(id) ? true : (partEarned(id) ? partEarned(id) / PARTS[id].xp : false) } })),
       ...PART_ORDER.map((id) => ({ ['kiosk-' + id]: { title: 'Hint console', subtitle: PARTS[id].zone, build: (host, api) => buildKiosk(host, api, id), rebuild: true } })),
-      { transporter: { title: 'Transporter', subtitle: 'beam to the team ship', build: buildTransporter, rebuild: true },
+      { transporter: { title: 'Transporter', subtitle: 'beam to a ship', build: buildTransporter, rebuild: true },
         mission: { title: 'Mission computer', subtitle: 'load your black-box-plan.json', build: buildMission, rebuild: true, done: () => !!L.plan },
         launch: { title: 'Arcade Dock: the Ogre plays your game', subtitle: 'the proof', build: buildLaunch, rebuild: true, done: () => !!L.launch.distracted } }
     ),
@@ -5981,7 +5990,7 @@ $('start').onclick = () => {
   HSCT.start(name);
   HSCT.log('look', picker.look);
   enterWork();
-  world.toast(HSCT.team ? `${HSCT.team.name}: load your plan at the Mission computer, then take the ship.` : 'Load your plan at the Mission computer, then take the ship.', 3600);
+  world.toast(HSCT.team ? `${HSCT.team.name}: load your plan at the Mission computer, then take a ship.` : 'Load your plan at the Mission computer, then take a ship.', 3600);
 };
 $('name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('start').click(); });
 

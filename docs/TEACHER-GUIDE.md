@@ -150,7 +150,7 @@ before teams existed usually did this already because saves use the same path.
   that talk, signs, hotspots that open **panels** (your actual work screens), items to pick up, grass
   that hides coins, cars to drive, an objective line, a task list, a HUD slot, a character creator
 - **full screen** (0.5): the ⛶ button in the HUD or the **F** key — the map fills the screen, wider view, HUD and desks inside it, Esc leaves
-- **your own tiles and ships** (0.6): `cfg.legend` / `cfg.paint` add map letters (open space, decks, hull), a `car` with `sprite: 'ship'` flies; a lesson can make one vehicle the team's (the Spaceverse does)
+- **your own tiles and ships** (0.6): `cfg.legend` / `cfg.paint` add map letters (open space, decks, hull), a `car` with `sprite: 'ship'` flies; a lesson can share its vehicles' parking with the team (both Spaceverse lessons do: four ships, so nobody waits)
 - **multiplayer** (0.4): teammates drawn as live sprites with name tags, not solid, with a
   "With you / Elsewhere" HUD line. Positions go over the websocket and are never stored.
 - **team state that makes sense in a world**: the kit registers itself, so the team shares the *work*
