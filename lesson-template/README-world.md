@@ -1,4 +1,4 @@
-# HSCT World Kit v0.4
+# HSCT World Kit v0.5
 
 Turns a lesson's work screen into a walkable top-down world. Pairs with HSCT Lesson Kit v1.3.
 
@@ -44,6 +44,13 @@ New in v0.3 — the drive module
 - A lesson can gate a task on the car ("the boxes are in the trunk"): check world.carAt('nena') against
   the driveway tiles, and L.world.driving.
 Everything in v0.2 works unchanged; the Boss lesson's inlined v0.2 block can be replaced by v0.3 as is.
+
+New in v0.5 — full screen
+- The ⛶ button in the HUD (or the **F** key on the map) puts the world on the whole screen: the view
+  widens to the screen's shape (16–32 tiles across, same height), the HUD stays on top, desks/panels open
+  inside it, the Team panel stays reachable, **Esc** or ⛶ leaves. `world.fullscreen(on?)` from code;
+  `cfg.fullscreen: false` hides the button. Inside the site's iframe this works because the frame
+  allows fullscreen.
 
 New in v0.4 — teammates in the world (multiplayer)
 - Nothing to configure. When the student is in a team (lesson kit 1.3, `HSCT.team`), every teammate on

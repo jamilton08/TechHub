@@ -149,6 +149,7 @@ before teams existed usually did this already because saves use the same path.
 - the map engine: tiles from a row-of-letters map, buildings with doors, portals between maps, NPCs
   that talk, signs, hotspots that open **panels** (your actual work screens), items to pick up, grass
   that hides coins, cars to drive, an objective line, a task list, a HUD slot, a character creator
+- **full screen** (0.5): the ⛶ button in the HUD or the **F** key — the map fills the screen, wider view, HUD and desks inside it, Esc leaves
 - **multiplayer** (0.4): teammates drawn as live sprites with name tags, not solid, with a
   "With you / Elsewhere" HUD line. Positions go over the websocket and are never stored.
 - **team state that makes sense in a world**: the kit registers itself, so the team shares the *work*

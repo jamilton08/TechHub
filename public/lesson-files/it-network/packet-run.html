@@ -1389,6 +1389,8 @@ img.spr{image-rendering:pixelated;width:24px;height:24px;vertical-align:middle}
     renderFloat(html);
   }
   var floatEl = null, floatOpen = true;
+  /* when a lesson puts part of itself full screen (a world), the panel has to live inside that element to stay visible */
+  document.addEventListener('fullscreenchange', function () { if (floatEl) (document.fullscreenElement || document.body).appendChild(floatEl); });
   function renderFloat(html) {
     if (!html || !ses) { if (floatEl) floatEl.style.display = 'none'; return; }
     if (!floatEl) {

@@ -1073,6 +1073,8 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.3rem}
     renderFloat(html);
   }
   var floatEl = null, floatOpen = true;
+  /* when a lesson puts part of itself full screen (a world), the panel has to live inside that element to stay visible */
+  document.addEventListener('fullscreenchange', function () { if (floatEl) (document.fullscreenElement || document.body).appendChild(floatEl); });
   function renderFloat(html) {
     if (!html || !ses) { if (floatEl) floatEl.style.display = 'none'; return; }
     if (!floatEl) {
@@ -3623,7 +3625,7 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.3rem}
 <!-- HSCT WORLD START — do not edit; copy the whole block from lesson-template/hsct-world.js (v0.2) -->
 <script>
 /* ============================================================================
-   HSCT WORLD KIT  v0.4  (goes with HSCT LESSON KIT v1.3)
+   HSCT WORLD KIT  v0.5  (goes with HSCT LESSON KIT v1.3)
    A lesson's work screen as a small top-down world: the student makes a
    character, walks a tile map Pokémon-style, talks to NPCs, reads signs,
    enters buildings, and sits down at a desk, whiteboard or computer to do a
@@ -3730,6 +3732,13 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.3rem}
      additively — see the lesson kit header. A lesson that wants to react to a
      merge (re-render an XP counter) listens to `document` for `hsct:merged`.
      cfg.peers: false  turns the drawing off for a lesson.
+
+   NEW IN v0.5 — full screen:
+     The ⛶ button in the HUD (or the F key on the map) puts the world on the
+     whole screen: the view widens to the screen's shape (more tiles across),
+     the HUD stays on top, desks/panels open inside it, the Team panel stays
+     reachable, Esc or ⛶ leaves. world.fullscreen(on?) does it from code.
+     cfg.fullscreen: false hides the button.
    ========================================================================== */
 (function () {
   'use strict';
@@ -3890,7 +3899,7 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.3rem}
     var HS = window.HSCT || null;
 
     mount.innerHTML = '<div class="hw-stage" tabindex="0" aria-label="The map. Arrow keys or WASD walk, Space or Enter talks and uses things.">'
-      + '<div class="hw-hud"><span class="hw-map"></span><span class="hw-obj"></span><span class="hw-extra"></span><span class="hw-peers"></span><button type="button" class="hw-tasks-btn">Tasks</button></div>'
+      + '<div class="hw-hud"><span class="hw-map"></span><span class="hw-obj"></span><span class="hw-extra"></span><span class="hw-peers"></span><button type="button" class="hw-fs-btn" title="Full screen (F)" aria-label="Full screen">⛶</button><button type="button" class="hw-tasks-btn">Tasks</button></div>'
       + '<div class="hw-view"><canvas class="hw-cv" width="' + (VW * T) + '" height="' + (VH * T) + '"></canvas><div class="hw-labels"></div><div class="hw-fade"></div><div class="hw-toast" hidden></div>'
       + '<div class="hw-dialog" hidden><div class="hw-dname"></div><div class="hw-dtext"></div><div class="hw-dmore">▼</div></div>'
       + '<div class="hw-prompt" hidden></div>'
@@ -3905,18 +3914,40 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.3rem}
     var promptEl = mount.querySelector('.hw-prompt');
     var panelEl = mount.querySelector('.hw-panel'), panelBody = mount.querySelector('.hw-panel-body'), panelTitle = mount.querySelector('.hw-panel-title');
     var hudMap = mount.querySelector('.hw-map'), hudObj = mount.querySelector('.hw-obj'), hudExtra = mount.querySelector('.hw-extra'), hudPeers = mount.querySelector('.hw-peers'), toastEl = mount.querySelector('.hw-toast');
-    var tasksEl = mount.querySelector('.hw-tasks');
+    var tasksEl = mount.querySelector('.hw-tasks'), fsBtn = mount.querySelector('.hw-fs-btn');
     ctx.imageSmoothingEnabled = false;
     var panelNodes = {};
+    mount.classList.add('hw-mount');
+    function isFull() { return document.fullscreenElement === mount; }
     function fitView() {
-      var narrow = view.clientWidth > 0 && view.clientWidth < 560;
+      var narrow = !isFull() && view.clientWidth > 0 && view.clientWidth < 560;
       var w = narrow ? 12 : VIEW_W, h = narrow ? 8 : VIEW_H;
+      if (isFull()) {   // v0.5: as many tiles across as the screen's shape allows, same height
+        var hudH = (mount.querySelector('.hw-hud') || {}).offsetHeight || 0;
+        var aspect = Math.max(1, window.innerWidth / Math.max(1, window.innerHeight - hudH));
+        w = Math.max(16, Math.min(32, Math.round(VIEW_H * aspect)));
+      }
       if (w === VW && h === VH && cv.width === w * T) return;
       VW = w; VH = h; cv.width = w * T; cv.height = h * T; ctx.imageSmoothingEnabled = false;
       view.style.aspectRatio = w + ' / ' + h;
       if (map) snapCamera();
     }
     window.addEventListener('resize', fitView);
+    /* v0.5: full screen */
+    function fullscreen(on) {
+      if (on === undefined) on = !isFull();
+      if (on && !isFull()) { var p = mount.requestFullscreen && mount.requestFullscreen(); if (p && p.catch) p.catch(function () {}); }
+      else if (!on && isFull()) document.exitFullscreen && document.exitFullscreen();
+    }
+    if (fsBtn) {
+      if (cfg.fullscreen === false || !mount.requestFullscreen) fsBtn.hidden = true;
+      fsBtn.addEventListener('click', function () { fullscreen(); stage.focus(); });
+    }
+    document.addEventListener('fullscreenchange', function () {
+      var on = isFull();
+      if (fsBtn) { fsBtn.textContent = on ? '⤢' : '⛶'; fsBtn.title = on ? 'Leave full screen (Esc)' : 'Full screen (F)'; }
+      setTimeout(fitView, 50);
+    });
 
     var ctxOf = function () { return { state: S, world: api }; };
     var evalProp = function (v) { return typeof v === 'function' ? v(ctxOf()) : v; };
@@ -4350,6 +4381,7 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.3rem}
       var tag = (e.target.tagName || '').toLowerCase();
       if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
       if (e.key === 'Escape') { if (dialog) { closeDialog(); updatePrompt(); } if (!tasksEl.hidden) tasksEl.hidden = true; return; }
+      if (e.type === 'keydown' && (e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); fullscreen(); return; }   // v0.5
       if (!tasksEl.hidden) return;
       var d = KEYS[e.key];
       if (d) { e.preventDefault(); if (e.type === 'keydown') { held[d] = true; player.path = []; if (dialog) return; if (!player.moving) { player.facing = d; S.facing = d; updatePrompt(); } } else delete held[d]; return; }
@@ -4384,6 +4416,8 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.3rem}
       get map() { return mapId; }, get player() { return { x: player.x, y: player.y, facing: player.facing }; }, get state() { return S; },
       destroy: function () { cancelAnimationFrame(api._raf); if (unsubPeer) unsubPeer(); mount.innerHTML = ''; },
       get peers() { return peers; },
+      fullscreen: fullscreen,
+      get isFullscreen() { return isFull(); },
     };
     fitView();
     sync();
@@ -4429,6 +4463,15 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.3rem}
     + '.hw-toast{position:absolute;left:50%;top:16%;transform:translateX(-50%);background:#ffd84d;color:#101a3f;border:2px solid #101a3f;font:700 14px "IBM Plex Sans",system-ui,sans-serif;padding:7px 14px;border-radius:999px;pointer-events:none;white-space:nowrap;max-width:92%;overflow:hidden;text-overflow:ellipsis;box-shadow:0 6px 18px -8px rgba(0,0,0,.6);animation:hwpop .18s ease-out}'
     + '@keyframes hwpop{from{transform:translateX(-50%) scale(.85);opacity:0}}.hw-hud .hw-extra{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:13px;white-space:nowrap}'
     + '@media (max-width:560px){.hw-hud .hw-obj{flex-basis:100%;order:5;font-size:13px}}'
+    /* v0.5: full screen */
+    + '.hw-fs-btn{font:16px/1 system-ui,sans-serif;padding:5px 9px;border-radius:999px;border:1.5px solid var(--line,#d3d9ee);background:#fff;color:var(--ink,#101a3f);cursor:pointer}.hw-fs-btn[hidden]{display:none}'
+    + '.hw-mount:fullscreen{background:#05040f;display:flex;flex-direction:column;padding:0;margin:0;width:100%;height:100%}'
+    + '.hw-mount:fullscreen .hw-stage{flex:1;display:flex;flex-direction:column;min-height:0}'
+    + '.hw-mount:fullscreen .hw-hud{margin:0;padding:8px 14px;background:#0b0a1a;color:#cdd3ea;flex:none}.hw-mount:fullscreen .hw-hud .hw-map{color:#fff}.hw-mount:fullscreen .hw-hud .hw-obj:not(:empty)::before{color:#9aa4c7}.hw-mount:fullscreen .hw-hud .hw-peers{color:#9fb0ff}'
+    + '.hw-mount:fullscreen .hw-hud .hw-tasks-btn,.hw-mount:fullscreen .hw-fs-btn{background:#1a1933;color:#fff;border-color:#3a3960}'
+    + '.hw-mount:fullscreen .hw-view{flex:1;min-height:0;width:100%;max-width:100%;max-height:100%;margin:0 auto;border-radius:0;box-shadow:none;align-self:center}'
+    + '.hw-mount:fullscreen .hw-help{display:none}'
+    + '.hw-mount:fullscreen .hw-panel{flex:1;min-height:0;overflow:auto;border:0;border-radius:0}.hw-mount:fullscreen .hw-panel-body{max-width:960px;margin:0 auto}'
     + '.hw-hud .hw-peers{font-size:12.5px;color:#1f3fae;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46%}.hw-hud .hw-peers[hidden]{display:none}'
     + '.hw-peer-tag{position:absolute;transform:translate(-50%,-100%);font:600 11px "IBM Plex Sans",system-ui,sans-serif;color:#fff;background:rgba(31,63,174,.88);padding:1px 6px;border-radius:5px;white-space:nowrap;pointer-events:none;transition:left .12s linear,top .12s linear}.hw-peer-tag[hidden]{display:none}'
     + '.hw-dialog{position:absolute;left:3%;right:3%;bottom:4%;background:rgba(255,255,255,.96);color:#101a3f;border:3px solid #101a3f;border-radius:10px;padding:10px 40px 10px 14px;font:16px "IBM Plex Sans",system-ui,sans-serif;line-height:1.4;min-height:3.6em;cursor:pointer;box-shadow:0 6px 18px -8px rgba(0,0,0,.6)}'
@@ -4446,7 +4489,7 @@ h4{font-size:1rem;font-weight:700;margin-bottom:.3rem}
     + '.hw-swatches{display:grid;gap:8px;flex:1;min-width:220px}.hw-row{display:grid;grid-template-columns:52px 1fr;gap:8px;align-items:center;font-size:14px}.hw-row>div{display:flex;flex-wrap:wrap;gap:5px}.hw-sw{width:26px;height:26px;border-radius:50%;border:2px solid rgba(0,0,0,.15);cursor:pointer;padding:0}.hw-sw.none{background:repeating-linear-gradient(45deg,#ddd 0 3px,#fff 3px 6px) !important}.hw-sw.on{border-color:#101a3f;box-shadow:0 0 0 2px #fff,0 0 0 4px #1f3fae}.hw-rand{justify-self:start;font:600 13px inherit;padding:6px 11px;border-radius:999px;border:1.5px solid var(--line,#d3d9ee);background:#fff;cursor:pointer}';
   function injectCss() { if (document.getElementById('hsct-world-css')) return; var s = document.createElement('style'); s.id = 'hsct-world-css'; s.textContent = CSS; document.head.appendChild(s); }
 
-  window.HSCTWorld = { create: create, characterPicker: characterPicker, randomLook: randomLook, DEFAULT_LOOK: DEFAULT_LOOK, LOOKS: { skins: SKINS, hairs: HAIRS, shirts: SHIRTS, pants: PANTS, hats: HATS }, sprite: sprite, icons: ICON_PAINT, carSprite: carSprite, version: '0.4' };
+  window.HSCTWorld = { create: create, characterPicker: characterPicker, randomLook: randomLook, DEFAULT_LOOK: DEFAULT_LOOK, LOOKS: { skins: SKINS, hairs: HAIRS, shirts: SHIRTS, pants: PANTS, hats: HATS }, sprite: sprite, icons: ICON_PAINT, carSprite: carSprite, version: '0.5' };
 })();
 </script>
 <!-- HSCT WORLD END -->
