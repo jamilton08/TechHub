@@ -5209,8 +5209,11 @@ def next_options(state):
       let why2 = '';
       if (!why) {
         const start = { score: 0, hearts: 3, status: 'playing', things: [] }, startCopy = JSON.stringify(start), startRef = pyRef(start);
-        const g = callRaw(r.vm, 'replay', [startRef, pyRef(LOG)]);
-        if (g.error) why2 = explainError(g.error) || String(g.error);
+        const logBefore = LOG.length;
+        const g = callRaw(r.vm, 'replay', [startRef, r.vm.getGlobal('LOG')]);   // the REAL log, not a copy: a replay that logs would loop on it
+        const logAfter = (globalPy(r.vm, 'LOG') || []).length;
+        if (g.error) why2 = (g.error.name === 'TimeoutError' || /too long/.test(String(g.error))) && logAfter > logBefore ? 'replay() never finished: it calls change(), which appends to the very LOG it is reading, so the loop never reaches the end. Replay only READS the log. Set state[record["key"]] = record["new"] directly — this is the one place a direct write is right.' : (explainError(g.error) || String(g.error));
+        else if (logAfter > logBefore) why2 = `replay() wrote ${logAfter - logBefore} new records while rebuilding. Replay only reads the log; set state[record["key"]] = record["new"] directly instead of calling change().`;
         else if (!same(g.value, s)) why2 = `replay gave ${fmtVal(g.value)}; the real final state is ${fmtVal(s)}. For every record: state[record["key"]] = record["new"].`;
         else if (JSON.stringify(js(startRef)) !== startCopy) why2 = 'replay changed start. Copy it first (copy.deepcopy, or dict(start) for a flat state) and work on the copy.';
       }
@@ -5657,7 +5660,9 @@ for __thing in list(__state["things"]):
     if ending(__state) != "playing":
         break
 __final = ending(__state)
-__rebuilt = replay(copy.deepcopy(__start), LOG)
+__log_before = len(LOG)
+__rebuilt = replay(copy.deepcopy(__start), list(LOG))
+__replay_wrote = len(LOG) - __log_before
 __kinds = []
 for __r in LOG:
     __k = __r["cause"].split("#")[0]
@@ -5666,19 +5671,25 @@ for __r in LOG:
 __text = save_game(__state, LOG)
 __s2, __l2 = load_game(__text)
 `;
+const STATION_FILES = [['cargo', 'game.py'], ['bridge', 'rules.py'], ['vault', 'blackbox.py'], ['cryo', 'saves.py'], ['drone', 'enemy.py']];
 function assembleGame() {
-  const P = L.parts;
-  return [P.cargo.values.code, P.bridge.values.code, P.vault.values.code, P.cryo.values.code, P.drone.values.code].join('\n\n');
+  return STATION_FILES.map(([id]) => L.parts[id].values.code).join('\n\n');
+}
+/* which station's file a line of the assembled program belongs to */
+function locateLine(n) {
+  let at = 1;
+  for (const [id, file] of STATION_FILES) { const len = L.parts[id].values.code.split('\n').length; if (n < at + len) return `${file} line ${n - at + 1} (${PARTS[id].zone})`; at += len + 1; }
+  return 'the Dock\'s own test program';
 }
 function simulateLaunch() {
   const code = assembleGame();
   const r = runPy(code + '\n' + LAUNCH_HARNESS, { maxSteps: 400000 });
-  if (r.error) return { error: `${MiniPy.formatError(r.error, (n) => 'line ' + n)} — ${explainError(r.error) || 'go back to the station that owns that code.'}` };
+  if (r.error) return { error: `${MiniPy.formatError(r.error, locateLine)} — ${explainError(r.error) || ''} Open that station's console and press Run: a file edited after it passed is not re-checked until you do.` };
   const g = (n) => globalPy(r.vm, n);
   const kinds = (g('OBJECTS') || []).map((o) => o.kind);
   const logged = g('__kinds') || [];
-  const final = g('__state'), LOG = g('LOG') || [];
-  return { path: g('__path') || [], final: g('__final'), replayOk: same(g('__rebuilt'), final), saveOk: same(g('__s2'), final) && same(g('__l2'), LOG), log: LOG, kinds, missing: kinds.filter((k) => !logged.includes(k)), out: r.out };
+  const final = g('__state'), LOG = g('LOG') || [], replayWrote = g('__replay_wrote') || 0;
+  return { path: g('__path') || [], final: g('__final'), replayOk: same(g('__rebuilt'), final) && !replayWrote, replayWrote, saveOk: same(g('__s2'), final) && same(g('__l2'), LOG), log: LOG, kinds, missing: kinds.filter((k) => !logged.includes(k)), out: r.out };
 }
 const showVal = (v) => Array.isArray(v) ? `[${v.length} thing${v.length === 1 ? '' : 's'}]` : JSON.stringify(v);
 function drawOgreSprite(cv, mood) {
@@ -5712,7 +5723,7 @@ function buildLaunch(host, api) {
     const lines = res.log.map((x) => ({ k: x.key === 'hearts' ? (x.new < x.old ? 's' : 'b') : x.key === 'status' ? 'a' : 'b', text: `t${x.t} · ${x.key}: ${showVal(x.old)} → ${showVal(x.new)}   ← ${x.cause}`, score: x.key === 'score' ? x.new : null, hearts: x.key === 'hearts' ? x.new : null }));
     const verdict = [
       { k: res.final !== 'playing' ? 'a' : 's', text: `ending(state) → "${res.final}"${res.final === 'playing' ? ' — the level ran out before the game ended. Is the goal placed? Can the hero lose?' : ''}` },
-      { k: res.replayOk ? 'a' : 's', text: res.replayOk ? 'replay(start, LOG) == final state ✓ — the black box explains everything' : 'replay(start, LOG) != final state ✗ — something changed state without change(). Vault or Drone Lab.' },
+      { k: res.replayOk ? 'a' : 's', text: res.replayOk ? 'replay(start, LOG) == final state ✓ — the black box explains everything' : res.replayWrote ? `replay() wrote ${res.replayWrote} records to the log while rebuilding ✗ — replay only reads. Black Box Vault.` : 'replay(start, LOG) != final state ✗ — something changed state without change(). Vault or Drone Lab.' },
       { k: res.missing.length ? 's' : 'a', text: res.missing.length ? `never in the log: ${res.missing.join(', ')} — the Ogre never met them, or touch() skipped them` : `every kind in the log ✓ (${res.kinds.join(', ')})` },
       { k: res.saveOk ? 'a' : 's', text: res.saveOk ? 'save → load round-trip ✓' : 'save → load lost something ✗ — Cryo Deck' },
       { k: ok ? 'o' : 's', text: ok ? `${OGRE}: "…okay. Okay. One more game." He sits down. The Spaceverse is quiet.` : `${OGRE}: "Hm." He looks at the airlock again.` },
